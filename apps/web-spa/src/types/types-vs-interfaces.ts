@@ -14,7 +14,7 @@ export interface VerifiedAuthor extends Author {
 
 // 객체가 아닌 모양(별칭·여러 값 중 하나)은 type 으로 쓴다
 export type PostId = number;
-export type FeedSort = 'latest' | 'popular';
+export type SortDirection = 'asc' | 'desc';
 
 export function mentionOf(author: Author): string {
   return `@${author.username}`;
