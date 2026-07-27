@@ -26,7 +26,7 @@ describe('PostHeader — 카드의 머리 구역', () => {
   it('프로필 옆에 더보기 버튼이 함께 선다 — 묶을 것이 둘이라 파일을 따로 둔다', () => {
     render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
 
-    const more = screen.getByRole('button', { name: '더보기' });
+    const more = screen.getByRole('button', { name: '게시물 메뉴' });
     expect(more).toHaveTextContent('⋯');
     expect(more).toHaveAttribute('type', 'button');
   });
@@ -34,11 +34,11 @@ describe('PostHeader — 카드의 머리 구역', () => {
   it('더보기 버튼은 아직 아무 일도 하지 않는다 — 눌러도 화면이 그대로다', async () => {
     const user = userEvent.setup();
     render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
-    const before = screen.getByRole('button', { name: '더보기' }).closest('div')?.outerHTML;
+    const before = screen.getByRole('button', { name: '게시물 메뉴' }).closest('div')?.outerHTML;
 
-    await user.click(screen.getByRole('button', { name: '더보기' }));
+    await user.click(screen.getByRole('button', { name: '게시물 메뉴' }));
 
-    expect(screen.getByRole('button', { name: '더보기' }).closest('div')?.outerHTML).toBe(
+    expect(screen.getByRole('button', { name: '게시물 메뉴' }).closest('div')?.outerHTML).toBe(
       before,
     );
   });

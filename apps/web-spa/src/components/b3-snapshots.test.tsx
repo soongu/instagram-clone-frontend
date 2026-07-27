@@ -77,7 +77,7 @@ describe('Step 1 — 쪼갤 이유가 없던 머리 구역', () => {
 
     expect(header).not.toBe(avatar);
     expect(header).toBe(
-      `<div class="post-header">${avatar}<button class="post-more" aria-label="더보기">⋯</button></div>`,
+      `<div class="post-header">${avatar}<button class="post-more" aria-label="게시물 메뉴">⋯</button></div>`,
     );
   });
 
@@ -100,7 +100,7 @@ describe('Step 1 — 쪼갤 이유가 없던 머리 구역', () => {
     expect(withMore).toBe(
       step1.replace(
         avatar,
-        `<div class="post-header">${avatar}<button class="post-more" aria-label="더보기">⋯</button></div>`,
+        `<div class="post-header">${avatar}<button class="post-more" aria-label="게시물 메뉴">⋯</button></div>`,
       ),
     );
   });

@@ -13,7 +13,7 @@ export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
   return (
     <div className="post-header">
       <Avatar username={username} profileImageUrl={profileImageUrl} />
-      <Button className="post-more" aria-label="더보기">
+      <Button className="post-more" aria-label="게시물 메뉴">
         ⋯
       </Button>
     </div>
