@@ -4,8 +4,15 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect, vi } from 'vitest';
-import { PostCardBefore, PostCardStep1 } from '../../scratch/b3-lecture-snapshots';
+import {
+  PostCardBefore,
+  PostCardStep1,
+  LikeButtonBefore,
+  CommentFormBefore,
+} from '../../scratch/b3-lecture-snapshots';
 import { PostCard } from './PostCard';
+import { LikeButton } from './LikeButton';
+import { CommentForm } from './CommentForm';
 import { feedPosts } from '../data/feed';
 
 const [firstPost] = feedPosts;
@@ -47,6 +54,38 @@ describe('Step 1 — 나누기 전 카드도 여전히 같은 동작을 한다',
     await user.dblClick(screen.getByRole('img', { name: 'jaehoon 의 게시물' }));
 
     expect(onToggleLike).toHaveBeenCalledWith(firstPost.id);
+  });
+});
+
+describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
+  it('좋아요 버튼은 type="button" 한 군데만 달라진다', () => {
+    const before = renderToStaticMarkup(
+      <LikeButtonBefore liked={false} likeCount={3} onToggle={() => {}} />,
+    );
+    const after = renderToStaticMarkup(
+      <LikeButton liked={false} likeCount={3} onToggle={() => {}} />,
+    );
+
+    expect(before).toBe('<div class="like-area"><button class="like-button">♡ 좋아요</button><p class="post-likes">좋아요 3개</p></div>');
+    expect(after).toBe(before.replace('class="like-button"', 'class="like-button" type="button"'));
+  });
+
+  it('제출 버튼은 HTML 이 완전히 같다', () => {
+    const before = renderToStaticMarkup(<CommentFormBefore onSubmit={() => {}} />);
+    const after = renderToStaticMarkup(<CommentForm onSubmit={() => {}} />);
+
+    expect(after).toBe(before);
+  });
+
+  it('갈아끼우기 전 폼도 같은 방식으로 제출된다', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(<CommentFormBefore onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText('댓글 입력'), '노을 최고');
+    await user.click(screen.getByRole('button', { name: '게시' }));
+
+    expect(onSubmit).toHaveBeenCalledWith('노을 최고');
   });
 });
 

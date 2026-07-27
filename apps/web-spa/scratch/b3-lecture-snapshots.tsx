@@ -3,10 +3,11 @@
 // HEAD 의 src/components/*.tsx 는 마지막 Step 의 모습만 남으므로,
 // 교안이 Step 1~4 에서 보여주는 중간 형태를 여기에 접미사를 붙여 남긴다.
 // 이름과 임포트 경로를 빼면 교안 코드 블록과 글자 단위로 같다.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { PostCardProps } from '../src/types/derived';
 import { Avatar } from '../src/components/Avatar';
 import { LikeButton } from '../src/components/LikeButton';
+import { CommentInput } from '../src/components/CommentInput';
 import { CommentForm } from '../src/components/CommentForm';
 import { PostHeader } from '../src/components/PostHeader';
 import { PostImage } from '../src/components/PostImage';
@@ -76,6 +77,61 @@ export function PostCardBefore({
       </ul>
       <CommentForm onSubmit={addComment} />
     </article>
+  );
+}
+
+// ─── Step 2 이전: 버튼 태그를 직접 쓰던 두 곳 ─────────────────
+// 같은 <button> 이 두 파일에 흩어져 있고, 잠금·제출 규칙도 각자 적는다.
+interface LikeButtonProps {
+  liked: boolean;
+  likeCount: number;
+  onToggle: () => void;
+}
+
+export function LikeButtonBefore({ liked, likeCount, onToggle }: LikeButtonProps) {
+  return (
+    <div className="like-area">
+      <button
+        className={liked ? 'like-button liked' : 'like-button'}
+        onClick={onToggle}
+      >
+        {liked ? '♥ 좋아요 취소' : '♡ 좋아요'}
+      </button>
+      {likeCount > 0 && <p className="post-likes">좋아요 {likeCount}개</p>}
+    </div>
+  );
+}
+
+interface CommentFormProps {
+  onSubmit: (content: string) => void;
+}
+
+export function CommentFormBefore({ onSubmit }: CommentFormProps) {
+  const [content, setContent] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isEmpty = content.trim() === '';
+
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setContent(event.target.value);
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isEmpty) {
+      return;
+    }
+    onSubmit(content.trim());
+    setContent('');
+    inputRef.current?.focus();
+  }
+
+  return (
+    <form className="comment-form" onSubmit={handleSubmit}>
+      <CommentInput ref={inputRef} value={content} onChange={handleChange} />
+      <button className="comment-submit" type="submit" disabled={isEmpty}>
+        게시
+      </button>
+    </form>
   );
 }
 

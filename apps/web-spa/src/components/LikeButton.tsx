@@ -1,4 +1,5 @@
 // apps/web-spa/src/components/LikeButton.tsx
+import { Button } from './Button';
 
 interface LikeButtonProps {
   liked: boolean;
@@ -9,12 +10,12 @@ interface LikeButtonProps {
 export function LikeButton({ liked, likeCount, onToggle }: LikeButtonProps) {
   return (
     <div className="like-area">
-      <button
+      <Button
         className={liked ? 'like-button liked' : 'like-button'}
         onClick={onToggle}
       >
         {liked ? '♥ 좋아요 취소' : '♡ 좋아요'}
-      </button>
+      </Button>
       {likeCount > 0 && <p className="post-likes">좋아요 {likeCount}개</p>}
     </div>
   );

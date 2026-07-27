@@ -1,5 +1,6 @@
 // apps/web-spa/src/components/CommentForm.tsx
 import { useRef, useState } from 'react';
+import { Button } from './Button';
 import { CommentInput } from './CommentInput';
 
 interface CommentFormProps {
@@ -28,9 +29,9 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
   return (
     <form className="comment-form" onSubmit={handleSubmit}>
       <CommentInput ref={inputRef} value={content} onChange={handleChange} />
-      <button className="comment-submit" type="submit" disabled={isEmpty}>
+      <Button className="comment-submit" type="submit" disabled={isEmpty}>
         게시
-      </button>
+      </Button>
     </form>
   );
 }
