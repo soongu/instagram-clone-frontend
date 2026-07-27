@@ -1,25 +1,26 @@
 // apps/web-spa/src/types/like-state.ts
 
+// 네 상태가 공통으로 갖는 정보는 한 곳에만 적는다
+interface LikeBase {
+  liked: boolean;
+}
+
 // 상황마다 필요한 정보가 다르다 — 그래서 모양을 따로 만든다
-interface LikeIdle {
+interface LikeIdle extends LikeBase {
   status: 'idle';
-  liked: boolean;
 }
 
-interface LikePending {
+interface LikePending extends LikeBase {
   status: 'pending';
-  liked: boolean;
 }
 
-interface LikeSuccess {
+interface LikeSuccess extends LikeBase {
   status: 'success';
-  liked: boolean;
   likeCount: number;
 }
 
-interface LikeFailed {
+interface LikeFailed extends LikeBase {
   status: 'failed';
-  liked: boolean;
   message: string;
 }
 
