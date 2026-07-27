@@ -1,0 +1,62 @@
+B-2 훅 규칙 위반 채증 (내부 검증용)
+
+이 파일은 .tsx 로 두면 eslint . 이 항상 3 건 실패하므로 .txt 로 보관한다.
+재현하려면 scratch/b2-hook-rule-errors.tsx 로 복사한 뒤
+
+  npx eslint scratch/b2-hook-rule-errors.tsx
+
+를 돌리고 확인 후 지운다.
+
+────────────────────────── 소스 ──────────────────────────
+
+// B-2 훅 규칙 위반 채증 (내부 검증용)
+import { useState } from 'react';
+
+// 1. 조건문 안에서 훅을 부른다
+export function ConditionalHook({ showLike }: { showLike: boolean }) {
+  if (showLike) {
+    const [liked, setLiked] = useState(false);
+    return <button onClick={() => setLiked(!liked)}>{liked ? '♥' : '♡'}</button>;
+  }
+
+  return null;
+}
+
+// 2. 반복문 안에서 훅을 부른다
+export function LoopHook({ names }: { names: string[] }) {
+  const labels: string[] = [];
+
+  for (const name of names) {
+    const [liked] = useState(false);
+    labels.push(liked ? `${name} ♥` : `${name} ♡`);
+  }
+
+  return <p>{labels.join(', ')}</p>;
+}
+
+// 3. 컴포넌트가 아닌 그냥 함수에서 훅을 부른다
+export function makeLikeState() {
+  const [liked, setLiked] = useState(false);
+  return { liked, setLiked };
+}
+
+──────────────────────── 실측 출력 ────────────────────────
+
+eslint-plugin-react-hooks 7.1.1 / react-hooks/rules-of-hooks
+
+   7:31  error  React Hook "useState" is called conditionally. React Hooks must
+                be called in the exact same order in every component render
+
+  19:21  error  React Hook "useState" may be executed more than once. Possibly
+                because it is called in a loop. React Hooks must be called in
+                the exact same order in every component render
+
+  28:29  error  React Hook "useState" is called in function "makeLikeState" that
+                is neither a React function component nor a custom React Hook
+                function. React component names must start with an uppercase
+                letter. React Hook names must start with the word "use"
+
+  ✖ 3 problems (3 errors, 0 warnings)
+
+메모: 3 번 메시지가 "컴포넌트는 대문자로, 훅은 use 로 시작" 이라는 규칙의 근거를
+     그대로 말해준다. B-1 Step 4 의 "이름은 대문자로 시작한다" 와 이어 붙일 수 있다.

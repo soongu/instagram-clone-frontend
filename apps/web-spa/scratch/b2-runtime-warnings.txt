@@ -1,0 +1,35 @@
+B-2 런타임 콘솔 경고 채증 (내부 검증용) — React 19.2.8
+
+컴파일러가 아니라 브라우저 콘솔에 뜨는 경고라서 tsc/eslint 로는 안 잡힌다.
+console.error 를 가로채 문자열을 그대로 받아 적었다.
+
+────────────────── 1. 리스트에 key 를 안 줬을 때 ──────────────────
+
+  function NoKeyList() {
+    const names = ['jaehoon', 'minji'];
+    return <ul>{names.map((n) => <li>{n}</li>)}</ul>;
+  }
+
+출력:
+
+  Each child in a list should have a unique "key" prop.
+  See https://react.dev/link/warning-keys for more information.
+
+  Check the render method of `NoKeyList`.
+
+──────────── 2. value 만 주고 onChange 를 안 줬을 때 ────────────
+
+  function ReadOnlyInput() {
+    const [content] = useState('');
+    return <input value={content} />;
+  }
+
+출력:
+
+  You provided a `value` prop to a form field without an `onChange` handler.
+  This will render a read-only field. If the field should be mutable use
+  `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+
+메모: 2 번 경고가 "value 와 onChange 는 한 짝" 이라는 Step 7 의 결론을 React 가
+     직접 말해주는 자리다. 학생이 onChange 를 빼먹으면 글자가 안 쳐지는데,
+     그 이유가 콘솔에 그대로 적혀 있다.
