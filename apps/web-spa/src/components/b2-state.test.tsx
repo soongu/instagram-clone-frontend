@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ClickCounter } from './ClickCounter';
 // Step 2~3 시점의 LikeButton (Step 5 에서 제어 컴포넌트로 바뀌기 전 모습)
-import { LikeButton as SelfStateLikeButton } from '../../scratch/b2-step3-likebutton';
+import { LikeButtonStep3 as SelfStateLikeButton } from '../../scratch/b2-lecture-snapshots';
 
 describe('ClickCounter — 일반 변수는 화면을 못 바꾼다', () => {
   afterEach(() => {
