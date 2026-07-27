@@ -8,6 +8,7 @@ import {
   PostCardBefore,
   PostCardStep1,
   PostCardStep1Final,
+  PostCardStep4,
   PostHeaderPassthrough,
   PostHeaderStep1,
   LikeButtonBefore,
@@ -171,13 +172,22 @@ describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () =>
     const step1 = renderToStaticMarkup(
       <PostCardStep1Final {...firstPost} onToggleLike={() => {}} />,
     );
-    const current = renderToStaticMarkup(
-      <PostCard {...firstPost} onToggleLike={() => {}} />,
+    const step4 = renderToStaticMarkup(
+      <PostCardStep4 {...firstPost} onToggleLike={() => {}} />,
     );
 
-    expect(current).toBe(
+    expect(step4).toBe(
       step1.replace('class="post-more"', 'class="post-more" type="button"'),
     );
+  });
+
+  it('캡션을 접기 전에는 카드가 캡션을 통째로 그린다', () => {
+    const step4 = renderToStaticMarkup(
+      <PostCardStep4 {...firstPost} onToggleLike={() => {}} />,
+    );
+
+    expect(step4).toContain('오늘 한강 노을이 미쳤다');
+    expect(step4).not.toContain('caption-toggle');
   });
 
   it('머리와 꼬리를 슬롯으로 넘겨도 그리는 순서는 그대로다', () => {
@@ -189,5 +199,23 @@ describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () =>
     expect(html.indexOf('post-image')).toBeLessThan(html.indexOf('like-area'));
     expect(html.indexOf('like-area')).toBeLessThan(html.indexOf('comment-list'));
     expect(html.indexOf('comment-list')).toBeLessThan(html.indexOf('comment-form'));
+  });
+});
+
+describe('Step 7 — 캡션 접기가 들어와서 달라지는 것', () => {
+  it('카드에서 달라지는 곳은 캡션 한 줄과 버튼 하나뿐이다', () => {
+    const step4 = renderToStaticMarkup(
+      <PostCardStep4 {...firstPost} onToggleLike={() => {}} />,
+    );
+    const current = renderToStaticMarkup(
+      <PostCard {...firstPost} onToggleLike={() => {}} />,
+    );
+
+    expect(current).toBe(
+      step4.replace(
+        '오늘 한강 노을이 미쳤다</p>',
+        '오늘 한강 노을이...<button class="caption-toggle" type="button">더 보기</button></p>',
+      ),
+    );
   });
 });

@@ -66,7 +66,7 @@ describe('걸러내기를 붙인 App', () => {
 
     const cards = screen.getAllByRole('article');
     expect(cards).toHaveLength(1);
-    expect(cards[0]).toHaveTextContent('제주도 3박 4일 기록');
+    expect(cards[0]).toHaveTextContent('제주도 3박 4일');
   });
 
   it('고른 태그 버튼만 구별되게 보인다', async () => {

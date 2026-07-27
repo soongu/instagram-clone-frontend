@@ -34,7 +34,7 @@ describe('PostCard', () => {
     const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
 
     expect(html).toContain('jaehoon');
-    expect(html).toContain('오늘 한강 노을이 미쳤다');
+    expect(html).toContain('오늘 한강 노을이');
     expect(html).toContain('좋아요 1240개');
     expect(html).toContain('댓글 32개 모두 보기');
   });

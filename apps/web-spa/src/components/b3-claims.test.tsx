@@ -11,6 +11,7 @@ import {
   ChildrenTakesArray,
   SlotKeepsOwnerState,
   ProfileCard,
+  TwoIndependentToggles,
 } from '../../scratch/b3-claims';
 
 describe('주장 1 — 슬롯은 JSX 가 아닌 값도 받는다', () => {
@@ -68,5 +69,18 @@ describe('주장 6 — 같은 Card 로 게시물이 아닌 것도 조립한다',
     expect(screen.getByRole('heading', { name: 'jaehoon' })).toBeInTheDocument();
     expect(screen.getByText('게시물 42 · 팔로워 1240')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '팔로우' })).toBeInTheDocument();
+  });
+});
+
+describe('주장 7 — 같은 훅을 두 번 써도 상태가 안 섞인다', () => {
+  it('한쪽을 펼쳐도 다른 쪽은 접힌 채로 있다', async () => {
+    const user = userEvent.setup();
+    render(<TwoIndependentToggles />);
+
+    await user.click(screen.getByRole('button', { name: '캡션 펼치기' }));
+
+    expect(screen.getByText('오늘 한강 노을이 미쳤다')).toBeInTheDocument();
+    expect(screen.getByText('댓글은 접혀 있어요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '댓글 펼치기' })).toBeInTheDocument();
   });
 });

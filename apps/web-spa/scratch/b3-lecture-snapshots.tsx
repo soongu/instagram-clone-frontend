@@ -9,8 +9,10 @@ import { Avatar } from '../src/components/Avatar';
 import { LikeButton } from '../src/components/LikeButton';
 import { CommentInput } from '../src/components/CommentInput';
 import { CommentForm } from '../src/components/CommentForm';
+import { CommentList } from '../src/components/CommentList';
+import { Card } from '../src/components/Card';
+import { PostHeader } from '../src/components/PostHeader';
 import { PostImage } from '../src/components/PostImage';
-import { PostBody } from '../src/components/PostBody';
 import { Feed } from '../src/components/Feed';
 import { Section } from '../src/components/Section';
 import { feedPosts } from '../src/data/feed';
@@ -164,6 +166,35 @@ export function PostHeaderStep1({ username, profileImageUrl }: PostHeaderProps) 
   );
 }
 
+// ─── Step 7 이전: 캡션을 접지 않고 통째로 보여주던 본문 구역 ────
+interface PostBodyProps {
+  username: string;
+  content: string;
+  liked: boolean;
+  likeCount: number;
+  commentCount: number;
+  onToggle: () => void;
+}
+
+export function PostBodyStep1({
+  username,
+  content,
+  liked,
+  likeCount,
+  commentCount,
+  onToggle,
+}: PostBodyProps) {
+  return (
+    <>
+      <LikeButton liked={liked} likeCount={likeCount} onToggle={onToggle} />
+      <p className="post-content">
+        <strong>{username}</strong> {content}
+      </p>
+      <p className="post-comments">댓글 {commentCount}개 모두 보기</p>
+    </>
+  );
+}
+
 // ─── Step 1: 세 구역으로 나눈 직후 (Card 로 조립하기 전) ───────
 // 카드는 "무엇이 어떤 순서로 오는지"만 말하고, 각 구역은 자기 파일이 그린다.
 export function PostCardStep1({
@@ -191,7 +222,7 @@ export function PostCardStep1({
         username={username}
         onLike={() => onToggleLike(id)}
       />
-      <PostBody
+      <PostBodyStep1
         username={username}
         content={content}
         liked={liked}
@@ -260,7 +291,7 @@ export function PostCardStep1Final({
         username={username}
         onLike={() => onToggleLike(id)}
       />
-      <PostBody
+      <PostBodyStep1
         username={username}
         content={content}
         liked={liked}
@@ -277,5 +308,47 @@ export function PostCardStep1Final({
       </ul>
       <CommentForm onSubmit={addComment} />
     </article>
+  );
+}
+
+// ─── Step 4: Card 슬롯으로 조립한 직후 (캡션은 아직 안 접힌다) ──
+export function PostCardStep4({
+  id,
+  username,
+  profileImageUrl,
+  imageUrl,
+  content,
+  liked,
+  likeCount,
+  commentCount,
+  onToggleLike,
+}: PostCardViewProps) {
+  const [comments, setComments] = useState<DraftComment[]>([]);
+
+  function addComment(text: string) {
+    setComments([...comments, { id: comments.length + 1, content: text }]);
+  }
+
+  return (
+    <Card
+      className="post-card"
+      header={<PostHeader username={username} profileImageUrl={profileImageUrl} />}
+      footer={<CommentForm onSubmit={addComment} />}
+    >
+      <PostImage
+        imageUrl={imageUrl}
+        username={username}
+        onLike={() => onToggleLike(id)}
+      />
+      <PostBodyStep1
+        username={username}
+        content={content}
+        liked={liked}
+        likeCount={likeCount}
+        commentCount={commentCount + comments.length}
+        onToggle={() => onToggleLike(id)}
+      />
+      <CommentList comments={comments} />
+    </Card>
   );
 }

@@ -85,6 +85,15 @@ body {
   color: #8e8e8e;
 }
 
+.caption-toggle {
+  border: none;
+  background: none;
+  color: #8e8e8e;
+  font-size: 14px;
+  padding: 0 0 0 4px;
+  cursor: pointer;
+}
+
 .like-area {
   padding: 8px 12px 0;
 }

@@ -18,8 +18,8 @@ describe('Feed — 배열을 화면으로', () => {
     render(<Feed posts={feedPosts} onToggleLike={() => {}} />);
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
-    expect(firstCard).toHaveTextContent('오늘 한강 노을이 미쳤다');
-    expect(secondCard).toHaveTextContent('제주도 3박 4일 기록');
+    expect(firstCard).toHaveTextContent('오늘 한강 노을이');
+    expect(secondCard).toHaveTextContent('제주도 3박 4일');
   });
 
   it('한 카드의 좋아요를 누르면 그 게시물 id 로 부모에게 알린다', async () => {

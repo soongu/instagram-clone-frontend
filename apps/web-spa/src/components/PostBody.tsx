@@ -1,5 +1,10 @@
 // apps/web-spa/src/components/PostBody.tsx
 import { LikeButton } from './LikeButton';
+import { Button } from './Button';
+import { useToggle } from '../hooks/useToggle';
+
+// 이 글자 수를 넘는 캡션은 접어서 보여준다
+const CAPTION_LIMIT = 10;
 
 interface PostBodyProps {
   username: string;
@@ -19,11 +24,21 @@ export function PostBody({
   commentCount,
   onToggle,
 }: PostBodyProps) {
+  const [captionOpen, toggleCaption] = useToggle();
+  const isLong = content.length > CAPTION_LIMIT;
+  const shownContent =
+    isLong && !captionOpen ? `${content.slice(0, CAPTION_LIMIT).trimEnd()}...` : content;
+
   return (
     <>
       <LikeButton liked={liked} likeCount={likeCount} onToggle={onToggle} />
       <p className="post-content">
-        <strong>{username}</strong> {content}
+        <strong>{username}</strong> {shownContent}
+        {isLong && (
+          <Button className="caption-toggle" onClick={toggleCaption}>
+            {captionOpen ? '접기' : '더 보기'}
+          </Button>
+        )}
       </p>
       <p className="post-comments">댓글 {commentCount}개 모두 보기</p>
     </>

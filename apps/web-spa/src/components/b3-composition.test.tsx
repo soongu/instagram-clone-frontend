@@ -99,7 +99,7 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
     );
 
     expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
-    expect(screen.getByText('오늘 한강 노을이 미쳤다')).toBeInTheDocument();
+    expect(screen.getByText('오늘 한강 노을이...')).toBeInTheDocument();
     expect(screen.getByText('댓글 33개 모두 보기')).toBeInTheDocument();
   });
 });

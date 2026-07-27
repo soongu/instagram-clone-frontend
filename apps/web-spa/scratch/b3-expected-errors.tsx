@@ -4,9 +4,13 @@
 //   npx tsc --noEmit --ignoreConfig --strict --target es2025 --module esnext \
 //     --moduleResolution bundler --jsx react-jsx --lib es2025,dom --skipLibCheck \
 //     scratch/b3-expected-errors.tsx
+import { useState } from 'react';
 import { Button } from '../src/components/Button';
 import { Card } from '../src/components/Card';
 import { Section } from '../src/components/Section';
+import { useToggle } from '../src/hooks/useToggle';
+import { useLikeToggle } from '../src/hooks/useLikeToggle';
+import { feedPosts } from '../src/data/feed';
 
 // 1. children 을 props 에 안 적어두고 자식을 넘긴다
 interface IconButtonProps {
@@ -59,4 +63,59 @@ export function UnknownSlotName() {
 // 8. type 유니온에 없는 값을 넘긴다
 export function UnknownButtonType() {
   return <Button type="reset">초기화</Button>;
+}
+
+// ─── 커스텀 훅 (Step 5~8) ─────────────────────────────────────
+
+// 9. 돌려주는 모양을 안 적으면 배열의 두 값이 하나로 뭉뚱그려진다
+function useToggleWithoutReturnType(initialOn = false) {
+  const [on, setOn] = useState(initialOn);
+
+  function toggle() {
+    setOn(!on);
+  }
+
+  return [on, toggle];
+}
+
+export function TupleWithoutReturnType() {
+  const [open, toggle] = useToggleWithoutReturnType();
+
+  return <Button onClick={toggle}>{open ? '접기' : '더 보기'}</Button>;
+}
+
+// 10. 배열로 돌려주는 훅을 객체처럼 받는다
+export function TupleTakenAsObject() {
+  const { on, toggle } = useToggle();
+
+  return <Button onClick={toggle}>{on ? '접기' : '더 보기'}</Button>;
+}
+
+// 11. 배열에 없는 세 번째 자리를 꺼낸다
+export function TupleThirdSlot() {
+  const [on, toggle, reset] = useToggle();
+
+  return (
+    <Button onClick={reset}>
+      {on ? '접기' : '더 보기'} {String(toggle)}
+    </Button>
+  );
+}
+
+// 12. 순서를 바꿔 받는다 — 이름은 마음대로지만 자리는 정해져 있다
+export function TupleInWrongOrder() {
+  const [toggle, on] = useToggle();
+
+  return <Button onClick={toggle}>{on ? '접기' : '더 보기'}</Button>;
+}
+
+// 13. 객체로 돌려주는 훅에서 없는 이름을 꺼낸다
+export function ObjectHookUnknownKey() {
+  const { posts, likeCount } = useLikeToggle(feedPosts);
+
+  return (
+    <p>
+      {posts.length} / {likeCount}
+    </p>
+  );
 }

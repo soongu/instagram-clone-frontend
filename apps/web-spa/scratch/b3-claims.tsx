@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Card } from '../src/components/Card';
 import { Button } from '../src/components/Button';
 import { PostHeader } from '../src/components/PostHeader';
+import { useToggle } from '../src/hooks/useToggle';
 
 // 주장 1 — 슬롯은 ReactNode 라서 JSX 가 아닌 값도 받는다
 export function SlotTakesScalars() {
@@ -70,6 +71,22 @@ export function ProfileCard() {
   return (
     <Card header={<h3>jaehoon</h3>} footer={<Button>팔로우</Button>}>
       <p>게시물 42 · 팔로워 1240</p>
+    </Card>
+  );
+}
+
+// 주장 7 — 같은 훅을 한 컴포넌트에서 두 번 써도 상태는 각자 따로 있다
+export function TwoIndependentToggles() {
+  const [captionOpen, toggleCaption] = useToggle();
+  const [commentsOpen, toggleComments] = useToggle();
+
+  return (
+    <Card
+      header={<Button onClick={toggleCaption}>캡션 {captionOpen ? '접기' : '펼치기'}</Button>}
+      footer={<Button onClick={toggleComments}>댓글 {commentsOpen ? '접기' : '펼치기'}</Button>}
+    >
+      <p>{captionOpen ? '오늘 한강 노을이 미쳤다' : '캡션은 접혀 있어요'}</p>
+      <p>{commentsOpen ? '노을 최고' : '댓글은 접혀 있어요'}</p>
     </Card>
   );
 }
