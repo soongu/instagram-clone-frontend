@@ -34,4 +34,12 @@ export default tseslint.config(
       'prefer-const': 'off',
     },
   },
+  {
+    // 일반 변수로는 화면이 안 바뀐다는 것을 보여주려고 일부러 규칙을 어긴 파일이다.
+    // 학생이 따라 칠 때는 이 경고가 그대로 떠야 하므로 파일 안에 disable 주석을 넣지 않는다.
+    files: ['src/components/ClickCounter.tsx'],
+    rules: {
+      'react-hooks/immutability': 'off',
+    },
+  },
 );

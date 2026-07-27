@@ -67,3 +67,78 @@ body {
   padding-bottom: 12px;
   color: #8e8e8e;
 }
+
+.like-area {
+  padding: 8px 12px 0;
+}
+
+.like-button {
+  border: 1px solid #dbdbdb;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.like-button.liked {
+  border-color: #ed4956;
+  color: #ed4956;
+  font-weight: 600;
+}
+
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.feed-liked-count {
+  font-size: 14px;
+  color: #8e8e8e;
+}
+
+.hide-button {
+  border: none;
+  background: none;
+  color: #8e8e8e;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 12px;
+}
+
+.comment-form {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #efefef;
+  padding: 12px;
+}
+
+.comment-input {
+  flex: 1;
+  border: none;
+  font-size: 14px;
+  outline: none;
+}
+
+.comment-submit {
+  border: none;
+  background: none;
+  color: #0095f6;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.comment-submit:disabled {
+  color: #b2dffc;
+  cursor: default;
+}
+
+.comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  font-size: 14px;
+}

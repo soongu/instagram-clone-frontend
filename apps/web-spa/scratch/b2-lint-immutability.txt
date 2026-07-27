@@ -1,0 +1,36 @@
+B-2 Step 1 채증 — 일반 변수를 이벤트 핸들러에서 바꿀 때 뜨는 린트 에러
+eslint-plugin-react-hooks 7.1.1 / react-hooks/immutability
+
+재현 명령 (eslint.config.js 에 ClickCounter.tsx 예외가 걸려 있어 규칙을 다시 켜야 한다):
+
+  npx eslint src/components/ClickCounter.tsx --rule '{"react-hooks/immutability":"error"}'
+
+출력:
+
+  error  Error: Cannot modify local variables after render completes
+
+  This argument is a function which may reassign or mutate `clickCount` after
+  render, which can cause inconsistent behavior on subsequent renders.
+  Consider using state instead.
+
+  src/components/ClickCounter.tsx:13:46
+    11 |
+    12 |   return (
+  > 13 |     <button className="like-button" onClick={handleClick}>
+       |                                              ^^^^^^^^^^^ This function may (indirectly) reassign or modify `clickCount` after render
+    14 |       눌린 횟수: {clickCount}
+    15 |     </button>
+    16 |   );
+
+  src/components/ClickCounter.tsx:8:5
+     6 |
+     7 |   function handleClick() {
+  >  8 |     clickCount += 1;
+       |     ^^^^^^^^^^ This modifies `clickCount`
+     9 |     console.log('지금 clickCount 는', clickCount);
+    10 |   }
+
+  ✖ 2 problems (2 errors, 0 warnings)
+
+메모: 마지막 문장 "Consider using state instead" 가 Step 1 → Step 2 로 넘어가는 다리다.
+린터가 학생에게 직접 다음 단계를 알려주는 셈이라 교안에서 그대로 인용한다.
