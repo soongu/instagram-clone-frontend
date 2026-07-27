@@ -1,16 +1,11 @@
 export type StoryBackground = 'white' | 'black' | 'gradient';
 
-interface StoryBackgroundMap {
-  WHITE: StoryBackground;
-  BLACK: StoryBackground;
-  GRADIENT: StoryBackground;
-}
-
+// A-3 에서 손으로 쓰던 StoryBackgroundMap 을 Record 로 대체
 export const STORY_BACKGROUND = {
   WHITE: 'white',
   BLACK: 'black',
   GRADIENT: 'gradient',
-} as const satisfies StoryBackgroundMap;
+} as const satisfies Record<Uppercase<StoryBackground>, StoryBackground>;
 
 export interface Story {
   id: number;
