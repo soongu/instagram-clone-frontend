@@ -11,6 +11,7 @@ import { CommentInput } from '../src/components/CommentInput';
 import { CommentForm } from '../src/components/CommentForm';
 import { CommentList } from '../src/components/CommentList';
 import { Card } from '../src/components/Card';
+import { Button } from '../src/components/Button';
 import { PostHeader } from '../src/components/PostHeader';
 import { PostImage } from '../src/components/PostImage';
 import { Feed } from '../src/components/Feed';
@@ -350,5 +351,36 @@ export function PostCardStep4({
       />
       <CommentList comments={comments} />
     </Card>
+  );
+}
+
+// ─── Step 8 이전: 상태·ref·핸들러가 폼 안에 함께 있던 모습 ──────
+// 화면을 그리는 줄은 여덟 줄인데, 그 위로 스무 줄 남짓이 먼저 지나간다.
+export function CommentFormStep7({ onSubmit }: CommentFormProps) {
+  const [content, setContent] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isEmpty = content.trim() === '';
+
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setContent(event.target.value);
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isEmpty) {
+      return;
+    }
+    onSubmit(content.trim());
+    setContent('');
+    inputRef.current?.focus();
+  }
+
+  return (
+    <form className="comment-form" onSubmit={handleSubmit}>
+      <CommentInput ref={inputRef} value={content} onChange={handleChange} />
+      <Button className="comment-submit" type="submit" disabled={isEmpty}>
+        게시
+      </Button>
+    </form>
   );
 }

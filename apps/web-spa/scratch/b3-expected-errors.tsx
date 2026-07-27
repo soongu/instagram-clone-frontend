@@ -10,6 +10,7 @@ import { Card } from '../src/components/Card';
 import { Section } from '../src/components/Section';
 import { useToggle } from '../src/hooks/useToggle';
 import { useLikeToggle } from '../src/hooks/useLikeToggle';
+import { useCommentInput } from '../src/hooks/useCommentInput';
 import { feedPosts } from '../src/data/feed';
 
 // 1. children 을 props 에 안 적어두고 자식을 넘긴다
@@ -118,4 +119,11 @@ export function ObjectHookUnknownKey() {
       {posts.length} / {likeCount}
     </p>
   );
+}
+
+// 14. 훅이 만들어 준 입력창 손잡이를 다른 요소에 붙인다
+export function RefOnWrongElement() {
+  const { inputRef, content, handleChange } = useCommentInput(() => {});
+
+  return <textarea ref={inputRef} value={content} onChange={handleChange} />;
 }
