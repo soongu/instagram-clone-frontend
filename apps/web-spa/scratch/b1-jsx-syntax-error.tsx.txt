@@ -1,0 +1,15 @@
+// apps/web-spa/scratch/b1-jsx-syntax-error.tsx.txt
+// 형제 요소를 감싸지 않았을 때의 문법 에러 채증용.
+// 파싱 자체가 깨져서 eslint 가 멈추므로 .txt 로 두고 소스 취급에서 뺀다.
+// 재현하려면 .tsx 로 이름을 바꾼 뒤:
+//   npx tsc --noEmit --ignoreConfig --strict --target es2025 --module esnext \
+//     --moduleResolution bundler --jsx react-jsx --lib es2025,dom \
+//     scratch/b1-jsx-syntax-error.tsx
+// 실측 결과: TS2657 JSX expressions must have one parent element.
+
+export function TwoSiblings() {
+  return (
+    <h1>인스타그램</h1>
+    <p>피드</p>
+  );
+}
