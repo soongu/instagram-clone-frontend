@@ -45,7 +45,7 @@ export default tseslint.config(
   {
     // 훅 규칙을 어긴 컴포넌트가 실행 중에 어떻게 무너지는지 확인하려고 남긴 파일이다.
     // 린트가 먼저 막아버리면 실행까지 갈 수가 없어서 여기서만 규칙을 끈다.
-    files: ['scratch/b3-hook-runtime.tsx'],
+    files: ['scratch/b3-hook-runtime.tsx', 'scratch/b3-assignment-runtime.tsx'],
     rules: {
       'react-hooks/rules-of-hooks': 'off',
     },
