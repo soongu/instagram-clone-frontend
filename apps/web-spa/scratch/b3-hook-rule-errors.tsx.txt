@@ -1,0 +1,131 @@
+B-3 훅 규칙 위반 채증 (내부 검증용)
+
+이 파일은 .tsx 로 두면 eslint . 이 항상 6 건 실패하므로 .txt 로 보관한다.
+재현하려면 scratch/b3-hook-rule-errors.tsx 로 복사한 뒤
+
+  npx eslint scratch/b3-hook-rule-errors.tsx
+
+를 돌리고 확인 후 지운다.
+
+B-2 는 useState 하나만 놓고 1~3 번을 봤고, B-3 은 여기에
+커스텀 훅 안에서의 위반(4)과 이른 return(5·6)을 더한다.
+
+────────────────────────── 소스 ──────────────────────────
+
+// B-3 훅 규칙 위반 채증 (내부 검증용)
+import { useRef, useState } from 'react';
+
+// 1. 조건문 안에서 훅을 부른다
+export function ConditionalToggle({ expandable }: { expandable: boolean }) {
+  if (expandable) {
+    const [open, setOpen] = useState(false);
+    return <button onClick={() => setOpen(!open)}>{open ? '접기' : '더보기'}</button>;
+  }
+
+  return null;
+}
+
+// 2. 반복문 안에서 훅을 부른다
+export function LoopToggle({ captions }: { captions: string[] }) {
+  const shown: string[] = [];
+
+  for (const caption of captions) {
+    const [open] = useState(false);
+    shown.push(open ? caption : caption.slice(0, 10));
+  }
+
+  return <p>{shown.join(' / ')}</p>;
+}
+
+// 3. 이름이 use 로 시작하지 않는 함수에서 훅을 부른다
+export function makeToggle(initialOn: boolean) {
+  const [on, setOn] = useState(initialOn);
+
+  return { on, toggle: () => setOn(!on) };
+}
+
+// 4. 커스텀 훅 안에서 조건부로 다른 훅을 부른다 (훅 안이라도 규칙은 똑같다)
+export function useCommentDraft(autoFocus: boolean) {
+  const [content, setContent] = useState('');
+
+  if (autoFocus) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    return { content, setContent, inputRef };
+  }
+
+  return { content, setContent, inputRef: null };
+}
+
+// 5. 이른 return 뒤에서 훅을 부른다 (조건문이 안 보여도 조건부 호출이다)
+export function EarlyReturnCard({ content }: { content: string | null }) {
+  if (content === null) {
+    return null;
+  }
+
+  const [open, setOpen] = useState(false);
+
+  return <button onClick={() => setOpen(!open)}>{open ? content : '더보기'}</button>;
+}
+
+// 6. 5 번과 같은데 이른 return 앞에 훅이 하나 먼저 있다
+export function EarlyReturnAfterHook({ content }: { content: string | null }) {
+  const [liked, setLiked] = useState(false);
+
+  if (content === null) {
+    return null;
+  }
+
+  const [open, setOpen] = useState(false);
+
+  return (
+    <button onClick={() => { setLiked(!liked); setOpen(!open); }}>
+      {open ? content : '더보기'} {liked ? '♥' : '♡'}
+    </button>
+  );
+}
+
+──────────────────────── 실측 출력 ────────────────────────
+
+eslint-plugin-react-hooks 7.1.1 / 전부 react-hooks/rules-of-hooks 한 규칙
+
+   7:29  error  React Hook "useState" is called conditionally. React Hooks must
+                be called in the exact same order in every component render
+
+  19:20  error  React Hook "useState" may be executed more than once. Possibly
+                because it is called in a loop. React Hooks must be called in
+                the exact same order in every component render
+
+  28:23  error  React Hook "useState" is called in function "makeToggle" that is
+                neither a React function component nor a custom React Hook
+                function. React component names must start with an uppercase
+                letter. React Hook names must start with the word "use"
+
+  38:22  error  React Hook "useRef" is called conditionally. React Hooks must be
+                called in the exact same order in every component render. Did
+                you accidentally call a React Hook after an early return?
+
+  51:27  error  React Hook "useState" is called conditionally. React Hooks must
+                be called in the exact same order in every component render
+
+  64:27  error  React Hook "useState" is called conditionally. React Hooks must
+                be called in the exact same order in every component render
+
+  ✖ 6 problems (6 errors, 0 warnings)
+
+─────────────────────── 확인한 것 ────────────────────────
+
+· 위반 다섯 가지가 전부 react-hooks/rules-of-hooks 한 규칙에서 나온다.
+  B-2 가 본 세 가지(조건·반복·비컴포넌트)에 커스텀 훅 안 위반이 그대로 붙는다.
+
+· 3 번 메시지가 "컴포넌트는 대문자로, 훅은 use 로 시작" 이라는 이름 규칙의
+  근거를 그대로 말해준다. 린트는 이름만 보고 훅인지 아닌지를 판단한다.
+
+· 4 번은 커스텀 훅(useCommentDraft) 안에서 난 위반이다. 훅 안이라고 봐주지
+  않는다 — 훅도 "매 렌더 같은 순서" 를 지켜야 한다.
+
+· ⚠️ "Did you accidentally call a React Hook after an early return?" 꼬리말이
+  붙는 자리가 직관과 반대다. 실제로 이른 return 뒤에 훅을 둔 5·6 번에는
+  안 붙고, if 블록 안에서 훅을 부르고 그 블록이 return 하는 4 번에만 붙는다.
+  (규칙 구현이 코드 경로 길이를 비교해 붙이는 꼬리말이라 그렇다.)
+  → 교안에서 "이른 return 뒤에 훅을 두면 이런 힌트가 뜬다" 고 쓰면 거짓이 된다.
+    5·6 번은 힌트 없는 기본 메시지로 소개할 것.
