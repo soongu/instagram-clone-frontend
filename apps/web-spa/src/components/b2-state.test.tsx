@@ -4,11 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ClickCounter } from './ClickCounter';
-import { LikeButton } from './LikeButton';
-import { PostCard } from './PostCard';
-import { feedPosts } from '../data/feed';
-
-const [firstPost] = feedPosts;
+// Step 2~3 시점의 LikeButton (Step 5 에서 제어 컴포넌트로 바뀌기 전 모습)
+import { LikeButton as SelfStateLikeButton } from '../../scratch/b2-step3-likebutton';
 
 describe('ClickCounter — 일반 변수는 화면을 못 바꾼다', () => {
   afterEach(() => {
@@ -40,9 +37,9 @@ describe('ClickCounter — 일반 변수는 화면을 못 바꾼다', () => {
   });
 });
 
-describe('LikeButton — useState', () => {
+describe('LikeButton — useState 로 화면이 기억한다', () => {
   it('초기값을 props 로 받아 첫 화면을 그린다', () => {
-    render(<LikeButton initialLiked={false} initialLikeCount={1240} />);
+    render(<SelfStateLikeButton initialLiked={false} initialLikeCount={1240} />);
 
     expect(screen.getByRole('button')).toHaveTextContent('♡ 좋아요');
     expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
@@ -50,7 +47,7 @@ describe('LikeButton — useState', () => {
 
   it('클릭하면 상태가 바뀌고 화면이 다시 그려진다', async () => {
     const user = userEvent.setup();
-    render(<LikeButton initialLiked={false} initialLikeCount={1240} />);
+    render(<SelfStateLikeButton initialLiked={false} initialLikeCount={1240} />);
 
     await user.click(screen.getByRole('button'));
 
@@ -60,7 +57,7 @@ describe('LikeButton — useState', () => {
 
   it('한 번 더 누르면 원래대로 돌아온다', async () => {
     const user = userEvent.setup();
-    render(<LikeButton initialLiked={false} initialLikeCount={1240} />);
+    render(<SelfStateLikeButton initialLiked={false} initialLikeCount={1240} />);
 
     await user.click(screen.getByRole('button'));
     await user.click(screen.getByRole('button'));
@@ -70,16 +67,32 @@ describe('LikeButton — useState', () => {
   });
 
   it('이미 눌린 게시물은 눌린 모습으로 시작한다', () => {
-    render(<LikeButton initialLiked initialLikeCount={8500} />);
+    render(<SelfStateLikeButton initialLiked initialLikeCount={8500} />);
 
     expect(screen.getByRole('button')).toHaveTextContent('♥ 좋아요 취소');
+  });
+
+  it('컴포넌트가 둘이면 상태도 둘이다 — 한쪽을 눌러도 다른 쪽은 그대로다', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <SelfStateLikeButton initialLiked={false} initialLikeCount={1240} />
+        <SelfStateLikeButton initialLiked={false} initialLikeCount={8500} />
+      </>,
+    );
+
+    const [firstButton] = screen.getAllByRole('button');
+    await user.click(firstButton);
+
+    expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
+    expect(screen.getByText('좋아요 8500개')).toBeInTheDocument();
   });
 });
 
 describe('LikeButton — 조건부 렌더링', () => {
   it('눌린 상태에서만 className 에 liked 가 붙는다', async () => {
     const user = userEvent.setup();
-    render(<LikeButton initialLiked={false} initialLikeCount={1240} />);
+    render(<SelfStateLikeButton initialLiked={false} initialLikeCount={1240} />);
 
     const button = screen.getByRole('button');
     expect(button).toHaveClass('like-button');
@@ -91,47 +104,17 @@ describe('LikeButton — 조건부 렌더링', () => {
   });
 
   it('좋아요가 0 개면 문구 자체가 화면에 없다', () => {
-    render(<LikeButton initialLiked={false} initialLikeCount={0} />);
+    render(<SelfStateLikeButton initialLiked={false} initialLikeCount={0} />);
 
     expect(screen.queryByText(/좋아요 \d+개/)).not.toBeInTheDocument();
   });
 
   it('0 개에서 한 번 누르면 문구가 나타난다', async () => {
     const user = userEvent.setup();
-    render(<LikeButton initialLiked={false} initialLikeCount={0} />);
+    render(<SelfStateLikeButton initialLiked={false} initialLikeCount={0} />);
 
     await user.click(screen.getByRole('button'));
 
     expect(screen.getByText('좋아요 1개')).toBeInTheDocument();
-  });
-});
-
-describe('PostCard 에 얹은 LikeButton', () => {
-  it('카드 안에서 좋아요가 동작한다', async () => {
-    const user = userEvent.setup();
-    render(<PostCard {...firstPost} />);
-
-    expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button'));
-
-    expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
-  });
-
-  it('카드가 둘이면 상태도 둘이다 — 한쪽을 눌러도 다른 쪽은 그대로다', async () => {
-    const [, secondPost] = feedPosts;
-    const user = userEvent.setup();
-    render(
-      <>
-        <PostCard {...firstPost} />
-        <PostCard {...secondPost} />
-      </>,
-    );
-
-    const [firstButton] = screen.getAllByRole('button');
-    await user.click(firstButton);
-
-    expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
-    expect(screen.getByText('좋아요 8500개')).toBeInTheDocument();
   });
 });

@@ -1,25 +1,17 @@
 // apps/web-spa/src/components/LikeButton.tsx
-import { useState } from 'react';
 
 interface LikeButtonProps {
-  initialLiked: boolean;
-  initialLikeCount: number;
+  liked: boolean;
+  likeCount: number;
+  onToggle: () => void;
 }
 
-export function LikeButton({ initialLiked, initialLikeCount }: LikeButtonProps) {
-  const [liked, setLiked] = useState(initialLiked);
-  const [likeCount, setLikeCount] = useState(initialLikeCount);
-
-  function handleClick() {
-    setLiked(!liked);
-    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
-  }
-
+export function LikeButton({ liked, likeCount, onToggle }: LikeButtonProps) {
   return (
     <div className="like-area">
       <button
         className={liked ? 'like-button liked' : 'like-button'}
-        onClick={handleClick}
+        onClick={onToggle}
       >
         {liked ? '♥ 좋아요 취소' : '♡ 좋아요'}
       </button>

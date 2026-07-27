@@ -1,12 +1,17 @@
 // apps/web-spa/src/components/Feed.tsx
-import { feedPosts } from '../data/feed';
+import type { Post } from '../types/instagram';
 import { PostCard } from './PostCard';
 
-export function Feed() {
+interface FeedProps {
+  posts: Post[];
+  onToggleLike: (id: number) => void;
+}
+
+export function Feed({ posts, onToggleLike }: FeedProps) {
   return (
     <>
-      {feedPosts.map((post) => (
-        <PostCard key={post.id} {...post} />
+      {posts.map((post) => (
+        <PostCard key={post.id} {...post} onToggleLike={onToggleLike} />
       ))}
     </>
   );

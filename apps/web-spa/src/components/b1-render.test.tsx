@@ -31,7 +31,7 @@ describe('Avatar', () => {
 
 describe('PostCard', () => {
   it('props 로 받은 값을 화면 문자열로 그린다', () => {
-    const html = renderToStaticMarkup(<PostCard {...firstPost} />);
+    const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('오늘 한강 노을이 미쳤다');
@@ -40,7 +40,7 @@ describe('PostCard', () => {
   });
 
   it('Avatar 를 안에 품고 함께 그린다', () => {
-    const html = renderToStaticMarkup(<PostCard {...firstPost} />);
+    const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
 
     expect(html).toContain('class="avatar"');
     expect(html).toContain('class="post-card"');
@@ -48,8 +48,8 @@ describe('PostCard', () => {
 
   it('같은 컴포넌트가 다른 props 로 다른 화면을 낸다', () => {
     const [, secondPost] = feedPosts;
-    const firstHtml = renderToStaticMarkup(<PostCard {...firstPost} />);
-    const secondHtml = renderToStaticMarkup(<PostCard {...secondPost} />);
+    const firstHtml = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const secondHtml = renderToStaticMarkup(<PostCard {...secondPost} onToggleLike={() => {}} />);
 
     expect(firstHtml).toContain('jaehoon');
     expect(secondHtml).toContain('minji');

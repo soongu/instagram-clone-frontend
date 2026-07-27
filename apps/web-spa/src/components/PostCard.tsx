@@ -3,7 +3,12 @@ import type { PostCardProps } from '../types/derived';
 import { Avatar } from './Avatar';
 import { LikeButton } from './LikeButton';
 
+interface PostCardViewProps extends PostCardProps {
+  onToggleLike: (id: number) => void;
+}
+
 export function PostCard({
+  id,
   username,
   profileImageUrl,
   imageUrl,
@@ -11,12 +16,17 @@ export function PostCard({
   liked,
   likeCount,
   commentCount,
-}: PostCardProps) {
+  onToggleLike,
+}: PostCardViewProps) {
   return (
     <article className="post-card">
       <Avatar username={username} profileImageUrl={profileImageUrl} />
       <img className="post-image" src={imageUrl} alt={`${username} 의 게시물`} />
-      <LikeButton initialLiked={liked} initialLikeCount={likeCount} />
+      <LikeButton
+        liked={liked}
+        likeCount={likeCount}
+        onToggle={() => onToggleLike(id)}
+      />
       <p className="post-content">
         <strong>{username}</strong> {content}
       </p>
