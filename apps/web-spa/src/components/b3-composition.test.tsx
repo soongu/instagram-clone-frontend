@@ -7,6 +7,7 @@ import { PostHeader } from './PostHeader';
 import { PostImage } from './PostImage';
 import { PostActions } from './PostActions';
 import { PostCard } from './PostCard';
+import { CommentList } from './CommentList';
 import { feedPosts } from '../data/feed';
 
 const [firstPost] = feedPosts;
@@ -80,6 +81,30 @@ describe('PostActions — 좋아요·캡션·댓글 수 구역', () => {
     expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
     expect(screen.getByText('오늘 한강 노을이 미쳤다')).toBeInTheDocument();
     expect(screen.getByText('댓글 33개 모두 보기')).toBeInTheDocument();
+  });
+});
+
+describe('CommentList — 카드 안에 있던 목록을 꺼낸다', () => {
+  it('넘긴 댓글을 순서대로 그린다', () => {
+    render(
+      <CommentList
+        comments={[
+          { id: 1, content: '노을 최고' },
+          { id: 2, content: '어디예요?' },
+        ]}
+      />,
+    );
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('노을 최고');
+    expect(items[1]).toHaveTextContent('어디예요?');
+  });
+
+  it('댓글이 없어도 목록 자리는 남는다', () => {
+    render(<CommentList comments={[]} />);
+
+    expect(screen.getByRole('list')).toBeEmptyDOMElement();
   });
 });
 

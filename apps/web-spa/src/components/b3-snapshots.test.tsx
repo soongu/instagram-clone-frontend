@@ -89,8 +89,8 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
   });
 });
 
-describe('Step 1 — 코드베이스의 PostCard 도 같은 화면을 낸다', () => {
-  it('분해 직후 스냅샷과 현재 PostCard 의 HTML 이 같다', () => {
+describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () => {
+  it('조립 방식을 바꿔도 HTML 이 글자 하나 안 달라진다', () => {
     const step1 = renderToStaticMarkup(
       <PostCardStep1 {...firstPost} onToggleLike={() => {}} />,
     );
@@ -99,5 +99,16 @@ describe('Step 1 — 코드베이스의 PostCard 도 같은 화면을 낸다', (
     );
 
     expect(current).toBe(step1);
+  });
+
+  it('머리와 꼬리를 슬롯으로 넘겨도 그리는 순서는 그대로다', () => {
+    const html = renderToStaticMarkup(
+      <PostCard {...firstPost} onToggleLike={() => {}} />,
+    );
+
+    expect(html.indexOf('avatar')).toBeLessThan(html.indexOf('post-image'));
+    expect(html.indexOf('post-image')).toBeLessThan(html.indexOf('like-area'));
+    expect(html.indexOf('like-area')).toBeLessThan(html.indexOf('comment-list'));
+    expect(html.indexOf('comment-list')).toBeLessThan(html.indexOf('comment-form'));
   });
 });

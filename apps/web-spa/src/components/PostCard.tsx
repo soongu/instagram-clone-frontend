@@ -1,18 +1,16 @@
 // apps/web-spa/src/components/PostCard.tsx
 import { useState } from 'react';
 import type { PostCardProps } from '../types/derived';
+import type { DraftComment } from './CommentList';
+import { Card } from './Card';
 import { PostHeader } from './PostHeader';
 import { PostImage } from './PostImage';
 import { PostActions } from './PostActions';
+import { CommentList } from './CommentList';
 import { CommentForm } from './CommentForm';
 
 interface PostCardViewProps extends PostCardProps {
   onToggleLike: (id: number) => void;
-}
-
-interface DraftComment {
-  id: number;
-  content: string;
 }
 
 export function PostCard({
@@ -34,8 +32,11 @@ export function PostCard({
   }
 
   return (
-    <article className="post-card">
-      <PostHeader username={username} profileImageUrl={profileImageUrl} />
+    <Card
+      className="post-card"
+      header={<PostHeader username={username} profileImageUrl={profileImageUrl} />}
+      footer={<CommentForm onSubmit={addComment} />}
+    >
       <PostImage
         imageUrl={imageUrl}
         username={username}
@@ -49,14 +50,7 @@ export function PostCard({
         commentCount={commentCount + comments.length}
         onToggle={() => onToggleLike(id)}
       />
-      <ul className="comment-list">
-        {comments.map((comment) => (
-          <li key={comment.id}>
-            <strong>me</strong> {comment.content}
-          </li>
-        ))}
-      </ul>
-      <CommentForm onSubmit={addComment} />
-    </article>
+      <CommentList comments={comments} />
+    </Card>
   );
 }
