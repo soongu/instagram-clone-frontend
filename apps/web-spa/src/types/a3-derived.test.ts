@@ -10,7 +10,15 @@ import {
   bioBadge,
 } from './derived';
 import { likeButtonLabel, likeButtonDisabled } from './like-state';
-import { SORT_LABEL, sortLabelOf, STATUS_VIEW, statusViewOf } from './records';
+import { SORT_LABEL, sortLabelOf, STATUS_VIEW, statusViewOf, DEFAULT_STATUS } from './records';
+import {
+  annotatedOption,
+  checkedOption,
+  assertedOption,
+  pageSizeOf,
+  safeTitle,
+  unsafeTitle,
+} from './assertions';
 import { POST_STATUS, statusLabel } from './enum-alternative';
 import type {
   PostThumbnail,
@@ -149,5 +157,31 @@ describe('Step 4 — ReturnType 과 NonNullable', () => {
   it('없음을 걷어낸 타입은 문자열 기능을 그대로 쓴다', () => {
     expect(bioBadge('사진 찍는 사람입니다')).toBe('소개글 11자');
     expect(bioBadge('')).toBe('소개글 0자');
+  });
+});
+
+describe('Step 5 — 애너테이션 · satisfies · as', () => {
+  it('as 로 우긴 값은 타입상 숫자인 자리가 실제로는 비어 있다', () => {
+    expect(pageSizeOf(annotatedOption)).toBe(12);
+    expect(pageSizeOf(checkedOption)).toBe(12);
+    expect(pageSizeOf(assertedOption)).toBeUndefined();
+  });
+
+  it('satisfies 로 검사한 쪽만 좁은 리터럴 타입이 남는다', () => {
+    expect(checkedOption.sort).toBe('latest');
+    expect(annotatedOption.sort).toBe('latest');
+  });
+
+  it('확인을 거친 쪽은 이상한 값을 걸러내고 우긴 쪽은 그대로 터진다', () => {
+    const payload = { id: 7, username: 'jaehoon', imageUrl: 'a.jpg', likeCount: 3 };
+
+    expect(safeTitle(payload)).toBe('@jaehoon');
+    expect(safeTitle(null)).toBe('알 수 없는 응답');
+    expect(safeTitle(42)).toBe('알 수 없는 응답');
+    expect(() => unsafeTitle(null)).toThrow();
+  });
+
+  it('기본 상태는 임시저장이다', () => {
+    expect(DEFAULT_STATUS).toBe('draft');
   });
 });

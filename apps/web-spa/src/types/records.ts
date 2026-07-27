@@ -1,7 +1,7 @@
 // apps/web-spa/src/types/records.ts
 
 import { FeedSort } from './literals';
-import { PostStatus } from './enum-alternative';
+import { POST_STATUS, PostStatus } from './enum-alternative';
 
 // 키 집합 × 값 타입 — 세 정렬 각각에 라벨을 하나씩 매단다
 export const SORT_LABEL: Record<FeedSort, string> = {
@@ -30,3 +30,6 @@ export const STATUS_VIEW: Record<PostStatus, StatusView> = {
 export function statusViewOf(status: PostStatus): StatusView {
   return STATUS_VIEW[status];
 }
+
+// 새 글은 임시저장으로 시작한다
+export const DEFAULT_STATUS: PostStatus = POST_STATUS.DRAFT;
