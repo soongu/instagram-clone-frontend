@@ -3,6 +3,17 @@
 // 교안은 LikeButton 과 Feed 를 Step 을 넘어가며 고쳐 나간다. HEAD 의 파일은
 // 마지막 모습만 남으므로, 중간 Step 의 코드 블록도 실제로 동작한다는 증거를
 // 남기려고 여기 모아 둔다. 교안 본문의 경로 주석은 실제 src 경로를 가리킨다.
+//
+// 한 코드베이스에 같은 이름을 두 번 둘 수 없어서 여기서는 접미사를 붙였다.
+// 교안 코드 블록과의 대응은 다음과 같다.
+//
+//   LikeButtonStep2 → Step 2 의 src/components/LikeButton.tsx
+//   LikeButtonStep3 → Step 3 의 src/components/LikeButton.tsx
+//   PostCardStep4   → Step 3~4 의 src/components/PostCard.tsx
+//   FeedStep4       → Step 4 의 src/components/Feed.tsx
+//
+// 이름과 임포트 경로(scratch 기준 ../src/...)를 빼면 교안 코드와 글자 단위로 같다.
+// Step 4 시점의 Feed/PostCard 실물은 커밋 3684283 에서도 그대로 확인할 수 있다.
 import { useState } from 'react';
 import { feedPosts } from '../src/data/feed';
 import { Avatar } from '../src/components/Avatar';
