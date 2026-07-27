@@ -11,6 +11,10 @@ import { CommentInput } from '../src/components/CommentInput';
 import { CommentForm } from '../src/components/CommentForm';
 import { PostImage } from '../src/components/PostImage';
 import { PostBody } from '../src/components/PostBody';
+import { Feed } from '../src/components/Feed';
+import { Section } from '../src/components/Section';
+import { feedPosts } from '../src/data/feed';
+import { toggleLike } from '../src/lib/likes';
 
 interface PostCardViewProps extends PostCardProps {
   onToggleLike: (id: number) => void;
@@ -204,6 +208,29 @@ export function PostCardStep1({
       </ul>
       <CommentForm onSubmit={addComment} />
     </article>
+  );
+}
+
+// ─── Step 6 이전: 좋아요 상태를 App 이 직접 들고 있던 모습 ──────
+// useState 와 갱신 함수와 파생 계산이 화면 코드와 한 덩어리로 섞여 있다.
+export function AppBeforeHook() {
+  const [posts, setPosts] = useState(feedPosts);
+  const likedCount = posts.filter((post) => post.liked).length;
+
+  function handleToggleLike(id: number) {
+    setPosts(toggleLike(posts, id));
+  }
+
+  return (
+    <main className="feed">
+      <header className="feed-header">
+        <h1 className="feed-title">인스타그램</h1>
+        <span className="feed-liked-count">좋아요 누른 게시물 {likedCount}개</span>
+      </header>
+      <Section title="피드">
+        <Feed posts={posts} onToggleLike={handleToggleLike} />
+      </Section>
+    </main>
   );
 }
 
