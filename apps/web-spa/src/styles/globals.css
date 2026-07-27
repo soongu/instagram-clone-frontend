@@ -142,3 +142,24 @@ body {
   padding: 0 12px 12px;
   font-size: 14px;
 }
+
+.key-demo {
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.key-demo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.key-demo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
