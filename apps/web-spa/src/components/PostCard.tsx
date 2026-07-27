@@ -32,10 +32,21 @@ export function PostCard({
     setComments([...comments, { id: comments.length + 1, content: text }]);
   }
 
+  function handleImageDoubleClick(event: React.MouseEvent<HTMLImageElement>) {
+    // 더블클릭이 이미지를 선택 상태로 만드는 브라우저 기본 동작을 막는다
+    event.preventDefault();
+    onToggleLike(id);
+  }
+
   return (
     <article className="post-card">
       <Avatar username={username} profileImageUrl={profileImageUrl} />
-      <img className="post-image" src={imageUrl} alt={`${username} 의 게시물`} />
+      <img
+        className="post-image"
+        src={imageUrl}
+        alt={`${username} 의 게시물`}
+        onDoubleClick={handleImageDoubleClick}
+      />
       <LikeButton
         liked={liked}
         likeCount={likeCount}
