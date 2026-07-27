@@ -7,15 +7,26 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   PostCardBefore,
   PostCardStep1,
+  PostCardStep1Final,
+  PostHeaderPassthrough,
+  PostHeaderStep1,
   LikeButtonBefore,
   CommentFormBefore,
 } from '../../scratch/b3-lecture-snapshots';
 import { PostCard } from './PostCard';
+import { PostHeader } from './PostHeader';
+import { Avatar } from './Avatar';
 import { LikeButton } from './LikeButton';
 import { CommentForm } from './CommentForm';
 import { feedPosts } from '../data/feed';
 
 const [firstPost] = feedPosts;
+
+// React 19 는 <img src> 를 만나면 결과 맨 앞에 <link rel="preload" as="image"> 를 얹는다.
+// 조각끼리 이어 붙여 비교할 때만 방해가 되므로 떼어내고 본다.
+function withoutPreloadLinks(html: string) {
+  return html.replace(/<link rel="preload"[^>]*\/>/g, '');
+}
 
 describe('Step 1 — 세 구역으로 나눠도 화면은 글자 하나 안 바뀐다', () => {
   it('분해 전과 분해 직후의 HTML 이 완전히 같다', () => {
@@ -42,6 +53,59 @@ describe('Step 1 — 세 구역으로 나눠도 화면은 글자 하나 안 바�
   });
 });
 
+describe('Step 1 — 쪼갤 이유가 없던 머리 구역', () => {
+  it('넘겨받은 것을 그대로 넘기기만 하면 Avatar 와 결과가 글자 하나 안 다르다', () => {
+    const avatar = renderToStaticMarkup(
+      <Avatar username="jaehoon" profileImageUrl="/jaehoon.jpg" />,
+    );
+    const passthrough = renderToStaticMarkup(
+      <PostHeaderPassthrough username="jaehoon" profileImageUrl="/jaehoon.jpg" />,
+    );
+
+    expect(passthrough).toBe(avatar);
+  });
+
+  it('더보기 버튼이 들어오면 Avatar 로는 못 그리는 화면이 된다', () => {
+    const avatar = withoutPreloadLinks(
+      renderToStaticMarkup(<Avatar username="jaehoon" profileImageUrl="/jaehoon.jpg" />),
+    );
+    const header = withoutPreloadLinks(
+      renderToStaticMarkup(
+        <PostHeaderStep1 username="jaehoon" profileImageUrl="/jaehoon.jpg" />,
+      ),
+    );
+
+    expect(header).not.toBe(avatar);
+    expect(header).toBe(
+      `<div class="post-header">${avatar}<button class="post-more" aria-label="더보기">⋯</button></div>`,
+    );
+  });
+
+  it('머리 구역을 손봐도 카드의 나머지는 그대로다', () => {
+    const step1 = withoutPreloadLinks(
+      renderToStaticMarkup(<PostCardStep1 {...firstPost} onToggleLike={() => {}} />),
+    );
+    const withMore = withoutPreloadLinks(
+      renderToStaticMarkup(<PostCardStep1Final {...firstPost} onToggleLike={() => {}} />),
+    );
+    const avatar = withoutPreloadLinks(
+      renderToStaticMarkup(
+        <Avatar
+          username={firstPost.username}
+          profileImageUrl={firstPost.profileImageUrl}
+        />,
+      ),
+    );
+
+    expect(withMore).toBe(
+      step1.replace(
+        avatar,
+        `<div class="post-header">${avatar}<button class="post-more" aria-label="더보기">⋯</button></div>`,
+      ),
+    );
+  });
+});
+
 describe('Step 1 — 나누기 전 카드도 여전히 같은 동작을 한다', () => {
   it.each([
     ['분해 전', PostCardBefore],
@@ -58,6 +122,19 @@ describe('Step 1 — 나누기 전 카드도 여전히 같은 동작을 한다',
 });
 
 describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
+  it('더보기 버튼도 type="button" 한 군데만 달라진다', () => {
+    const before = renderToStaticMarkup(
+      <PostHeaderStep1 username="jaehoon" profileImageUrl="/jaehoon.jpg" />,
+    );
+    const after = renderToStaticMarkup(
+      <PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />,
+    );
+
+    expect(after).toBe(
+      before.replace('class="post-more"', 'class="post-more" type="button"'),
+    );
+  });
+
   it('좋아요 버튼은 type="button" 한 군데만 달라진다', () => {
     const before = renderToStaticMarkup(
       <LikeButtonBefore liked={false} likeCount={3} onToggle={() => {}} />,
@@ -90,15 +167,17 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
 });
 
 describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () => {
-  it('조립 방식을 바꿔도 HTML 이 글자 하나 안 달라진다', () => {
+  it('조립 방식을 바꿔도 버튼 한 곳의 type 말고는 달라지는 게 없다', () => {
     const step1 = renderToStaticMarkup(
-      <PostCardStep1 {...firstPost} onToggleLike={() => {}} />,
+      <PostCardStep1Final {...firstPost} onToggleLike={() => {}} />,
     );
     const current = renderToStaticMarkup(
       <PostCard {...firstPost} onToggleLike={() => {}} />,
     );
 
-    expect(current).toBe(step1);
+    expect(current).toBe(
+      step1.replace('class="post-more"', 'class="post-more" type="button"'),
+    );
   });
 
   it('머리와 꼬리를 슬롯으로 넘겨도 그리는 순서는 그대로다', () => {

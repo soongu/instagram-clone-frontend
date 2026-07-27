@@ -1,7 +1,7 @@
-// apps/web-spa/src/components/PostActions.tsx
+// apps/web-spa/src/components/PostBody.tsx
 import { LikeButton } from './LikeButton';
 
-interface PostActionsProps {
+interface PostBodyProps {
   username: string;
   content: string;
   liked: boolean;
@@ -10,14 +10,15 @@ interface PostActionsProps {
   onToggle: () => void;
 }
 
-export function PostActions({
+// 사진 아래 본문 구역 — 좋아요·캡션·댓글 수가 함께 산다.
+export function PostBody({
   username,
   content,
   liked,
   likeCount,
   commentCount,
   onToggle,
-}: PostActionsProps) {
+}: PostBodyProps) {
   return (
     <>
       <LikeButton liked={liked} likeCount={likeCount} onToggle={onToggle} />

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { PostHeader } from './PostHeader';
 import { PostImage } from './PostImage';
-import { PostActions } from './PostActions';
+import { PostBody } from './PostBody';
 import { PostCard } from './PostCard';
 import { CommentList } from './CommentList';
 import { feedPosts } from '../data/feed';
@@ -20,6 +20,26 @@ describe('PostHeader — 카드의 머리 구역', () => {
     expect(screen.getByRole('img', { name: 'jaehoon 프로필 사진' })).toHaveAttribute(
       'src',
       '/jaehoon.jpg',
+    );
+  });
+
+  it('프로필 옆에 더보기 버튼이 함께 선다 — 묶을 것이 둘이라 파일을 따로 둔다', () => {
+    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+
+    const more = screen.getByRole('button', { name: '더보기' });
+    expect(more).toHaveTextContent('⋯');
+    expect(more).toHaveAttribute('type', 'button');
+  });
+
+  it('더보기 버튼은 아직 아무 일도 하지 않는다 — 눌러도 화면이 그대로다', async () => {
+    const user = userEvent.setup();
+    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+    const before = screen.getByRole('button', { name: '더보기' }).closest('div')?.outerHTML;
+
+    await user.click(screen.getByRole('button', { name: '더보기' }));
+
+    expect(screen.getByRole('button', { name: '더보기' }).closest('div')?.outerHTML).toBe(
+      before,
     );
   });
 });
@@ -46,12 +66,12 @@ describe('PostImage — 사진 구역이 자기 이벤트를 가진다', () => {
   });
 });
 
-describe('PostActions — 좋아요·캡션·댓글 수 구역', () => {
+describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
   it('좋아요 버튼을 누르면 부모가 준 함수를 부른다', async () => {
     const onToggle = vi.fn();
     const user = userEvent.setup();
     render(
-      <PostActions
+      <PostBody
         username="jaehoon"
         content="오늘 한강 노을이 미쳤다"
         liked={false}
@@ -68,7 +88,7 @@ describe('PostActions — 좋아요·캡션·댓글 수 구역', () => {
 
   it('좋아요 수·캡션·댓글 수를 함께 그린다', () => {
     render(
-      <PostActions
+      <PostBody
         username="jaehoon"
         content="오늘 한강 노을이 미쳤다"
         liked

@@ -9,9 +9,8 @@ import { Avatar } from '../src/components/Avatar';
 import { LikeButton } from '../src/components/LikeButton';
 import { CommentInput } from '../src/components/CommentInput';
 import { CommentForm } from '../src/components/CommentForm';
-import { PostHeader } from '../src/components/PostHeader';
 import { PostImage } from '../src/components/PostImage';
-import { PostActions } from '../src/components/PostActions';
+import { PostBody } from '../src/components/PostBody';
 
 interface PostCardViewProps extends PostCardProps {
   onToggleLike: (id: number) => void;
@@ -135,6 +134,32 @@ export function CommentFormBefore({ onSubmit }: CommentFormProps) {
   );
 }
 
+// ─── Step 1 중간: 쪼갤 이유가 없던 머리 구역 ──────────────────
+// Avatar 가 받는 props 를 그대로 넘기기만 한다. 이름만 바뀌었을 뿐
+// 화면도 동작도 Avatar 와 완전히 같아서, 파일 하나를 더 둘 값을 못 한다.
+interface PostHeaderProps {
+  username: string;
+  profileImageUrl: string;
+}
+
+export function PostHeaderPassthrough({ username, profileImageUrl }: PostHeaderProps) {
+  return <Avatar username={username} profileImageUrl={profileImageUrl} />;
+}
+
+// ─── Step 1 종료: 머리 구역이 제 몫을 하게 된 모습 ─────────────
+// 더보기 버튼이 들어오면서 "둘을 한 줄에 묶는다" 는 이유가 생긴다.
+// 이 시점에는 Button 이 아직 없어서 button 태그를 직접 쓴다(Step 2 에서 교체).
+export function PostHeaderStep1({ username, profileImageUrl }: PostHeaderProps) {
+  return (
+    <div className="post-header">
+      <Avatar username={username} profileImageUrl={profileImageUrl} />
+      <button className="post-more" aria-label="더보기">
+        ⋯
+      </button>
+    </div>
+  );
+}
+
 // ─── Step 1: 세 구역으로 나눈 직후 (Card 로 조립하기 전) ───────
 // 카드는 "무엇이 어떤 순서로 오는지"만 말하고, 각 구역은 자기 파일이 그린다.
 export function PostCardStep1({
@@ -156,13 +181,59 @@ export function PostCardStep1({
 
   return (
     <article className="post-card">
-      <PostHeader username={username} profileImageUrl={profileImageUrl} />
+      <PostHeaderPassthrough username={username} profileImageUrl={profileImageUrl} />
       <PostImage
         imageUrl={imageUrl}
         username={username}
         onLike={() => onToggleLike(id)}
       />
-      <PostActions
+      <PostBody
+        username={username}
+        content={content}
+        liked={liked}
+        likeCount={likeCount}
+        commentCount={commentCount + comments.length}
+        onToggle={() => onToggleLike(id)}
+      />
+      <ul className="comment-list">
+        {comments.map((comment) => (
+          <li key={comment.id}>
+            <strong>me</strong> {comment.content}
+          </li>
+        ))}
+      </ul>
+      <CommentForm onSubmit={addComment} />
+    </article>
+  );
+}
+
+// ─── Step 1 최종: 머리 구역에 더보기 버튼까지 들어간 카드 ───────
+export function PostCardStep1Final({
+  id,
+  username,
+  profileImageUrl,
+  imageUrl,
+  content,
+  liked,
+  likeCount,
+  commentCount,
+  onToggleLike,
+}: PostCardViewProps) {
+  const [comments, setComments] = useState<DraftComment[]>([]);
+
+  function addComment(text: string) {
+    setComments([...comments, { id: comments.length + 1, content: text }]);
+  }
+
+  return (
+    <article className="post-card">
+      <PostHeaderStep1 username={username} profileImageUrl={profileImageUrl} />
+      <PostImage
+        imageUrl={imageUrl}
+        username={username}
+        onLike={() => onToggleLike(id)}
+      />
+      <PostBody
         username={username}
         content={content}
         liked={liked}

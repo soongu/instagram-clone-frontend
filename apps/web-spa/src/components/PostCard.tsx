@@ -5,7 +5,7 @@ import type { DraftComment } from './CommentList';
 import { Card } from './Card';
 import { PostHeader } from './PostHeader';
 import { PostImage } from './PostImage';
-import { PostActions } from './PostActions';
+import { PostBody } from './PostBody';
 import { CommentList } from './CommentList';
 import { CommentForm } from './CommentForm';
 
@@ -42,7 +42,7 @@ export function PostCard({
         username={username}
         onLike={() => onToggleLike(id)}
       />
-      <PostActions
+      <PostBody
         username={username}
         content={content}
         liked={liked}

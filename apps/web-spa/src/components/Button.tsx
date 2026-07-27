@@ -8,6 +8,8 @@ interface ButtonProps {
   type?: 'button' | 'submit';
   // 생김새는 쓰는 쪽이 정한다
   className?: string;
+  // 글자 대신 기호만 보이는 버튼은 읽어줄 이름을 따로 준다
+  'aria-label'?: string;
 }
 
 export function Button({
@@ -16,9 +18,16 @@ export function Button({
   disabled,
   type = 'button',
   className,
+  'aria-label': ariaLabel,
 }: ButtonProps) {
   return (
-    <button className={className} type={type} disabled={disabled} onClick={onClick}>
+    <button
+      className={className}
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={ariaLabel}
+    >
       {children}
     </button>
   );
