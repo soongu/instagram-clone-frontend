@@ -7,6 +7,7 @@
 
 import { Avatar } from '../src/components/Avatar';
 import { PostCard } from '../src/components/PostCard';
+import { MiniPostCard } from '../src/components/MiniPostCard';
 import { feedPosts } from '../src/data/feed';
 
 const [post] = feedPosts;
@@ -41,3 +42,6 @@ export const partialPost = <PostCard username={post.username} />;
 
 // ── 7. 컴포넌트 이름을 소문자로 쓴다 → TS2339 (HTML 태그로 취급된다)
 export const lowercase = <postCard />;
+
+// ── 8. 숫자를 받는 props 에 따옴표를 붙인다 → TS2322 (문자열 → 숫자)
+export const quotedNumber = <MiniPostCard username="jaehoon" likeCount="1240" />;
