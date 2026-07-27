@@ -1,7 +1,8 @@
 // apps/web-spa/src/types/records.ts
 
-import { FeedSort } from './literals';
-import { POST_STATUS, PostStatus } from './enum-alternative';
+import type { FeedSort } from './literals';
+// 값과 타입을 같은 곳에서 불러올 땐 타입 쪽에만 표시를 붙인다
+import { POST_STATUS, type PostStatus } from './enum-alternative';
 
 // 키 집합 × 값 타입 — 세 정렬 각각에 라벨을 하나씩 매단다
 export const SORT_LABEL: Record<FeedSort, string> = {

@@ -1,7 +1,7 @@
 // apps/web-spa/src/types/assertions.ts
 
-import { Post } from './instagram';
-import { FeedSort } from './literals';
+import type { Post } from './instagram';
+import type { FeedSort } from './literals';
 import { isPost } from './guards';
 
 export interface FeedOption {

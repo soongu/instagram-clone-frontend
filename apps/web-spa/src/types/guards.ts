@@ -1,6 +1,6 @@
 // apps/web-spa/src/types/guards.ts
 
-import { Post } from './instagram';
+import type { Post } from './instagram';
 
 // value is Post — true 를 돌려주면 그때부터 Post 로 다뤄도 된다고 알려주는 표시
 export function isPost(value: unknown): value is Post {

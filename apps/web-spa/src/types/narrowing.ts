@@ -1,6 +1,6 @@
 // apps/web-spa/src/types/narrowing.ts
 
-import { Post, User } from './instagram';
+import type { Post, User } from './instagram';
 
 // 검색창에는 해시태그 이름(문자열)도, 게시물 번호(숫자)도 들어온다
 export type SearchTerm = string | number;

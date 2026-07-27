@@ -1,7 +1,7 @@
 // apps/web-spa/src/types/derived.ts
 
-import { Post } from './instagram';
-import { ProfileSummary } from './optional';
+import type { Post } from './instagram';
+import type { ProfileSummary } from './optional';
 import { mediaBadge } from './literals';
 
 // 프로필 그리드 한 칸에는 이미지와 종류 배지만 있으면 된다 — 남길 것을 적는다

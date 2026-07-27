@@ -1,6 +1,6 @@
 // apps/web-spa/src/types/instagram.ts
 
-import { MediaKind } from './literals';
+import type { MediaKind } from './literals';
 
 /** 프로필 화면에 뜨는 사용자 */
 export interface User {
