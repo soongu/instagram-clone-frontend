@@ -2,18 +2,12 @@
 
 export type PostStatus = 'draft' | 'published' | 'archived';
 
-interface PostStatusMap {
-  DRAFT: PostStatus;
-  PUBLISHED: PostStatus;
-  ARCHIVED: PostStatus;
-}
-
-// as const 로 값을 고정하고, satisfies 로 셋 다 PostStatus 인지 검사받는다
+// 키는 PostStatus 를 대문자로 바꾼 것, 값은 PostStatus — 손으로 쓰던 인터페이스가 사라졌다
 export const POST_STATUS = {
   DRAFT: 'draft',
   PUBLISHED: 'published',
   ARCHIVED: 'archived',
-} as const satisfies PostStatusMap;
+} as const satisfies Record<Uppercase<PostStatus>, PostStatus>;
 
 export function statusLabel(status: PostStatus): string {
   if (status === POST_STATUS.DRAFT) {
