@@ -1,0 +1,69 @@
+/* apps/web-spa/src/styles/globals.css */
+
+body {
+  margin: 0;
+  background: #fafafa;
+  color: #262626;
+  font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+}
+
+.feed {
+  max-width: 470px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.feed-title {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.post-card {
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.avatar-image {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.post-image {
+  width: 100%;
+  display: block;
+}
+
+.post-likes,
+.post-content,
+.post-comments {
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 14px;
+}
+
+.post-likes {
+  padding-top: 12px;
+  font-weight: 600;
+}
+
+.post-comments {
+  padding-bottom: 12px;
+  color: #8e8e8e;
+}
