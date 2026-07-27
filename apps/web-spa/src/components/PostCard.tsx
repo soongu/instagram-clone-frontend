@@ -1,8 +1,9 @@
 // apps/web-spa/src/components/PostCard.tsx
 import { useState } from 'react';
 import type { PostCardProps } from '../types/derived';
-import { Avatar } from './Avatar';
-import { LikeButton } from './LikeButton';
+import { PostHeader } from './PostHeader';
+import { PostImage } from './PostImage';
+import { PostActions } from './PostActions';
 import { CommentForm } from './CommentForm';
 
 interface PostCardViewProps extends PostCardProps {
@@ -32,32 +33,22 @@ export function PostCard({
     setComments([...comments, { id: comments.length + 1, content: text }]);
   }
 
-  function handleImageDoubleClick(event: React.MouseEvent<HTMLImageElement>) {
-    // 더블클릭이 이미지를 선택 상태로 만드는 브라우저 기본 동작을 막는다
-    event.preventDefault();
-    onToggleLike(id);
-  }
-
   return (
     <article className="post-card">
-      <Avatar username={username} profileImageUrl={profileImageUrl} />
-      <img
-        className="post-image"
-        src={imageUrl}
-        alt={`${username} 의 게시물`}
-        onDoubleClick={handleImageDoubleClick}
+      <PostHeader username={username} profileImageUrl={profileImageUrl} />
+      <PostImage
+        imageUrl={imageUrl}
+        username={username}
+        onLike={() => onToggleLike(id)}
       />
-      <LikeButton
+      <PostActions
+        username={username}
+        content={content}
         liked={liked}
         likeCount={likeCount}
+        commentCount={commentCount + comments.length}
         onToggle={() => onToggleLike(id)}
       />
-      <p className="post-content">
-        <strong>{username}</strong> {content}
-      </p>
-      <p className="post-comments">
-        댓글 {commentCount + comments.length}개 모두 보기
-      </p>
       <ul className="comment-list">
         {comments.map((comment) => (
           <li key={comment.id}>
