@@ -28,7 +28,7 @@ describe('Feed — 배열을 화면으로', () => {
     render(<Feed posts={feedPosts} onToggleLike={onToggleLike} />);
 
     const [, secondCard] = screen.getAllByRole('article');
-    await user.click(within(secondCard).getByRole('button'));
+    await user.click(within(secondCard).getByRole('button', { name: /좋아요/ }));
 
     expect(onToggleLike).toHaveBeenCalledWith(feedPosts[1].id);
   });

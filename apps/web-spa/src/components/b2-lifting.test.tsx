@@ -47,7 +47,7 @@ describe('App — 상태를 끌어올린 뒤', () => {
     render(<App />);
 
     const [firstCard] = screen.getAllByRole('article');
-    await user.click(within(firstCard).getByRole('button'));
+    await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
 
     expect(screen.getByText('좋아요 누른 게시물 2개')).toBeInTheDocument();
     expect(within(firstCard).getByText('좋아요 1241개')).toBeInTheDocument();
@@ -58,8 +58,8 @@ describe('App — 상태를 끌어올린 뒤', () => {
     render(<App />);
 
     const [firstCard] = screen.getAllByRole('article');
-    await user.click(within(firstCard).getByRole('button'));
-    await user.click(within(firstCard).getByRole('button'));
+    await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
+    await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
     expect(within(firstCard).getByText('좋아요 1240개')).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('App — 상태를 끌어올린 뒤', () => {
     render(<App />);
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
-    await user.click(within(firstCard).getByRole('button'));
+    await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
 
     expect(within(secondCard).getByText('좋아요 8500개')).toBeInTheDocument();
   });
