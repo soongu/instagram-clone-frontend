@@ -1,0 +1,55 @@
+// B-4 "이건 effect 가 아니다" 반례 채증 (내부 검증용)
+//
+// 린트가 항상 실패하는 파일이라 측정이 끝나면 .txt 로 격리한다.
+// 재현: npx eslint scratch/b4-unnecessary-effects.tsx
+import { useEffect, useState } from 'react';
+import type { Post } from '../src/types/instagram';
+import { feedPosts } from '../src/data/feed';
+import { toggleLike } from '../src/lib/likes';
+
+// 1. 다른 상태에서 계산되는 값을 굳이 상태로 또 두고 effect 로 맞춘다
+export function DerivedCountWithEffect() {
+  const [posts, setPosts] = useState<Post[]>(feedPosts);
+  const [likedCount, setLikedCount] = useState(0);
+
+  useEffect(() => {
+    setLikedCount(posts.filter((post) => post.liked).length);
+  }, [posts]);
+
+  return (
+    <div>
+      <p>좋아요 누른 게시물 {likedCount}개</p>
+      <button onClick={() => setPosts(toggleLike(posts, 1))}>토글</button>
+    </div>
+  );
+}
+
+// 2. props 가 바뀔 때마다 상태를 초기화한다
+export function ResetOnPropChange({ username }: { username: string }) {
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    setDraft('');
+  }, [username]);
+
+  return <input value={draft} onChange={(event) => setDraft(event.target.value)} />;
+}
+
+// 3. 사용자가 누른 결과를 effect 로 뒤늦게 감지해 알림을 띄운다
+export function ToastFromEffect() {
+  const [liked, setLiked] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (liked) {
+      setMessage('게시물을 좋아합니다');
+    }
+  }, [liked]);
+
+  return (
+    <div>
+      <button onClick={() => setLiked(!liked)}>좋아요</button>
+      <p>{message}</p>
+    </div>
+  );
+}

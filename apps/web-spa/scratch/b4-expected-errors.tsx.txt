@@ -1,0 +1,64 @@
+// B-4 교안·과제에 인용할 컴파일 에러 채증 (내부 검증용)
+//
+// 재현:
+//   npx tsc --noEmit --ignoreConfig --strict --target es2025 --module esnext \
+//     --moduleResolution bundler --jsx react-jsx --lib es2025,dom --skipLibCheck \
+//     scratch/b4-expected-errors.tsx
+import { useEffect, useState } from 'react';
+
+// 1. 화살표 함수의 몸통을 중괄호 없이 적어서, 타이머 번호가 클린업 자리로 흘러간다
+export function ArrowBodyReturnsTimerId() {
+  const [message, setMessage] = useState('안녕하세요');
+
+  useEffect(() => setTimeout(() => setMessage(''), 3000), []);
+
+  return <p>{message}</p>;
+}
+
+// 2. effect 를 async 로 만든다 (안에서 await 을 쓰고 싶어서)
+export function AsyncEffect() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(async () => {
+    await Promise.resolve();
+    setReady(true);
+  }, []);
+
+  return <p>{ready ? '준비됨' : '준비 중'}</p>;
+}
+
+// 3. 클린업 자리에 함수가 아니라 값을 돌려준다
+export function CleanupIsNotAFunction() {
+  useEffect(() => {
+    const timerId = setTimeout(() => {}, 1000);
+    return timerId;
+  }, []);
+
+  return <p>타이머</p>;
+}
+
+// 4. 의존성 배열 자리에 배열이 아니라 값을 하나 적는다
+export function DependencyIsNotAnArray() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    console.log(count);
+  }, count);
+
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+
+// 5. 클린업에서 걷어낼 함수를 이름이 아니라 호출로 넘긴다
+export function RemoveListenerWithCall() {
+  useEffect(() => {
+    function handleScroll() {
+      console.log(window.scrollY);
+    }
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => window.removeEventListener('scroll', handleScroll());
+  }, []);
+
+  return <p>스크롤</p>;
+}

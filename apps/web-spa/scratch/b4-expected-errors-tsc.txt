@@ -1,0 +1,11 @@
+scratch/b4-expected-errors.tsx(13,19): error TS2322: Type 'number' is not assignable to type 'void | Destructor'.
+scratch/b4-expected-errors.tsx(22,13): error TS2345: Argument of type '() => Promise<void>' is not assignable to parameter of type 'EffectCallback'.
+  Type 'Promise<void>' is not assignable to type 'void | Destructor'.
+scratch/b4-expected-errors.tsx(32,13): error TS2345: Argument of type '() => number' is not assignable to parameter of type 'EffectCallback'.
+  Type 'number' is not assignable to type 'void | Destructor'.
+scratch/b4-expected-errors.tsx(46,6): error TS2345: Argument of type 'number' is not assignable to parameter of type 'readonly unknown[]'.
+scratch/b4-expected-errors.tsx(60,55): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(type: "scroll", listener: (this: Window, ev: Event) => any, options?: boolean | EventListenerOptions | undefined): void', gave the following error.
+    Argument of type 'void' is not assignable to parameter of type '(this: Window, ev: Event) => any'.
+  Overload 2 of 2, '(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): void', gave the following error.
+    Argument of type 'void' is not assignable to parameter of type 'EventListenerOrEventListenerObject'.
