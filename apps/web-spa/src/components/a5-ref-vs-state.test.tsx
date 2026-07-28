@@ -48,3 +48,18 @@ describe('ref 와 state 를 나란히 눌러보면', () => {
     expect(shown().state).toBe('state 로 센 수: 2');
   });
 });
+
+describe('과제 [탐구] 재현 — 다섯 번 누르면', () => {
+  it('ref +1 다섯 번 뒤 state +1 한 번이면 5 가 드러난다', async () => {
+    const user = userEvent.setup();
+    render(<RefVsStateDemo />);
+
+    for (let i = 0; i < 5; i += 1) {
+      await user.click(screen.getByRole('button', { name: 'ref +1' }));
+    }
+    expect(shown().ref).toBe('ref 로 센 수: 0');
+
+    await user.click(screen.getByRole('button', { name: 'state +1' }));
+    expect(shown()).toEqual({ state: 'state 로 센 수: 1', ref: 'ref 로 센 수: 5' });
+  });
+});
