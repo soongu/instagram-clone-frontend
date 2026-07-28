@@ -9,6 +9,7 @@ import { feedPosts } from '../src/data/feed';
 import { useLikeToggle } from '../src/hooks/useLikeToggle';
 
 const TOAST_DURATION = 3000;
+const SCROLL_KEY = 'feed-scroll';
 
 // Step 1 — 의존성 배열을 아직 안 배운 시점. 배열 없이 매 렌더마다 돈다.
 export function AppStep1() {
@@ -72,6 +73,59 @@ export function AppStep3NoCleanup() {
         <Feed posts={posts} onToggleLike={handleToggleLike} />
       </Section>
       {toastMessage !== null && <Toast message={toastMessage} />}
+    </main>
+  );
+}
+
+// Step 5 앞부분 — 아직 저장은 안 하고 듣기만 하는 판.
+export function useScrollRestoreListenOnly() {
+  useEffect(() => {
+    function handleScroll() {
+      console.log('지금 위치:', window.scrollY);
+    }
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+}
+
+// Step 5 끝 — 저장과 복원까지 끝났지만 아직 넘겨받는 함수가 없는 판.
+export function useScrollRestoreStep5() {
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+
+    if (saved !== null) {
+      window.scrollTo(0, Number(saved));
+    }
+  }, []);
+
+  useEffect(() => {
+    function handleScroll() {
+      sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    }
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+}
+
+// Step 5 시점의 App — 훅을 인자 없이 부른다.
+export function AppStep5() {
+  const { posts, likedCount, toggle } = useLikeToggle(feedPosts);
+
+  useScrollRestoreStep5();
+
+  return (
+    <main className="feed">
+      <header className="feed-header">
+        <h1 className="feed-title">인스타그램</h1>
+        <span className="feed-liked-count">좋아요 누른 게시물 {likedCount}개</span>
+      </header>
+      <Section title="피드">
+        <Feed posts={posts} onToggleLike={toggle} />
+      </Section>
     </main>
   );
 }

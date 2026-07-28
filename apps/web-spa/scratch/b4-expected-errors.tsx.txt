@@ -62,3 +62,26 @@ export function RemoveListenerWithCall() {
 
   return <p>스크롤</p>;
 }
+
+// 6. 마무리에서 예고하는 데이터 가져오기 — .then 판은 타입은 통과한다
+export function FetchWithThen() {
+  const [posts, setPosts] = useState<unknown[]>([]);
+
+  useEffect(() => {
+    fetch('/api/posts')
+      .then((response) => response.json())
+      .then((data) => setPosts(data));
+  }, []);
+
+  return <p>{posts.length}</p>;
+}
+
+// 7. async 를 붙여 간단히 만들려는 시도
+export function FetchWithAsyncEffect() {
+  useEffect(async () => {
+    const response = await fetch('/api/posts');
+    console.log(response);
+  }, []);
+
+  return <p>피드</p>;
+}
