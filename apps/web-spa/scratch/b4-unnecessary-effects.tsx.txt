@@ -53,3 +53,16 @@ export function ToastFromEffect() {
     </div>
   );
 }
+
+// 4. 과제 1 의 흔한 오답 — 너비로 계산되는 값을 상태로 두고 effect 로 맞춘다
+const NARROW_WIDTH = 640;
+
+export function NarrowNoticeWithEffect({ width }: { width: number }) {
+  const [isNarrow, setIsNarrow] = useState(false);
+
+  useEffect(() => {
+    setIsNarrow(width < NARROW_WIDTH);
+  }, [width]);
+
+  return isNarrow ? <p>화면이 좁아요 · 가로로 넓히면 더 편해요</p> : null;
+}
