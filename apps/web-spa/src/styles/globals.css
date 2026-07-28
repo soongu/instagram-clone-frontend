@@ -176,6 +176,20 @@ body {
   font-size: 14px;
 }
 
+.comment-remove {
+  background: none;
+  border: none;
+  color: #8e8e8e;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.comment-remove:hover {
+  color: #262626;
+}
+
 .key-demo {
   background: #ffffff;
   border: 1px solid #dbdbdb;
