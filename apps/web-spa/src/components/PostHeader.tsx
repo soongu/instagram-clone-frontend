@@ -1,6 +1,6 @@
 // apps/web-spa/src/components/PostHeader.tsx
 import { Avatar } from './Avatar';
-import { Button } from './Button';
+import { IconButton } from './IconButton';
 
 interface PostHeaderProps {
   username: string;
@@ -13,9 +13,9 @@ export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
   return (
     <div className="post-header">
       <Avatar username={username} profileImageUrl={profileImageUrl} />
-      <Button className="post-more" aria-label="게시물 메뉴">
+      <IconButton className="post-more" aria-label="게시물 메뉴">
         ⋯
-      </Button>
+      </IconButton>
     </div>
   );
 }

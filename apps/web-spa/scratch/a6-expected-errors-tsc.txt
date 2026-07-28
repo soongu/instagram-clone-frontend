@@ -1,0 +1,10 @@
+scratch/a6-expected-errors.tsx(15,36): error TS2339: Property 'id' does not exist on type 'T'.
+scratch/a6-expected-errors.tsx(22,19): error TS2345: Argument of type '{ name: string; }[]' is not assignable to parameter of type '{ id: number; }[]'.
+  Property 'id' is missing in type '{ name: string; }' but required in type '{ id: number; }'.
+scratch/a6-expected-errors.tsx(31,16): error TS2322: Type '{ name: string; }[]' is not assignable to type '{ id: number; }[]'.
+  Property 'id' is missing in type '{ name: string; }' but required in type '{ id: number; }'.
+scratch/a6-expected-errors.tsx(31,61): error TS2339: Property 'name' does not exist on type '{ id: number; }'.
+scratch/a6-expected-errors.tsx(38,73): error TS2339: Property 'username' does not exist on type '{ id: number; content: string; }'.
+scratch/a6-expected-errors.tsx(45,11): error TS2741: Property ''aria-label'' is missing in type '{ children: string; }' but required in type '{ 'aria-label': string; }'.
+scratch/a6-expected-errors.tsx(51,33): error TS2322: Type '{ children: string; "aria-label": string; href: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & { 'aria-label': string; }'.
+  Property 'href' does not exist on type 'IntrinsicAttributes & ButtonProps & { 'aria-label': string; }'.

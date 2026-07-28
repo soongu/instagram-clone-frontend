@@ -1,0 +1,47 @@
+A-6 Step 4·5 실측 채증 (내부 검증용) — 2026-07-29
+
+■ 1. strict 기본값이 바뀐 버전 (5.9 → 6.0)
+
+  빈 tsconfig `{}` + 아래 파일로 버전만 갈아끼우며 측정:
+
+    export function greet(name) { return `안녕 ${name}`; }
+    const maybe: string | null = null;
+    export const len = maybe.length;
+
+    TS 5.9.3 · 에러 0 건        ← strict 기본 off
+    TS 6.0.3 · 에러 2 건        ← 여기서 바뀌었다
+    TS 7.0.2 · 에러 2 건
+
+  6.0.3 / 7.0.2 가 내는 에러 2 건:
+    probe.ts(1,23): error TS7006: Parameter 'name' implicitly has an 'any' type.
+    probe.ts(5,20): error TS18047: 'maybe' is possibly 'null'.
+
+  ⚠️ "TS 7.0 부터 strict 가 기본" 은 틀렸다. 6.0 부터다.
+     (공식 7.0 발표문에 "strict is true by default" 가 있어 7.0 신규로 오해하기 쉽다.)
+
+■ 2. TS 7 에서 strict 를 끌 수는 있다
+
+    {"compilerOptions":{"strict":false}} → 에러 0 건
+
+■ 3. TS 7 에서 제거된 옵션 (false 로 둘 수 없음)
+
+    {"compilerOptions":{"alwaysStrict":false,"esModuleInterop":false}}
+    tsconfig.json(1,36): error TS5108: Option 'alwaysStrict=false' has been removed. Please remove it from your configuration.
+    tsconfig.json(1,60): error TS5108: Option 'esModuleInterop=false' has been removed. Please remove it from your configuration.
+
+  → 우리 tsconfig 의 "esModuleInterop": true 는 그대로 유효 (false 만 제거됨).
+
+■ 4. 우리 프로젝트를 TS 7.0.2 로 돌려도 클린
+
+    tsc 7.0.2 --noEmit -p tsconfig.json  → 에러 0 건 (src 86 파일 검사 확인)
+    일부러 에러 주입 시 정상 검출:
+      src/lib/comments.ts(26,9): error TS2322: Type 'string' is not assignable to type 'number'.
+
+■ 5. 번들러는 타입을 검사하지 않는다 (Step 5 의 핵심)
+
+  Toast.tsx 에 `const wrong: number = message;` 를 넣은 상태에서:
+
+    npx vite build   → dist/assets/index-*.js 202.37 kB · ✓ built in 266ms   (성공!)
+    npx tsc --noEmit → src/components/Toast.tsx(10,9): error TS2322: Type 'string' is not assignable to type 'number'.
+
+  → package.json 의 "build": "tsc --noEmit && vite build" 가 왜 두 단계인지의 근거.

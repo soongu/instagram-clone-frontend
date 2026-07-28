@@ -1,5 +1,5 @@
 // apps/web-spa/src/components/CommentList.tsx
-import { Button } from './Button';
+import { IconButton } from './IconButton';
 import { List } from './List';
 
 export interface DraftComment {
@@ -23,13 +23,13 @@ export function CommentList({ comments, onRemove }: CommentListProps) {
         <>
           <strong>me</strong> {comment.content}
           {onRemove && (
-            <Button
+            <IconButton
               className="comment-remove"
               aria-label="댓글 삭제"
               onClick={() => onRemove(comment.id)}
             >
               ×
-            </Button>
+            </IconButton>
           )}
         </>
       )}
