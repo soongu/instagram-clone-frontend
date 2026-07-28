@@ -1,5 +1,6 @@
 // apps/web-spa/src/components/CommentList.tsx
 import { Button } from './Button';
+import { List } from './List';
 
 export interface DraftComment {
   id: number;
@@ -12,13 +13,14 @@ interface CommentListProps {
   onRemove?: (id: number) => void;
 }
 
-// 댓글 한 줄은 자기 상태가 없어서 아직 따로 파일을 만들지 않는다.
-// 지우는 일도 자기가 하지 않고, 위에서 받은 함수에 번호만 실어 보낸다.
+// 줄줄이 그리는 일은 List 에 맡기고, 한 줄을 어떻게 그릴지만 정한다.
 export function CommentList({ comments, onRemove }: CommentListProps) {
   return (
-    <ul className="comment-list">
-      {comments.map((comment) => (
-        <li key={comment.id}>
+    <List
+      items={comments}
+      className="comment-list"
+      renderItem={(comment) => (
+        <>
           <strong>me</strong> {comment.content}
           {onRemove && (
             <Button
@@ -29,8 +31,8 @@ export function CommentList({ comments, onRemove }: CommentListProps) {
               ×
             </Button>
           )}
-        </li>
-      ))}
-    </ul>
+        </>
+      )}
+    />
   );
 }
