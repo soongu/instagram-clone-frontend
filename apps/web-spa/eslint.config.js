@@ -58,4 +58,12 @@ export default tseslint.config(
       'react-hooks/set-state-in-effect': 'off',
     },
   },
+  {
+    // 의존성을 일부러 비웠을 때 값이 어떻게 낡는지 확인하려고 남긴 파일이다.
+    // 학생이 따라 할 때는 이 경고가 그대로 떠야 하므로 파일 안 주석으로 끄지 않는다.
+    files: ['src/components/b4-answer.test.tsx'],
+    rules: {
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
 );
