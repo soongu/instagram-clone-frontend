@@ -31,7 +31,7 @@ export function PostCard({
     <Card
       className="post-card"
       header={<PostHeader username={username} profileImageUrl={profileImageUrl} />}
-      footer={<CommentForm onSubmit={(content) => dispatch({ type: 'add', content })} />}
+      footer={<CommentForm onSubmit={(text) => dispatch({ type: 'add', content: text })} />}
     >
       <PostImage
         imageUrl={imageUrl}
