@@ -1,0 +1,116 @@
+// A-5 교안·과제에 인용할 컴파일 에러 채증 (내부 검증용)
+//
+// 재현:
+//   cp scratch/a5-expected-errors.tsx.txt scratch/a5-expected-errors.tsx
+//   npx tsc --noEmit --ignoreConfig --strict --target es2025 --module esnext \
+//     --moduleResolution bundler --jsx react-jsx --lib es2025,dom --skipLibCheck \
+//     scratch/a5-expected-errors.tsx
+//   rm scratch/a5-expected-errors.tsx
+//
+// 린트가 항상 6 건 실패하는 파일이라(set-state-in-render 등) .txt 로 격리해 둔다.
+import { useState, useRef, useReducer } from 'react';
+import type { CommentState } from '../src/lib/comments';
+import { commentReducer, initialCommentState } from '../src/lib/comments';
+
+// ── Step 1 ─ 첫 값만 보고 추론한다 ────────────────────────────
+
+// ① null 로 시작하면 타입이 null 로 굳는다
+export function NullStart() {
+  const [message, setMessage] = useState(null);
+
+  setMessage('업로드했습니다');
+
+  return <p>{message}</p>;
+}
+
+// ② 빈 배열로 시작하면 무엇이 담길지 알 방법이 없다
+export function EmptyArrayStart() {
+  const [tags, setTags] = useState([]);
+
+  setTags(['한강']);
+
+  return <p>{tags.length}</p>;
+}
+
+// ③ 추론된 타입이 무엇인지 확인하는 법 — 일부러 다른 타입에 담아본다
+export function RevealInferred() {
+  const [message] = useState(null);
+  const [count] = useState(0);
+
+  const revealNull: number = message;
+  const revealNumber: string = count;
+
+  return (
+    <p>
+      {revealNull} {revealNumber}
+    </p>
+  );
+}
+
+// ── Step 2 ─ useRef 는 첫 렌더에 아직 아무것도 못 가리킨다 ──────
+
+export function RefWithoutCheck() {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleClick() {
+    inputRef.current.focus();
+  }
+
+  return (
+    <>
+      <input ref={inputRef} />
+      <button onClick={handleClick}>포커스</button>
+    </>
+  );
+}
+
+// 가리킬 요소 종류를 틀리게 적으면 손잡이를 붙이는 자리에서 걸린다
+export function RefWrongElement() {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  return <input ref={inputRef} />;
+}
+
+// ── Step 3 ─ 리듀서에 타입을 달면 dispatch 가 따라온다 ─────────
+
+export function UnknownAction() {
+  const [comments, dispatch] = useReducer(commentReducer, initialCommentState);
+
+  dispatch({ type: 'clear' });
+
+  return <p>{comments.items.length}</p>;
+}
+
+export function MissingActionField() {
+  const [, dispatch] = useReducer(commentReducer, initialCommentState);
+
+  dispatch({ type: 'add' });
+
+  return <p>댓글</p>;
+}
+
+// ── Step 4 ─ 새 액션을 더하고 케이스를 빠뜨리면 ────────────────
+
+type CommentActionV2 =
+  | { type: 'add'; content: string }
+  | { type: 'remove'; id: number }
+  | { type: 'clear' };
+
+// 'clear' 를 처리하지 않은 채로 두면 마지막 줄에서 잡힌다
+export function reducerV2(state: CommentState, action: CommentActionV2): CommentState {
+  switch (action.type) {
+    case 'add':
+      return {
+        items: [...state.items, { id: state.nextId, content: action.content }],
+        nextId: state.nextId + 1,
+      };
+
+    case 'remove':
+      return { ...state, items: state.items.filter((item) => item.id !== action.id) };
+
+    default: {
+      const missed: never = action;
+      return missed;
+    }
+  }
+}
