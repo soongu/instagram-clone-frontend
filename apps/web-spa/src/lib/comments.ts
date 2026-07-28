@@ -1,5 +1,6 @@
 // apps/web-spa/src/lib/comments.ts
 import type { DraftComment } from '../components/CommentList';
+import { removeById } from './collections';
 
 // 댓글 목록과 다음에 줄 번호는 늘 함께 움직인다 — 그래서 한 덩어리로 둔다
 export interface CommentState {
@@ -29,7 +30,7 @@ export function commentReducer(state: CommentState, action: CommentAction): Comm
     case 'remove':
       return {
         ...state,
-        items: state.items.filter((item) => item.id !== action.id),
+        items: removeById(state.items, action.id),
       };
 
     default: {

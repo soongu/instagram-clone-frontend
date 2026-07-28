@@ -1,6 +1,7 @@
 // apps/web-spa/src/lib/feed-state.ts
 import type { Post } from '../types/instagram';
 import { toggleLike } from './likes';
+import { findById } from './collections';
 
 // 알림을 문자열이 아니라 객체로 들고 있는다.
 // 문구가 같아도 새로 만들면 다른 값이 되기 때문이다.
@@ -31,7 +32,7 @@ function countLiked(posts: Post[]): number {
 export function feedReducer(state: FeedState, action: FeedAction): FeedState {
   switch (action.type) {
     case 'toggleLike': {
-      const target = state.posts.find((post) => post.id === action.id);
+      const target = findById(state.posts, action.id);
 
       if (!target) {
         return state;
