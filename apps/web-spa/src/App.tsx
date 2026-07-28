@@ -5,6 +5,7 @@ import { Section } from './components/Section';
 import { Toast } from './components/Toast';
 import { feedPosts } from './data/feed';
 import { useLikeToggle } from './hooks/useLikeToggle';
+import { useScrollRestore } from './hooks/useScrollRestore';
 
 // 알림이 화면에 머무는 시간
 const TOAST_DURATION = 3000;
@@ -12,6 +13,11 @@ const TOAST_DURATION = 3000;
 export function App() {
   const { posts, likedCount, toggle } = useLikeToggle(feedPosts);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // 피드 끝에 닿으면 여기까지 봤다고 알려준다
+  useScrollRestore(() => {
+    setToastMessage(`게시물을 모두 확인했습니다 · 좋아요 ${likedCount}개`);
+  });
 
   // 브라우저 탭 제목은 React 가 그리는 화면 밖에 있다. 직접 맞춰줘야 한다.
   useEffect(() => {

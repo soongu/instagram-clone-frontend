@@ -1,0 +1,63 @@
+// B-4 useEffectEvent 규칙 위반 채증 (내부 검증용)
+//
+// 린트가 항상 실패하는 파일이라 측정이 끝나면 .txt 로 격리한다.
+// 재현: npx eslint scratch/b4-effect-event-violations.tsx
+import { useEffect, useEffectEvent, useState } from 'react';
+
+// 1. 렌더 도중에 부른다
+export function CalledDuringRender() {
+  const [count, setCount] = useState(0);
+  const onTick = useEffectEvent(() => console.log(count));
+
+  onTick();
+
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+
+// 2. 이벤트 핸들러에서 부른다
+export function CalledFromHandler() {
+  const [count] = useState(0);
+  const onTick = useEffectEvent(() => console.log(count));
+
+  return <button onClick={() => onTick()}>{count}</button>;
+}
+
+// 3. 다른 컴포넌트에 props 로 넘긴다
+function Child({ onTick }: { onTick: () => void }) {
+  useEffect(() => {
+    onTick();
+  }, [onTick]);
+
+  return <p>자식</p>;
+}
+
+export function PassedToChild() {
+  const [count] = useState(0);
+  const onTick = useEffectEvent(() => console.log(count));
+
+  return <Child onTick={onTick} />;
+}
+
+// 4. 의존성 배열에 넣는다
+export function PutInDependencies() {
+  const [count] = useState(0);
+  const onTick = useEffectEvent(() => console.log(count));
+
+  useEffect(() => {
+    onTick();
+  }, [onTick]);
+
+  return <p>{count}</p>;
+}
+
+// 5. 조건문 안에서 선언한다
+export function DeclaredConditionally({ enabled }: { enabled: boolean }) {
+  const [count] = useState(0);
+
+  if (enabled) {
+    const onTick = useEffectEvent(() => console.log(count));
+    onTick();
+  }
+
+  return <p>{count}</p>;
+}

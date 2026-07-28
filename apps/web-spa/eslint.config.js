@@ -50,4 +50,12 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'off',
     },
   },
+  {
+    // effect 로 상태를 맞추면 실행 중에 무슨 일이 생기는지 확인하려고 남긴 파일이다.
+    // 린트가 먼저 막아버리면 실행까지 갈 수가 없어서 여기서만 규칙을 끈다.
+    files: ['scratch/b4-unnecessary-effects-runtime.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
 );
