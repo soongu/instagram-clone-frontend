@@ -81,3 +81,49 @@ describe('같은 문구가 연달아 뜰 때', () => {
     expect(result.at3100).toBeNull();
   });
 });
+
+describe('두 번째 알림이 화면에 머문 시간을 정확히 재면', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    sessionStorage.clear();
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true });
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      value: 1500,
+      writable: true,
+      configurable: true,
+    });
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  function liveMsAfterSecondToast(ui: React.ReactElement) {
+    render(ui);
+    scrollToBottom();
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    scrollToBottom(); // 두 번째 알림 — 문구가 똑같다
+
+    let lived = 0;
+    while (lived < 5000 && screen.queryByRole('status') !== null) {
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      lived += 100;
+    }
+    return lived;
+  }
+
+  it('문자열 판은 약 1초, 리듀서 판은 3초를 채운다', () => {
+    expect(liveMsAfterSecondToast(<AppStringToast />)).toBe(1000);
+  });
+
+  it('리듀서 판은 3000ms', () => {
+    expect(liveMsAfterSecondToast(<App />)).toBe(3000);
+  });
+});
