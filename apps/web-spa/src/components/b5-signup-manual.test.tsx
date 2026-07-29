@@ -2,7 +2,7 @@ import { Profiler, StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SignUpForm } from './SignUpForm';
+import { SignUpFormManual as SignUpForm } from '../../scratch/b5-lecture-snapshots';
 
 // 교안 Step 3 — 손으로 만든 회원가입 폼이 실제로 어떻게 동작하는지.
 describe('B5 Step 3 — 손으로 만든 회원가입 폼', () => {
