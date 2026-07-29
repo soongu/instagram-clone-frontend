@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { Feed } from './components/Feed';
 import { Section } from './components/Section';
+import { SignUpForm } from './components/SignUpForm';
 import { Toast } from './components/Toast';
 import { feedPosts } from './data/feed';
 import { useFeed } from './hooks/useFeed';
@@ -38,6 +39,9 @@ export function App() {
         <h1 className="feed-title">인스타그램</h1>
         <span className="feed-liked-count">좋아요 누른 게시물 {likedCount}개</span>
       </header>
+      <Section title="회원가입">
+        <SignUpForm onSubmit={(values) => console.log('가입 요청', values.username)} />
+      </Section>
       <Section title="피드">
         <Feed posts={posts} onToggleLike={toggleLike} />
       </Section>

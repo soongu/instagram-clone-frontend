@@ -55,11 +55,21 @@ describe('useLikeToggle — 훅만 따로 돌려본다', () => {
   });
 });
 
+// B-5 에서 App 에 회원가입 Section 이 추가됐다. 이 테스트가 증명하려는 것은
+// "좋아요 로직을 훅으로 옮겨도 피드 렌더 결과가 안 바뀐다" 이므로,
+// 그 뒤에 App 에 덧붙은 부분은 빼고 견준다. 비교 대상 자체는 그대로다.
+function withoutSignUpSection(html: string) {
+  return html.replace(/<section class="section" aria-label="회원가입">.*?<\/section>/, '');
+}
+
 describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', () => {
   it('첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다', () => {
-    const before = renderToStaticMarkup(<AppBeforeHook />);
-    const after = renderToStaticMarkup(<App />);
+    const before = withoutSignUpSection(renderToStaticMarkup(<AppBeforeHook />));
+    const after = withoutSignUpSection(renderToStaticMarkup(<App />));
 
+    // 잘라낸 뒤에도 비교할 알맹이가 남아 있어야 한다
+    expect(after).toContain('aria-label="피드"');
+    expect(after).not.toContain('aria-label="회원가입"');
     expect(after).toBe(before);
   });
 
