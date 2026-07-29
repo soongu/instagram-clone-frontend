@@ -285,3 +285,27 @@ body {
   padding: 6px 8px;
   font-size: 14px;
 }
+
+.profile-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-picker-input {
+  display: none;
+}
+
+.profile-picker-button {
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.profile-picker-name {
+  font-size: 13px;
+  color: #737373;
+}
