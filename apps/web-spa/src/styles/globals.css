@@ -3,7 +3,7 @@
 
 /* 화면에 안 나가는 파일까지 훑지 않도록 미리 일러둔다 */
 @source not "../../scratch";
-@source not "../**/*.test.tsx";
+@source not "../**/*.test.ts*";
 
 body {
   margin: 0;
