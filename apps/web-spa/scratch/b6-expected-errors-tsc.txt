@@ -1,0 +1,5 @@
+scratch/b6-expected-errors.tsx(13,30): error TS2345: Argument of type '"usernam"' is not assignable to parameter of type '"username" | "email" | "password" | "passwordConfirm"'.
+scratch/b6-expected-errors.tsx(19,30): error TS2345: Argument of type '"nickname"' is not assignable to parameter of type '"username" | "email" | "password" | "passwordConfirm"'.
+scratch/b6-expected-errors.tsx(24,17): error TS2339: Property 'nickname' does not exist on type '{ username: string; email: string; password: string; passwordConfirm: string; }'.
+scratch/b6-expected-errors.tsx(29,9): error TS2322: Type '{ id: number; username: string; profileImageUrl: string; imageUrl: string; mediaKind: "image" | "video" | "carousel"; content: string; hashtagNames: string[]; likeCount: number; commentCount: number; liked: boolean; createdAt: string; }' is not assignable to type 'string'.
+scratch/b6-expected-errors.tsx(42,10): error TS18048: 'result.data' is possibly 'undefined'.

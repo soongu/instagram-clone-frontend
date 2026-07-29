@@ -70,9 +70,9 @@ describe('SignUpSchema — 필드 규칙', () => {
 
   it('z.email 은 B-5 에서 손으로 쓴 정규식보다 엄격하다', () => {
     const HAND_WRITTEN = /^\S+@\S+\.\S+$/;
-    const 손은통과시키던것들 = ['a@b.c', 'jaehoon@@spartaclub.kr', '.jae@x.kr', 'jae..hoon@x.kr'];
+    const handWrittenLetThrough = ['a@b.c', 'jaehoon@@spartaclub.kr', '.jae@x.kr', 'jae..hoon@x.kr'];
 
-    for (const address of 손은통과시키던것들) {
+    for (const address of handWrittenLetThrough) {
       expect(HAND_WRITTEN.test(address)).toBe(true);
       expect(SignUpSchema.safeParse({ ...VALID, email: address }).success).toBe(false);
     }
@@ -81,9 +81,9 @@ describe('SignUpSchema — 필드 규칙', () => {
   });
 
   it('메시지를 안 주면 영어가 나온다 — 그래서 error 옵션을 매번 준다', () => {
-    const 메시지없는스키마 = z.string().min(8);
+    const withoutMessage = z.string().min(8);
 
-    expect(메시지없는스키마.safeParse('short').error?.issues[0]?.message).toBe(
+    expect(withoutMessage.safeParse('short').error?.issues[0]?.message).toBe(
       'Too small: expected string to have >=8 characters',
     );
     expect(z.email().safeParse('nope').error?.issues[0]?.message).toBe('Invalid email address');

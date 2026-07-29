@@ -30,3 +30,21 @@ export const SignUpSchema = z
 
 // 스키마에서 타입이 나온다 — 필드 이름을 다시 적지 않는다
 export type SignUpValues = z.infer<typeof SignUpSchema>;
+
+// 서버가 내려주는 게시물 한 장 — 폼에 쓰던 도구를 그대로 응답에 쓴다
+export const PostSchema = z.object({
+  id: z.number(),
+  username: z.string(),
+  profileImageUrl: z.string(),
+  imageUrl: z.string(),
+  mediaKind: z.enum(['image', 'video', 'carousel']),
+  content: z.string(),
+  hashtagNames: z.array(z.string()),
+  likeCount: z.number(),
+  commentCount: z.number(),
+  liked: z.boolean(),
+  createdAt: z.string(),
+});
+
+// 피드는 그 게시물이 여러 장 든 배열이다
+export const FeedSchema = z.array(PostSchema);
