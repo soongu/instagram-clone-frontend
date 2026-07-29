@@ -31,8 +31,10 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.5.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-hook-form": "7.83.0"
+    "react-hook-form": "7.83.0",
+    "zod": "4.4.3"
   }
 }
