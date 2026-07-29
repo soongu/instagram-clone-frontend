@@ -17,7 +17,9 @@ describe('Avatar', () => {
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('https://example.com/a.jpg');
-    expect(html).toContain('class="avatar"');
+    // 감싸는 요소가 하나 있고 그 안에 이미지와 이름이 들어간다.
+    // E-1 에서 Avatar 가 유틸리티로 넘어갔으므로 클래스 이름에 기대지 않는다.
+    expect(html).toMatch(/<div [^>]*><img [^>]*\/><span[^>]*>jaehoon<\/span><\/div>/);
   });
 
   it('대체 텍스트에 사용자 이름을 넣는다', () => {
@@ -42,7 +44,8 @@ describe('PostCard', () => {
   it('Avatar 를 안에 품고 함께 그린다', () => {
     const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
 
-    expect(html).toContain('class="avatar"');
+    // Avatar 만 내는 출력(대체 텍스트)으로 확인한다 — 클래스 이름은 E-1 에서 바뀐다
+    expect(html).toContain('alt="jaehoon 프로필 사진"');
     expect(html).toContain('class="post-card"');
   });
 

@@ -36,7 +36,7 @@ export function App() {
   return (
     <main className="feed">
       <header className="feed-header">
-        <h1 className="feed-title">인스타그램</h1>
+        <h1 className="feed-title font-bold">인스타그램</h1>
         <span className="feed-liked-count">좋아요 누른 게시물 {likedCount}개</span>
       </header>
       <Section title="회원가입">

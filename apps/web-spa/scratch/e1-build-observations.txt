@@ -1,0 +1,165 @@
+E-1 빌드 산출 CSS 관찰 (Tailwind v4.3.3 · Vite 8.1.5)
+====================================================
+
+단위 테스트로 잡을 수 없는 사실을 기록한다.
+@tailwindcss/vite 가 .css?raw 임포트를 가로채 빈 문자열을 돌려주고,
+이 워크스페이스에는 @types/node 가 없어 테스트 안에서 fs 로 읽을 수도 없다.
+
+재현 (리포지토리 루트에서):
+  npm run build --workspace apps/web-spa
+  python3 -c "import glob,os; print(len(open(sorted(glob.glob('apps/web-spa/dist/assets/*.css'), key=os.path.getmtime)[-1]).read()))"
+
+
+1. 번들 CSS 크기 — 네 시점 (전부 학생이 재현 가능한 값)
+--------------------------------------------------------
+
+  시점                                        CSS 산출    globals.css
+  (1) Tailwind 설치 전 (B-6 종료 상태)         4,256 B      387줄
+  (2) @import "tailwindcss" 만 추가           10,655 B      388줄
+  (3) Avatar 유틸리티 이전 + h1 font-bold     11,235 B      369줄
+  (4) @source not 로 배포 안 되는 파일 제외     9,221 B      373줄
+
+  (1) -> (2) +6,399 B. 유틸리티를 하나도 안 썼는데 늘었다.
+      정체는 토큰이 아니라 거의 전부 Preflight(리셋)다.
+      (2) 시점 :root 블록은 387 B 로 전체의 4% 였고 변수는 4개뿐이었다
+      (--font-sans · --font-mono · --default-font-family · --default-mono-font-family).
+
+  (3) -> (4) -2,014 B (-18%). 아래 3~4번 참조.
+
+  ⚠️ (3) 은 이 관찰 기록 파일을 scratch 밖으로 치우고 잰 값이다.
+     파일을 둔 채로 재면 11,731 B 가 나온다 — 이유는 3번.
+     (4) 는 scratch 를 아예 제외하므로 파일 유무와 무관하게 9,221 B 로 안정적이다
+     (양쪽 다 실측해 같은 값 확인).
+
+
+2. 자동 content 감지 — 쓴 것만 나온다
+--------------------------------------
+
+  tailwind.config.js 도 없고 content 경로를 적은 곳도 없다.
+  그런데도 Avatar 와 제목이 쓴 것은 전부 있고, 안 쓴 것은 전부 없다.
+
+  있음 (각 1회)
+    .flex  .items-center  .gap-2\.5  .p-3  .size-8
+    .rounded-full  .object-cover  .text-sm  .font-semibold  .font-bold
+
+  gap-2\.5 는 점이 이스케이프된다: gap-2\.5{gap:calc(var(--spacing) * 2.5)}
+  grep 으로 셀 때 이걸 놓치면 "없다" 는 잘못된 결론이 나온다.
+
+
+3. ⚠️ 자동 감지는 모듈 그래프가 아니라 문자열 스캔이다
+-------------------------------------------------------
+
+  Tailwind 는 "번들에 들어가는가" 를 보지 않는다. 파일을 텍스트로 훑는다.
+  그래서 유틸리티 이름과 겹치는 단어가 어디에 있든 CSS 가 딸려 나온다.
+
+  (4) 를 적용하기 전, 아무 컴포넌트도 안 쓰는데 들어와 있던 5종:
+
+    .container   <- src/components/b2-snapshots.test.tsx
+                    const { container } = render(...)        (변수 이름)
+    .resize      <- src/components/b4-answer.test.tsx
+                    new Event('resize')                      (이벤트 이름 문자열)
+    .ring        <- scratch/a3-story-answer.ts
+                    ring: `@${story.username}`               (객체 속성 이름)
+    .lowercase   <- scratch/b1-expected-errors.tsx
+                    export const lowercase = <postCard />
+    .uppercase   <- src/types/enum-alternative.ts
+                    Record<Uppercase<PostStatus>, PostStatus>
+                    (TypeScript 유틸리티 타입 이름 — 대소문자 무시하고 걸린다)
+
+  이 파일들은 main.tsx 에서 import 되지 않아 JS 번들에 안 들어간다.
+  그런데도 CSS 에는 영향을 준다.
+
+  ⚠️ 이 문서 자체가 증거다.
+     처음 이 파일을 쓸 때 안 쓰는 유틸리티 7종의 이름을 나열하며
+     "전부 0" 이라고 적었다. 그랬더니 다음 빌드에서 그 7종이 전부 생겼다.
+     "없다"고 적은 문장이 그것들을 있게 만들었다. .txt 파일도 훑는다.
+
+     인과 확인(제거로 검증):
+       파일 있음 -> 7종 전부 각 1회, CSS 11,731 B
+       파일 치움 -> 7종 전부 0,      CSS 11,235 B  (차이 496 B)
+
+
+4. 해결 — @source not
+----------------------
+
+  globals.css:
+    @import "tailwindcss";
+    @source not "../../scratch";
+    @source not "../**/*.test.tsx";
+
+  경로는 CSS 파일 기준 상대경로다.
+  적용 후: 가짜 양성 5종 전부 0, 이 문서가 흘린 7종도 전부 0,
+           Avatar 와 제목이 진짜 쓰는 10종은 그대로 각 1회.
+           CSS 11,235 -> 9,221 B.
+
+  배포되지 않는 파일(테스트·scratch)을 빼는 것이므로 화면에는 영향이 없다.
+
+
+5. Preflight 가 기존 손 CSS 화면에 실제로 한 일 (브라우저 실측)
+----------------------------------------------------------------
+
+  CSS 가 하나도 없는 iframe 의 UA 기본값과 대조했다.
+
+  h1.feed-title   UA 기본 font-weight 700  ->  설치 후 400
+      .feed-title 은 font-size 와 margin 만 정하고 굵기를 안 정했다.
+      그래서 Preflight 의 h1 굵기 리셋이 그대로 드러나 제목이 가늘어졌다.
+      유틸리티 font-bold 한 개로 700 복구(브라우저에서 재확인).
+      => E-1 이 만든 유일한 회귀이고, 학생이 첫 유틸리티를 쓰는 자리다.
+
+  button.post-more  font-family  Arial -> system-ui (body 값 상속)
+                    background   rgb(239,239,239) -> transparent
+                    (손 CSS 가 background:none 을 이미 줬으므로 화면 변화 없음)
+
+  img               display  inline -> block, max-width none -> 100%
+
+  나머지(카드·폼·버튼 색·간격)는 손 CSS 가 값을 직접 정해둬서 안 바뀌었다.
+
+  ※ 피드의 "좋아요 1240개" 가 아래 캡션보다 12px 더 들어가 보이는 것은
+    Preflight 와 무관하다. .post-likes 가 padding 12px 인 .like-area 안에
+    중첩된 B-3 때부터의 구조다. E-1 회귀가 아니므로 건드리지 않았다.
+
+
+6. 유틸리티가 손 CSS 와 같은 값을 내는지 (브라우저 computed style)
+-------------------------------------------------------------------
+
+  Avatar 옛 손 CSS            ->  새 유틸리티          computed 결과
+    display:flex                  flex                  flex          동일
+    align-items:center            items-center          center        동일
+    gap:10px                      gap-2.5               10px          동일
+    padding:12px                  p-3                   12px          동일
+    width/height:32px             size-8                32px/32px     동일
+    border-radius:50%             rounded-full          1.67772e+07px 시각적 동일(정사각형)
+    object-fit:cover              object-cover          cover         동일
+    font-size:14px                text-sm               14px          동일
+    font-weight:600               font-semibold         600           동일
+
+  ⚠️ 딱 하나 다르다: text-sm 은 line-height 도 20px 로 함께 정한다.
+     손 CSS 는 line-height 를 안 정했으므로 normal 이었다.
+     화면에서 눈에 띄지는 않지만 "완전히 같다" 고 쓰면 거짓이다.
+
+
+7. 설치 경로
+-------------
+
+  이 프로젝트는 Vite 경로를 쓴다.
+    vite.config.ts 에 @tailwindcss/vite 플러그인 한 줄
+    globals.css 에 @import "tailwindcss" 한 줄
+    postcss.config.* 없음 · autoprefixer 의존성 없음
+
+  peer: @tailwindcss/vite@4.3.3 -> vite ^5.2.0 || ^6 || ^7 || ^8
+        현재 vite 8.1.5 이므로 호환.
+
+  npm audit 의 high 5건은 eslint -> @eslint/config-array -> minimatch ->
+  brace-expansion 계열로 Tailwind 설치 전부터 있던 것이다.
+
+
+8. E-2 로 넘길 관찰 (E-1 은 주장하지 않음)
+-------------------------------------------
+
+  (4) 시점 :root,:host 블록의 변수는 9개다.
+    --font-sans  --font-mono  --spacing  --text-sm  --text-sm--line-height
+    --font-weight-semibold  --font-weight-bold  --default-font-family
+    --default-mono-font-family
+  (기본 팔레트가 통째로 쏟아지지 않는다. 쓴 유틸리티가 끌어온 것만 나온다.)
+
+  @layer 구성: properties, theme, base, components, utilities

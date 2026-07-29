@@ -7,9 +7,13 @@ interface AvatarProps {
 
 export function Avatar({ username, profileImageUrl }: AvatarProps) {
   return (
-    <div className="avatar">
-      <img className="avatar-image" src={profileImageUrl} alt={`${username} 프로필 사진`} />
-      <span className="avatar-name">{username}</span>
+    <div className="flex items-center gap-2.5 p-3">
+      <img
+        className="size-8 rounded-full object-cover"
+        src={profileImageUrl}
+        alt={`${username} 프로필 사진`}
+      />
+      <span className="text-sm font-semibold">{username}</span>
     </div>
   );
 }

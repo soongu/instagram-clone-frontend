@@ -1,4 +1,9 @@
 /* apps/web-spa/src/styles/globals.css */
+@import "tailwindcss";
+
+/* 배포되지 않는 파일까지 훑어서 안 쓰는 유틸리티가 딸려 나오는 것을 막는다 */
+@source not "../../scratch";
+@source not "../**/*.test.tsx";
 
 body {
   margin: 0;
@@ -46,25 +51,6 @@ body {
   line-height: 1;
   padding: 12px;
   cursor: pointer;
-}
-
-.avatar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-}
-
-.avatar-image {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.avatar-name {
-  font-weight: 600;
-  font-size: 14px;
 }
 
 .post-image {
