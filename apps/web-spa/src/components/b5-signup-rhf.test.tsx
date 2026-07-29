@@ -5,6 +5,7 @@ import { render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SignUpForm } from './SignUpForm';
 import type { SignUpValues } from './SignUpForm';
+import { SignUpForm as SignUpFormStep4 } from '../../scratch/b5-step4-snapshot';
 
 // 교안 Step 4 — RHF 로 갈아엎은 회원가입 폼.
 describe('B5 Step 4 — register 가 펼치는 것', () => {
@@ -65,5 +66,24 @@ describe('B5 Step 4 — register 가 펼치는 것', () => {
     // 처음 붙을 때는 손으로 만든 판(1)보다 한 번 더 그린다. 대신 타이핑에는 꿈쩍도 않는다.
     expect(mounted).toBe(2);
     expect(typed).toBe(2);
+  });
+
+  // Step 4 교안 본문이 인용하는 그 코드가 실제로 도는지
+  it('규칙을 달기 전 판도 값을 모아 넘긴다', async () => {
+    const handleSubmit = vi.fn();
+    render(<SignUpFormStep4 onSubmit={handleSubmit} />);
+
+    await userEvent.type(screen.getByLabelText('사용자 이름'), 'jaehoon');
+    await userEvent.type(screen.getByLabelText('이메일'), 'jaehoon@example.com');
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'password1');
+    await userEvent.type(screen.getByLabelText('비밀번호 확인'), 'password1');
+    await userEvent.click(screen.getByRole('button', { name: '가입하기' }));
+
+    expect(handleSubmit).toHaveBeenCalledWith({
+      username: 'jaehoon',
+      email: 'jaehoon@example.com',
+      password: 'password1',
+      passwordConfirm: 'password1',
+    });
   });
 });
