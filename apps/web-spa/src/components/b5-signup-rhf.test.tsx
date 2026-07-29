@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SignUpForm } from './SignUpForm';
-import type { SignUpValues } from './SignUpForm';
+import type { SignUpValues } from '../lib/schemas';
 import { SignUpForm as SignUpFormStep4 } from '../../scratch/b5-step4-snapshot';
 
 // 교안 Step 4 — RHF 로 갈아엎은 회원가입 폼.
