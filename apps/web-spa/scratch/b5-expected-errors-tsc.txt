@@ -1,0 +1,8 @@
+scratch/b5-expected-errors.tsx(11,30): error TS2345: Argument of type '"usernam"' is not assignable to parameter of type '"username" | "email" | "password" | "passwordConfirm"'.
+scratch/b5-expected-errors.tsx(25,14): error TS18048: 'errors.username' is possibly 'undefined'.
+scratch/b5-expected-errors.tsx(30,11): error TS2741: Property 'label' is missing in type '{ id: string; }' but required in type '{ id: string; label: string; error?: string | undefined; }'.
+scratch/b5-expected-errors.tsx(38,43): error TS2322: Type 'FieldError | undefined' is not assignable to type 'string | undefined'.
+  Type 'FieldError' is not assignable to type 'string'.
+scratch/b5-expected-errors.tsx(44,39): error TS2345: Argument of type '(event: React.FormEvent) => void' is not assignable to parameter of type 'SubmitHandler<SignUpValues>'.
+  Types of parameters 'event' and 'data' are incompatible.
+    Type 'SignUpValues' is missing the following properties from type 'FormEvent<Element>': nativeEvent, currentTarget, target, bubbles, and 11 more.
