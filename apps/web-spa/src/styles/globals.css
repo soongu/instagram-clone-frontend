@@ -251,3 +251,37 @@ body {
   border-radius: 20px;
   font-size: 14px;
 }
+
+.input-demo-pair {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.input-demo {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.input-demo h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.input-demo p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #737373;
+}
+
+.input-demo-field {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
