@@ -67,8 +67,9 @@ describe('B6 Step 5 — .refine 이 만든 메시지는 지목한 칸에 붙는�
     await fillAndSubmit({ ...VALID, passwordConfirm: 'sparta9999' });
 
     const message = await screen.findByText('비밀번호가 일치하지 않아요');
-    // 확인 칸과 같은 묶음 안에 있다
-    const confirmField = screen.getByLabelText('비밀번호 확인').closest('.signup-field');
+    // 확인 칸과 같은 묶음 안에 있다 (E-2 에서 손 클래스가 사라져 구조로 찾는다 —
+    // TextField 는 라벨·입력·오류를 한 div 로 묶는다)
+    const confirmField = screen.getByLabelText('비밀번호 확인').closest('div');
     expect(confirmField).toContainElement(message);
   });
 });

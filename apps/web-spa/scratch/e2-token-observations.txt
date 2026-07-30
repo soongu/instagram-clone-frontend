@@ -250,3 +250,70 @@ canvas 에 칠하고 getImageData 로 읽은 값이 학생이 실제로 보는 �
     .feed-title·.section-title 의 margin 위쪽
     버튼들의 border: none · background: none · color · padding: 0
     .post-image 의 display: block
+
+
+11. 댓글·폼·토스트를 옮긴 뒤 (Step 6 종료 시점)
+------------------------------------------------
+
+  CSS 산출  9,713 -> 10,212 B
+  globals.css  264 -> 167 줄 · 손 규칙 34 -> 22 개
+  :root 변수 22 -> 29 개
+  선언한 색 9개가 이제 전부 :root 에 나온다
+  (brand·line-soft·subtle 이 이 Step 에서 처음 쓰였다)
+
+  남은 22개 = 의사클래스 2개 + 교습용 데모 20개
+    .comment-submit:disabled   <- E-3 (disabled: 변형)
+    .comment-remove:hover      <- E-3 (hover: 변형)
+    .key-demo* .effect-demo* .input-demo* .profile-picker* .response-*  <- 과제
+
+
+12. ⚠️ 의사클래스 규칙 두 개는 손 이름을 붙잡고 있다 — E-3 복선의 근거
+-----------------------------------------------------------------------
+
+  .comment-submit:disabled 와 .comment-remove:hover 는 남겨둬야 해서
+  그 두 요소는 손 이름을 className 에 그대로 달고 있다.
+
+    class="comment-submit cursor-pointer text-sm font-semibold text-brand"
+    class="comment-remove cursor-pointer px-1 text-sm leading-none text-muted"
+
+  이름을 떼면 규칙이 붙을 자리가 없어진다. 그래서 이 두 곳만 유틸리티로
+  끝까지 못 옮긴다 — hover:/disabled: 변형이 있어야 떨어진다(E-3).
+
+  ⚠️ 남겨둔 규칙이 유틸리티를 이긴다 (실측):
+    제출 버튼 disabled 상태 -> color 178,223,252 (#b2dffc) · cursor default
+    즉 text-brand 유틸리티를 :disabled 규칙이 덮는다.
+    이유는 특정도가 아니라 cascade layer 다 — 유틸리티는 @layer utilities 안에
+    있고 우리 손 CSS 는 layer 밖이다. layer 밖 스타일이 layer 안보다 강하다.
+    (특정도로도 .comment-remove:hover(0,2,0) > .text-muted(0,1,0) 이긴 하다)
+
+
+13. 토스트 — 유틸리티 표기가 달라도 화면은 같다
+------------------------------------------------
+
+    항목        손 CSS                    유틸리티                결과
+    배경        rgba(0,0,0,0.82)          bg-black/82            흰 배경 위 46,46,46 동일
+    가운데      transform:translateX(-50%) -translate-x-1/2      박스 위치 1249.9 / 폭 60.2 동일
+    모서리      border-radius:20px        rounded-[20px]         20px
+    padding     10px 18px                 py-2.5 px-4.5          10px / 18px
+    글자        14px · #ffffff            text-sm text-white     14px · 255,255,255
+
+  ⚠️ 계산값 문자열은 서로 다르게 나온다. 그래도 화면은 같다.
+     배경  bg-black/82 -> oklab(0 0 0 / 0.82) / 손 CSS -> rgba(0, 0, 0, 0.82)
+           흰 배경 위에 겹쳐 칠한 픽셀은 둘 다 46,46,46 이다.
+     가운데 v4 는 transform 이 아니라 modern translate 속성을 쓴다.
+           유틸리티: transform none · translate -50%
+           손 CSS:   transform matrix(...) · translate none
+           getBoundingClientRect 로 재면 위치와 폭이 같다.
+     => 색·정렬은 계산값 문자열로 견주면 안 된다. 픽셀과 박스로 재야 한다.
+
+  ⚠️ 20px 모서리와 470px 폭은 각각 한 번만 쓰여서 이름을 주지 않고
+     대괄호로 넘겼다(5번의 기준). 13px 은 6회라 이름을 줬다.
+
+
+14. 댓글 구역 실측 (옮긴 뒤)
+-----------------------------
+
+  제출 버튼 활성   color oklch(0.6546 0.177 248.2) = #0095f6 · cursor pointer
+  제출 버튼 잠김   color 178,223,252 · cursor default        (남겨둔 규칙)
+  삭제 버튼        color 142,142,142 · 14px · line-height 14px · padding-left 4px
+  댓글 목록        padding-left 12px · padding-bottom 12px · 14px

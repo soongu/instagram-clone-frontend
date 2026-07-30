@@ -3,6 +3,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { toB3Classes, b3BridgeHits } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect, vi } from 'vitest';
 import { CommentForm } from '../components/CommentForm';
 import { CommentFormStep7 } from '../../scratch/b3-lecture-snapshots';
@@ -18,7 +19,9 @@ describe('CommentForm — 훅으로 뽑아내도 그리는 결과가 같다', ()
     const before = renderToStaticMarkup(<CommentFormStep7 onSubmit={() => {}} />);
     const after = renderToStaticMarkup(<CommentForm onSubmit={() => {}} />);
 
-    expect(after).toBe(before);
+    // E-2 가 폼을 토큰 유틸리티로 옮겼으므로 견주기 전에 옛 이름으로 되돌린다
+    expect(b3BridgeHits(after)).toContain('comment-form');
+    expect(toB3Classes(after)).toBe(toB3Classes(before));
   });
 });
 

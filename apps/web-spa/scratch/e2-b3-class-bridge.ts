@@ -37,6 +37,35 @@ const BRIDGE: Array<[string, string]> = [
   ['class="px-3 pt-3 pb-1 text-sm font-semibold"', 'class="post-likes"'],
   ['class="mb-3 text-sm font-semibold text-muted"', 'class="section-title"'],
   ['class="cursor-pointer px-3 py-1 text-note text-muted"', 'class="hide-button"'],
+  // ── 댓글·폼·토스트 (Step 6) ────────────────────────────────
+  ['class="flex gap-2 border-t border-line-soft p-3"', 'class="comment-form"'],
+  ['class="flex-1 text-sm"', 'class="comment-input"'],
+  // :disabled·:hover 규칙이 이 이름을 붙잡고 있어 손 이름이 그대로 남아 있다
+  [
+    'class="comment-submit cursor-pointer text-sm font-semibold text-brand"',
+    'class="comment-submit"',
+  ],
+  ['class="px-3 pb-3 text-sm"', 'class="comment-list"'],
+  [
+    'class="comment-remove cursor-pointer px-1 text-sm leading-none text-muted"',
+    'class="comment-remove"',
+  ],
+  [
+    'class="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-[20px] bg-black/82 px-4.5 py-2.5 text-sm text-white"',
+    'class="toast"',
+  ],
+  [
+    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"',
+    'class="signup-form"',
+  ],
+  ['class="flex flex-col gap-1"', 'class="signup-field"'],
+  ['class="text-xs text-subtle"', 'class="signup-label"'],
+  ['class="rounded-md border border-line p-2 text-sm"', 'class="signup-input"'],
+  ['class="text-xs text-danger"', 'class="signup-error"'],
+  [
+    'class="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white"',
+    'class="signup-submit"',
+  ],
   // feed-liked-count 는 다른 곳과 겹치지 않는 조합이라 마지막에 둔다
   ['class="text-sm text-muted"', 'class="feed-liked-count"'],
   // E-2 에서 통째로 사라진 두 이름은 되살려 넣는다

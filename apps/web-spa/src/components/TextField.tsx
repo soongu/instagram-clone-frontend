@@ -11,12 +11,12 @@ type TextFieldProps = ComponentProps<'input'> & {
 
 export function TextField({ id, label, error, ...inputProps }: TextFieldProps) {
   return (
-    <div className="signup-field">
-      <label className="signup-label" htmlFor={id}>
+    <div className="flex flex-col gap-1">
+      <label className="text-xs text-subtle" htmlFor={id}>
         {label}
       </label>
-      <input className="signup-input" id={id} {...inputProps} />
-      {error && <p className="signup-error">{error}</p>}
+      <input className="rounded-md border border-line p-2 text-sm" id={id} {...inputProps} />
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }

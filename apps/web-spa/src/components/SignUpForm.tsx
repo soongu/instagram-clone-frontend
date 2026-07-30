@@ -37,7 +37,10 @@ export function SignUpForm({ onSubmit }: SignUpFormProps) {
   }
 
   return (
-    <form className="signup-form" onSubmit={handleSubmit(handleValid)}>
+    <form
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"
+      onSubmit={handleSubmit(handleValid)}
+    >
       <ProfileImagePicker />
 
       <TextField
@@ -70,7 +73,11 @@ export function SignUpForm({ onSubmit }: SignUpFormProps) {
         {...register('passwordConfirm')}
       />
 
-      <Button className="signup-submit" type="submit" disabled={isSubmitting}>
+      <Button
+        className="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white"
+        type="submit"
+        disabled={isSubmitting}
+      >
         {isSubmitting ? '보내는 중...' : '가입하기'}
       </Button>
     </form>

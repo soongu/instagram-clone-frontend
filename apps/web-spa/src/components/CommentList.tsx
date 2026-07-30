@@ -18,13 +18,13 @@ export function CommentList({ comments, onRemove }: CommentListProps) {
   return (
     <List
       items={comments}
-      className="comment-list"
+      className="px-3 pb-3 text-sm"
       renderItem={(comment) => (
         <>
           <strong>me</strong> {comment.content}
           {onRemove && (
             <IconButton
-              className="comment-remove"
+              className="comment-remove cursor-pointer px-1 text-sm leading-none text-muted"
               aria-label="댓글 삭제"
               onClick={() => onRemove(comment.id)}
             >

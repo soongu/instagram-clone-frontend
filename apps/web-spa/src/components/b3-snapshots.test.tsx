@@ -160,7 +160,8 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
     const before = renderToStaticMarkup(<CommentFormBefore onSubmit={() => {}} />);
     const after = renderToStaticMarkup(<CommentForm onSubmit={() => {}} />);
 
-    expect(after).toBe(before);
+    expect(b3BridgeHits(after)).toContain('comment-form');
+    expect(toB3Classes(after)).toBe(toB3Classes(before));
   });
 
   it('갈아끼우기 전 폼도 같은 방식으로 제출된다', async () => {
