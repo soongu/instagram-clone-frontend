@@ -1,0 +1,154 @@
+E-2 @theme 토큰 관찰 (Tailwind v4.3.3 · Vite 8.1.5)
+====================================================
+
+단위 테스트로 잡을 수 없는 사실을 기록한다.
+빌드 산출 CSS 계측 + 브라우저 computed style / canvas 픽셀 판독.
+
+재현 (리포지토리 루트에서):
+  npm run build --workspace apps/web-spa
+  python3 -c "import glob,os; print(len(open(sorted(glob.glob('apps/web-spa/dist/assets/*.css'), key=os.path.getmtime)[-1]).read()))"
+
+색 비교는 문자열이 아니라 픽셀로 재야 한다. getComputedStyle 도 canvas fillStyle 도
+oklch() 를 그대로 직렬화해서 돌려주므로 문자열 비교는 아무것도 증명하지 못한다.
+canvas 에 칠하고 getImageData 로 읽은 값이 학생이 실제로 보는 색이다.
+
+
+1. 선언만 하면 아무 일도 안 일어난다
+--------------------------------------
+
+  @theme 에 색 토큰 9개를 선언하고 아무 컴포넌트에서도 쓰지 않은 상태:
+
+    CSS 산출 9,221 B  <- 선언 전과 byte 완전 동일
+    :root 에 우리 토큰: 없음
+    생성된 유틸리티:    없음
+
+  E-1 의 "안 쓴 유틸리티는 애초에 안 생긴다" 가 토큰에도 그대로 적용된다.
+  토큰 선언은 "이런 이름을 쓸 수 있게 해달라" 는 등록이고, CSS 는 쓸 때 나온다.
+
+  9개를 전부 쓰면:
+    CSS 산출 9,812 B (+591)
+    :root 에 우리 토큰 9개 전부 출력
+    유틸리티 9개 생성 (.bg-brand .text-danger .border-line .border-line-soft
+                       .text-muted .text-subtle .text-ink .bg-canvas .bg-surface)
+
+  ※ #ffffff 는 산출물에서 #fff 로 최소화된다 (Lightning CSS).
+
+
+2. @theme 과 :root 의 차이 — 두 가지다
+----------------------------------------
+
+  대조군: :root { --color-probe-root: #ff00ff; } 를 넣고 bg-probe-root 를 써봤다.
+
+    --color-probe-root  변수로는 나온다 (#f0f)
+    .bg-probe-root      X 안 생긴다
+
+  반면 @theme 의 --color-brand 는 변수도 나오고 .bg-brand 도 생긴다.
+
+  차이 (1) 유틸리티를 만드는가 — @theme 은 만들고, :root 는 안 만든다.
+  차이 (2) 언제 출력되는가   — @theme 은 쓴 것만, :root 는 아무도 안 써도 무조건.
+                              (:root 한 줄 추가로 9,812 -> 9,842 B, +30 B)
+
+  => :root 는 "CSS 변수를 만드는 곳", @theme 은 "Tailwind 에게 값을 알려주는 곳".
+
+
+3. Tailwind 기본 팔레트는 실제로 OKLCH 다
+------------------------------------------
+
+  --color-neutral-50   oklch(98.5% 0 none)
+  --color-neutral-300  oklch(87% 0 none)
+  --color-neutral-500  oklch(55.6% 0 none)
+  --color-neutral-800  oklch(26.9% 0 none)
+
+  단 --color-white 와 --color-black 은 #fff / #000 로 hex 다.
+
+  ⚠️ 위 값들은 "아무도 안 쓰면 출력되지 않는다"(1번). 그래서 CSS 에서 찾으려면
+     먼저 bg-neutral-500 같은 걸 어디서든 써야 한다. 이걸 모르고 grep 하면
+     "팔레트가 없다" 는 잘못된 결론이 나온다.
+
+
+4. hex -> OKLCH 변환은 픽셀까지 같다. 단 정확히 변환했을 때만.
+---------------------------------------------------------------
+
+  우리 9색을 CSS Color 4 공식으로 변환하고 canvas 픽셀로 대조:
+
+    이름          원래 값    OKLCH                        픽셀
+    brand         #0095f6    oklch(65.46% 0.177 248.2)    0,149,246    동일
+    danger        #ed4956    oklch(64.1% 0.2 20.5)        237,73,86    동일
+    line          #dbdbdb    oklch(89.1% 0 none)          219,219,219  동일
+    line-soft     #efefef    oklch(95.2% 0 none)          239,239,239  동일
+    muted         #8e8e8e    oklch(64.7% 0 none)          142,142,142  동일
+    subtle        #737373    oklch(55.6% 0 none)          115,115,115  동일
+    ink           #262626    oklch(26.9% 0 none)          38,38,38     동일
+    canvas        #fafafa    oklch(98.5% 0 none)          250,250,250  동일
+    surface       #ffffff    oklch(100% 0 none)           255,255,255  동일
+
+  9색 전부 delta 0. 위 정밀도(L 소수 1~2자리·C 3자리·H 1자리)가 픽셀이 정확히
+  일치하는 최소 표기다. 더 줄이면 틀어진다.
+
+  ⚠️⚠️ 처음에 눈대중으로 적은 OKLCH 값은 눈에 보이게 틀어졌다.
+     brand  0,149,246 -> 0,132,236   (파랑 10, 초록 17 차이)
+     danger 237,73,86 -> 233,61,82
+     line   219,219,219 -> 216,216,216
+     "대충 이 정도" 로 적으면 안 된다. 반드시 변환해서 넣고 픽셀로 확인할 것.
+
+  ⚠️ 우리 회색 3개는 OKLCH 로 적으면 Tailwind 기본 neutral 과 문자열까지 같다.
+     subtle  oklch(55.6% 0 none) == neutral-500
+     ink     oklch(26.9% 0 none) == neutral-800
+     canvas  oklch(98.5% 0 none) == neutral-50
+     line 은 다르다 (89.1% vs neutral-300 의 87%).
+     => "Tailwind 가 우리 색을 모른다" 는 brand·danger·line 에 대해서는 참이지만
+        회색 세 개에 대해서는 거짓이다. 이름을 주는 이유는 값이 없어서가 아니라
+        용도를 부르기 위해서다(그리고 다크모드에서 값만 갈아끼우기 위해서).
+
+
+5. 눈금 — 우리 값은 대부분 이미 안에 있었다
+--------------------------------------------
+
+  간격: --spacing 은 연속 배수라 0.25rem(4px) 단위면 뭐든 된다.
+        p-2.5 -> calc(var(--spacing) * 2.5) = 10px
+        p-4.5 -> calc(var(--spacing) * 4.5) = 18px
+        우리 간격 4/8/10/12/16/18/24/32 전부 눈금 안. 토큰 필요 없음.
+
+  글꼴: --text-xs .75rem(12) · --text-sm .875rem(14) · --text-lg 1.125rem(18)
+        --text-2xl 1.5rem(24)
+        우리 값 12·14·18·24 전부 눈금 안. 13px 만 벗어난다 (6곳에 반복).
+
+  모서리: --radius-md .375rem(6) · --radius-lg .5rem(8)
+        우리 값 6·8 눈금 안. 20px 만 벗어난다 (1곳).
+
+  => 이름을 줄 기준은 "눈금에서 벗어났는가" + "몇 번 반복되는가" 두 개다.
+     13px 은 6회 -> --text-note 로 이름을 줬다.
+     20px radius 와 470px max-width 는 1회씩 -> 대괄호로 그 자리에서 넘긴다.
+
+  ⚠️ E-1 답안이 18px 을 "눈금에 없는 값이라 대괄호" 라고 적은 것은 틀렸다.
+     --text-lg 가 1.125rem = 18px 이다. text-lg leading-none 을 재보면
+     18px / 18px 로 손 CSS(font-size 18px; line-height 1)와 정확히 같다.
+     (text-[18px] leading-none 도 같은 값이라 화면 결과는 맞았고, 이유만 틀렸다.)
+     => E1-answers.md 를 정정했다.
+
+
+6. ⚠️ text-* 는 줄 높이를 함께 정한다 — 손 CSS 는 안 정했다
+-------------------------------------------------------------
+
+  브라우저 computed (root font-size 16px):
+
+    값        손 CSS (line-height 미지정)   유틸리티
+    12px      12px / 18px                  text-xs   12px / 16px   다름
+    13px      13px / 19.5px                text-note 13px / 19.5px 같음
+    14px      14px / 21px                  text-sm   14px / 20px   다름
+    18px + 1  18px / 18px                  text-lg leading-none
+                                                     18px / 18px   같음
+    24px      24px / 36px                  text-2xl  24px / 32px   다름
+
+  손 CSS 는 line-height 를 한 번도 정하지 않아 브라우저 기본 normal(약 1.5배)에
+  기대고 있었다. text-xs/sm/2xl 로 옮기면 Tailwind 가 정한 줄 높이가 따라온다.
+  E-1 의 Preflight 교훈과 같은 모양이다 — 기본값에 기대던 곳만 드러난다.
+
+  ⚠️ 임의 값(text-[13px])과 우리가 만든 --text-note 는 줄 높이를 안 정한다.
+     named 눈금(text-sm 등)에만 --text-*--line-height 짝이 있기 때문이다.
+     --text-note--line-height 를 만들지 않았으므로 text-note 는 font-size 만 정한다.
+     => 그래서 13px 자리는 옮겨도 줄 높이가 안 바뀐다.
+
+  이 모듈은 "Tailwind 가 정한 줄 높이를 따른다" 로 결정했다.
+  그래서 12/14/24px 자리의 줄 높이는 의도적으로 바뀐다. 픽셀이 그대로라고
+  쓰면 거짓이다.

@@ -5,6 +5,22 @@
 @source not "../../scratch";
 @source not "../**/*.test.ts*";
 
+@theme {
+  /* 우리 색 — 반복 횟수를 세어 이름을 준 값들 (괄호 안은 원래 적혀 있던 값) */
+  --color-brand: oklch(65.46% 0.177 248.2);
+  --color-danger: oklch(64.1% 0.2 20.5);
+  --color-line: oklch(89.1% 0 none);
+  --color-line-soft: oklch(95.2% 0 none);
+  --color-muted: oklch(64.7% 0 none);
+  --color-subtle: oklch(55.6% 0 none);
+  --color-ink: oklch(26.9% 0 none);
+  --color-canvas: oklch(98.5% 0 none);
+  --color-surface: oklch(100% 0 none);
+
+  /* 눈금에서 벗어난 값 — 13px 은 여섯 곳에 반복돼 이름을 얻었다 */
+  --text-note: 0.8125rem;
+}
+
 body {
   margin: 0;
   background: #fafafa;
