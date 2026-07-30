@@ -11,9 +11,9 @@ interface PostHeaderProps {
 // 묶을 것이 둘 이상이라 파일을 따로 둘 이유가 생긴다.
 export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
   return (
-    <div className="post-header">
+    <div className="flex items-center justify-between">
       <Avatar username={username} profileImageUrl={profileImageUrl} />
-      <IconButton className="post-more" aria-label="게시물 메뉴">
+      <IconButton className="cursor-pointer p-3 text-lg leading-none" aria-label="게시물 메뉴">
         ⋯
       </IconButton>
     </div>

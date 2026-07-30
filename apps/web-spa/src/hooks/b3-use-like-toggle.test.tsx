@@ -3,6 +3,7 @@
 import { render, screen, renderHook, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { toB3Classes, b3BridgeHits } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect } from 'vitest';
 import { App } from '../App';
 import { AppBeforeHook } from '../../scratch/b3-lecture-snapshots';
@@ -62,24 +63,24 @@ function withoutSignUpSection(html: string) {
   return html.replace(/<section class="section" aria-label="회원가입">.*?<\/section>/, '');
 }
 
-// E-1 에서 제목에 font-bold 유틸리티가 붙었다(Preflight 가 h1 굵기를 지운 것을 되돌린 것).
-// 이것도 B-3 이후에 덧붙은 변화이므로 견주기 전에 걷어낸다.
-function withoutE1Utilities(html: string) {
-  return html.replace('class="feed-title font-bold"', 'class="feed-title"');
-}
+// E-1 은 제목에 font-bold 를, E-2 는 나머지를 토큰 유틸리티로 옮겼다.
+// 둘 다 B-3 이후에 덧붙은 변화이므로 견주기 전에 옛 이름으로 되돌린다.
 
 describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', () => {
   it('첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다', () => {
     const before = withoutSignUpSection(renderToStaticMarkup(<AppBeforeHook />));
-    const after = withoutE1Utilities(withoutSignUpSection(renderToStaticMarkup(<App />)));
+    const rendered = renderToStaticMarkup(<App />);
+    // 옛 이름으로 되돌린 뒤에 잘라낸다 — withoutSignUpSection 이 옛 이름을 찾기 때문이다
+    const after = withoutSignUpSection(toB3Classes(rendered));
 
     // 잘라낸 뒤에도 비교할 알맹이가 남아 있어야 한다
     expect(after).toContain('aria-label="피드"');
     expect(after).not.toContain('aria-label="회원가입"');
-    // 걷어내기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
-    expect(renderToStaticMarkup(<App />)).toContain('class="feed-title font-bold"');
+    // 되돌리기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
+    expect(b3BridgeHits(rendered)).toContain('feed');
+    expect(b3BridgeHits(rendered)).toContain('post-card');
     expect(after).not.toContain('font-bold');
-    expect(after).toBe(before);
+    expect(after).toBe(toB3Classes(before));
   });
 
   it('좋아요를 누르면 머리말 숫자가 함께 올라간다', async () => {

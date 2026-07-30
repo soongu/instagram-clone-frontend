@@ -110,7 +110,9 @@ describe('LikeButton — 버튼을 갈아끼워도 동작은 그대로다', () =
     render(<LikeButton liked likeCount={4} onToggle={() => {}} />);
 
     const button = screen.getByRole('button', { name: '♥ 좋아요 취소' });
-    expect(button).toHaveClass('like-button', 'liked');
+    // E-2 에서 좋아요 상태가 손 클래스(liked) 대신 색 토큰 유틸리티로 갈렸다
+    expect(button).toHaveClass('border-danger', 'text-danger', 'font-semibold');
+    expect(button).not.toHaveClass('border-line');
     expect(screen.getByText('좋아요 4개')).toBeInTheDocument();
   });
 
@@ -120,8 +122,9 @@ describe('LikeButton — 버튼을 갈아끼워도 동작은 그대로다', () =
     );
 
     expect(withButtonComponent).toBe(
-      '<div class="like-area"><button class="like-button" type="button">♡ 좋아요</button>' +
-        '<p class="post-likes">좋아요 3개</p></div>',
+      '<div class="px-3 pt-2">' +
+        '<button class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm border-line" type="button">♡ 좋아요</button>' +
+        '<p class="px-3 pt-3 pb-1 text-sm font-semibold">좋아요 3개</p></div>',
     );
   });
 });

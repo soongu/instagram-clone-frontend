@@ -10,7 +10,7 @@ export function ClickCounter() {
   }
 
   return (
-    <button className="like-button" onClick={handleClick}>
+    <button className="cursor-pointer rounded-md border border-line bg-surface px-3 py-1.5 text-sm" onClick={handleClick}>
       눌린 횟수: {clickCount}
     </button>
   );

@@ -32,15 +32,15 @@ export function PostBody({
   return (
     <>
       <LikeButton liked={liked} likeCount={likeCount} onToggle={onToggle} />
-      <p className="post-content">
+      <p className="px-3 py-1 text-sm">
         <strong>{username}</strong> {shownContent}
         {isLong && (
-          <Button className="caption-toggle" onClick={toggleCaption}>
+          <Button className="cursor-pointer pl-1 text-sm text-muted" onClick={toggleCaption}>
             {captionOpen ? '접기' : '더 보기'}
           </Button>
         )}
       </p>
-      <p className="post-comments">댓글 {commentCount}개 모두 보기</p>
+      <p className="px-3 pt-1 pb-3 text-sm text-muted">댓글 {commentCount}개 모두 보기</p>
     </>
   );
 }

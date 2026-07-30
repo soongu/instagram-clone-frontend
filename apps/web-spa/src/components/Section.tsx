@@ -7,8 +7,8 @@ interface SectionProps {
 
 export function Section({ title, children }: SectionProps) {
   return (
-    <section className="section" aria-label={title}>
-      <h2 className="section-title">{title}</h2>
+    <section aria-label={title}>
+      <h2 className="mb-3 text-sm font-semibold text-muted">{title}</h2>
       {children}
     </section>
   );

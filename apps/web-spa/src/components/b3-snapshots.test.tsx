@@ -14,6 +14,7 @@ import {
   LikeButtonBefore,
   CommentFormBefore,
 } from '../../scratch/b3-lecture-snapshots';
+import { toB3Classes, b3BridgeHits } from '../../scratch/e2-b3-class-bridge';
 import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
 import { Avatar } from './Avatar';
@@ -38,7 +39,9 @@ describe('Step 1 — 세 구역으로 나눠도 화면은 글자 하나 안 바�
       <PostCardStep1 {...firstPost} onToggleLike={() => {}} />,
     );
 
-    expect(step1).toBe(before);
+    // 되돌리기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
+    expect(b3BridgeHits(step1)).toContain('post-image');
+    expect(toB3Classes(step1)).toBe(toB3Classes(before));
   });
 
   it('좋아요를 누른 카드도 마찬가지다', () => {
@@ -50,7 +53,8 @@ describe('Step 1 — 세 구역으로 나눠도 화면은 글자 하나 안 바�
       <PostCardStep1 {...likedPost} onToggleLike={() => {}} />,
     );
 
-    expect(step1).toBe(before);
+    expect(b3BridgeHits(step1)).toContain('like-button liked');
+    expect(toB3Classes(step1)).toBe(toB3Classes(before));
   });
 });
 
@@ -131,7 +135,8 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
       <PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />,
     );
 
-    expect(after).toBe(
+    expect(b3BridgeHits(after)).toContain('post-header');
+    expect(toB3Classes(after)).toBe(
       before.replace('class="post-more"', 'class="post-more" type="button"'),
     );
   });
@@ -145,7 +150,10 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
     );
 
     expect(before).toBe('<div class="like-area"><button class="like-button">♡ 좋아요</button><p class="post-likes">좋아요 3개</p></div>');
-    expect(after).toBe(before.replace('class="like-button"', 'class="like-button" type="button"'));
+    expect(b3BridgeHits(after)).toContain('like-area');
+    expect(toB3Classes(after)).toBe(
+      before.replace('class="like-button"', 'class="like-button" type="button"'),
+    );
   });
 
   it('제출 버튼은 HTML 이 완전히 같다', () => {
@@ -176,8 +184,11 @@ describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () =>
       <PostCardStep4 {...firstPost} onToggleLike={() => {}} />,
     );
 
-    expect(step4).toBe(
-      step1.replace('class="post-more"', 'class="post-more" type="button"'),
+    // PostCardStep4 의 post-card 는 스냅샷이 직접 적은 옛 이름이라 되돌림 대상이 아니다.
+    // 되돌려지는 것은 임포트한 살아 있는 PostHeader 쪽이다.
+    expect(b3BridgeHits(step4)).toContain('post-header');
+    expect(toB3Classes(step4)).toBe(
+      toB3Classes(step1).replace('class="post-more"', 'class="post-more" type="button"'),
     );
   });
 
@@ -195,10 +206,13 @@ describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () =>
       <PostCard {...firstPost} onToggleLike={() => {}} />,
     );
 
-    expect(html.indexOf('avatar')).toBeLessThan(html.indexOf('post-image'));
-    expect(html.indexOf('post-image')).toBeLessThan(html.indexOf('like-area'));
-    expect(html.indexOf('like-area')).toBeLessThan(html.indexOf('comment-list'));
-    expect(html.indexOf('comment-list')).toBeLessThan(html.indexOf('comment-form'));
+    // 순서만 보는 검사다. E-2 가 클래스를 유틸리티로 옮겼으므로 옛 이름으로 되돌려 본다.
+    const named = toB3Classes(html);
+    expect(b3BridgeHits(html)).toContain('post-image');
+    expect(named.indexOf('프로필 사진')).toBeLessThan(named.indexOf('post-image'));
+    expect(named.indexOf('post-image')).toBeLessThan(named.indexOf('like-area'));
+    expect(named.indexOf('like-area')).toBeLessThan(named.indexOf('comment-list'));
+    expect(named.indexOf('comment-list')).toBeLessThan(named.indexOf('comment-form'));
   });
 });
 
@@ -211,8 +225,9 @@ describe('Step 7 — 캡션 접기가 들어와서 달라지는 것', () => {
       <PostCard {...firstPost} onToggleLike={() => {}} />,
     );
 
-    expect(current).toBe(
-      step4.replace(
+    expect(b3BridgeHits(current)).toContain('caption-toggle');
+    expect(toB3Classes(current)).toBe(
+      toB3Classes(step4).replace(
         '오늘 한강 노을이 미쳤다</p>',
         '오늘 한강 노을이...<button class="caption-toggle" type="button">더 보기</button></p>',
       ),

@@ -10,7 +10,9 @@ function DemoRow({ username }: { username: string }) {
     <li className="key-demo-row">
       <strong>{username}</strong>
       <button
-        className={liked ? 'like-button liked' : 'like-button'}
+        className={`cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm ${
+          liked ? 'border-danger font-semibold text-danger' : 'border-line'
+        }`}
         onClick={() => setLiked(!liked)}
       >
         {liked ? '♥' : '♡'}
@@ -31,7 +33,7 @@ export function IndexKeyList() {
           <DemoRow key={index} username={post.username} />
         ))}
       </ul>
-      <button className="hide-button" onClick={() => setPosts(posts.slice(1))}>
+      <button className="cursor-pointer px-3 py-1 text-note text-muted" onClick={() => setPosts(posts.slice(1))}>
         맨 위 게시물 숨기기
       </button>
     </section>
@@ -50,7 +52,7 @@ export function IdKeyList() {
           <DemoRow key={post.id} username={post.username} />
         ))}
       </ul>
-      <button className="hide-button" onClick={() => setPosts(posts.slice(1))}>
+      <button className="cursor-pointer px-3 py-1 text-note text-muted" onClick={() => setPosts(posts.slice(1))}>
         맨 위 게시물 숨기기
       </button>
     </section>

@@ -6,10 +6,10 @@ export function StaticPostCard() {
   const likeCount = 1240;
 
   return (
-    <article className="post-card">
-      <img className="post-image" src="https://picsum.photos/seed/post1/640/640" alt="게시물" />
-      <p className="post-likes">좋아요 {likeCount}개</p>
-      <p className="post-content">
+    <article className="mb-6 overflow-hidden rounded-lg border border-line bg-surface">
+      <img className="w-full cursor-pointer" src="https://picsum.photos/seed/post1/640/640" alt="게시물" />
+      <p className="px-3 pt-3 pb-1 text-sm font-semibold">좋아요 {likeCount}개</p>
+      <p className="px-3 py-1 text-sm">
         <strong>{username}</strong> 오늘 한강 노을이 미쳤다
       </p>
     </article>

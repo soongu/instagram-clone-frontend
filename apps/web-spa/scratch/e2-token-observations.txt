@@ -152,3 +152,101 @@ canvas 에 칠하고 getImageData 로 읽은 값이 학생이 실제로 보는 �
   이 모듈은 "Tailwind 가 정한 줄 높이를 따른다" 로 결정했다.
   그래서 12/14/24px 자리의 줄 높이는 의도적으로 바뀐다. 픽셀이 그대로라고
   쓰면 거짓이다.
+
+
+7. 피드를 옮긴 뒤 계측 (Step 5 종료 시점)
+------------------------------------------
+
+  CSS 산출  9,221 -> 9,713 B (+492)
+  globals.css  373 -> 264 줄 · 손 클래스 규칙 47 -> 34 개 (19 블록 삭제)
+
+  ⚠️ 손 규칙 19개를 지웠는데 CSS 가 오히려 492 B 늘었다.
+     유틸리티 하나하나가 클래스 이름 + 선언을 따로 갖기 때문이다.
+     E-1 의 "안 쓴 유틸리티는 안 생긴다" 를 "Tailwind 를 쓰면 CSS 가 작아진다" 로
+     읽으면 안 된다. 줄어드는 것은 우리가 관리하는 CSS 파일이고,
+     산출 CSS 는 늘 수도 있다.
+
+  ⚠️ :root 변수 9 -> 22 개 (+13). 그런데 우리 토큰은 7개뿐이다.
+     우리 것    --color-danger/line/muted/ink/canvas/surface · --text-note   (7)
+     Tailwind 것 --text-lg(+--line-height) · --text-2xl(+--line-height)
+                --radius-md · --radius-lg                                   (6)
+     text-lg·text-2xl·rounded-md·rounded-lg 를 쓰면서 Tailwind 자기 눈금 값이
+     함께 딸려 나온 것이다. "우리 토큰 때문에 13개 늘었다" 고 쓰면 거짓이다.
+
+  ⚠️ 선언한 색 9개 중 6개만 :root 에 나온다.
+     안 나온 것: brand · line-soft · subtle
+     세 개가 쓰이는 곳(.comment-submit·.signup-submit·.comment-form·.signup-label
+     ·.profile-picker-name·.input-demo p·.response-verdict)이 아직 손 CSS 라서다.
+     1번 규칙이 Step 5 시점에도 그대로 성립한다.
+
+
+8. 데모 컴포넌트가 피드 클래스를 함께 쓰고 있었다
+--------------------------------------------------
+
+  피드 규칙을 지우자 아래가 함께 스타일을 잃어 같이 옮겨야 했다.
+
+    MiniPostCard     post-card · post-content · post-likes  (변형 2개)
+    StaticPostCard   post-card · post-image · post-likes · post-content
+    KeyDemo          like-button(+liked) · hide-button ×2
+    ClickCounter     like-button
+
+  E-1 Step 1 이 말한 "이름을 공유하면 한 곳을 고칠 때 다른 곳이 흔들린다" 가
+  실제로 일어난 자리다. 교안 Step 5 에서 이 연쇄를 그대로 보여줄 수 있다.
+
+  ⚠️ 이 넷은 App 에 마운트되지 않는다(B-1·B-2 시연용).
+     그래서 브라우저에서 눈으로 확인할 수 없고 렌더 테스트로만 검증된다.
+
+  ⚠️ Section 의 class="section" 은 대응하는 CSS 규칙이 아예 없는 죽은 이름이었다.
+     함께 걷어냈다. b3-use-like-toggle 의 withoutSignUpSection 정규식이
+     이 이름을 찾으므로, 되돌리기를 먼저 적용한 뒤 잘라내도록 순서를 고쳤다.
+
+
+9. 옮긴 뒤 브라우저 실측 — 값이 그대로인지
+--------------------------------------------
+
+  body            bg 250,250,250 · color 38,38,38
+                  font-family 에 'Apple SD Gothic Neo' 보존
+                  => @theme 으로 --font-sans 를 덮어써서 지켰다.
+                     (내장 토큰도 덮어쓸 수 있다 — 새 토큰만 만드는 게 아니다)
+  main            max-width 470px · padding 16px · 가운데 정렬
+  h1              24px / 700 / margin-bottom 16px   (줄 높이만 36 -> 32)
+  header          flex · space-between · baseline · mb 16px
+  h2(구역 제목)   14px / 600 / 142,142,142 / mb 12px
+  ul(피드 목록)   list-style none · margin 0 · padding 0
+                  => 유틸리티 0개. Preflight 가 이미 셋 다 해준다.
+  article(카드)   bg 255,255,255 · border 1px solid 219,219,219
+                  radius 8px · margin-bottom 24px · overflow hidden
+  더보기 버튼     18px · padding 12px · cursor pointer
+                  => text-lg leading-none 이 손 CSS 18px/1 과 같다(E-1 답안 정정 근거)
+  좋아요 버튼     border 219,219,219 · 1px · radius 6px · padding 6/12px · 14px
+    liked         border 237,73,86 · color 237,73,86 · weight 600
+  좋아요 개수     padding 12/12/4/12 · 14px · 600
+  캡션 접기       14px · 142,142,142 · padding-left 4px
+
+  => 색·간격·굵기·모서리는 전부 같다. 바뀐 것은 글자 크기 유틸리티가
+     함께 정하는 줄 높이뿐이다(6번).
+
+  ⚠️ 색 판독 헬퍼 주의: transparent 를 canvas 에 칠하면 0,0,0 으로 읽힌다.
+     투명 여부는 픽셀로 재지 말고 계산값 문자열로 확인할 것.
+
+
+10. Preflight 가 이미 해주는 것 (유틸리티를 안 써도 되는 자리)
+---------------------------------------------------------------
+
+  손 CSS 를 그대로 유틸리티로 옮기면 필요 없는 것까지 적게 된다.
+  새 요소를 만들어 계산값을 재서 확인했다.
+
+    ul      margin 0 · padding 0 · list-style none
+    p       margin 0 · padding 0
+    h1~h6   margin 0
+    button  margin 0 · padding 0 · background transparent
+            border-width 0 · color 상속 · font 상속 · outline none
+    img     display block · max-width 100%
+    input   border-width 0 · background transparent · outline none
+
+  그래서 아래는 옮길 필요가 없었다.
+    .feed-list 의 세 선언 전부
+    .post-* 의 margin: 0
+    .feed-title·.section-title 의 margin 위쪽
+    버튼들의 border: none · background: none · color · padding: 0
+    .post-image 의 display: block

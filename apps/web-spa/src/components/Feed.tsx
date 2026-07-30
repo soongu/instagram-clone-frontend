@@ -14,7 +14,6 @@ export function Feed({ posts, onToggleLike }: FeedProps) {
   return (
     <List
       items={posts}
-      className="feed-list"
       aria-label="피드 목록"
       renderItem={(post) => <PostCard {...post} onToggleLike={onToggleLike} />}
     />

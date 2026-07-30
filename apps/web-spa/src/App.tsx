@@ -34,10 +34,10 @@ export function App() {
   }, [toast, dismissToast]);
 
   return (
-    <main className="feed">
-      <header className="feed-header">
-        <h1 className="feed-title font-bold">인스타그램</h1>
-        <span className="feed-liked-count">좋아요 누른 게시물 {likedCount}개</span>
+    <main className="mx-auto max-w-[470px] p-4">
+      <header className="mb-4 flex items-baseline justify-between">
+        <h1 className="mb-4 text-2xl font-bold">인스타그램</h1>
+        <span className="text-sm text-muted">좋아요 누른 게시물 {likedCount}개</span>
       </header>
       <Section title="회원가입">
         <SignUpForm onSubmit={(values) => console.log('가입 요청', values.username)} />

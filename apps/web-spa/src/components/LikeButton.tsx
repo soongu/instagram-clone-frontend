@@ -9,14 +9,16 @@ interface LikeButtonProps {
 
 export function LikeButton({ liked, likeCount, onToggle }: LikeButtonProps) {
   return (
-    <div className="like-area">
+    <div className="px-3 pt-2">
       <Button
-        className={liked ? 'like-button liked' : 'like-button'}
+        className={`cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm ${
+          liked ? 'border-danger font-semibold text-danger' : 'border-line'
+        }`}
         onClick={onToggle}
       >
         {liked ? '♥ 좋아요 취소' : '♡ 좋아요'}
       </Button>
-      {likeCount > 0 && <p className="post-likes">좋아요 {likeCount}개</p>}
+      {likeCount > 0 && <p className="px-3 pt-3 pb-1 text-sm font-semibold">좋아요 {likeCount}개</p>}
     </div>
   );
 }

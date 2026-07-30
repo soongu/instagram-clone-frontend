@@ -44,9 +44,9 @@ describe('PostCard', () => {
   it('Avatar 를 안에 품고 함께 그린다', () => {
     const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
 
-    // Avatar 만 내는 출력(대체 텍스트)으로 확인한다 — 클래스 이름은 E-1 에서 바뀐다
+    // Avatar 만 내는 출력(대체 텍스트)으로 확인한다 — 클래스 이름은 E-1·E-2 에서 바뀐다
     expect(html).toContain('alt="jaehoon 프로필 사진"');
-    expect(html).toContain('class="post-card"');
+    expect(html).toContain('<article class="mb-6 overflow-hidden rounded-lg border border-line bg-surface">');
   });
 
   it('같은 컴포넌트가 다른 props 로 다른 화면을 낸다', () => {
@@ -66,6 +66,6 @@ describe('App', () => {
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('minji');
-    expect(html.match(/class="post-card"/g)).toHaveLength(2);
+    expect(html.match(/<article class="mb-6 /g)).toHaveLength(2);
   });
 });
