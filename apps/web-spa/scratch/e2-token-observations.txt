@@ -317,3 +317,35 @@ canvas 에 칠하고 getImageData 로 읽은 값이 학생이 실제로 보는 �
   제출 버튼 잠김   color 178,223,252 · cursor default        (남겨둔 규칙)
   삭제 버튼        color 142,142,142 · 14px · line-height 14px · padding-left 4px
   댓글 목록        padding-left 12px · padding-bottom 12px · 14px
+
+
+15. 과제 최종 상태 실측 (실제로 만들어보고 되돌렸다)
+-----------------------------------------------------
+
+  교습용 데모 20규칙까지 옮기면:
+
+    globals.css     167 -> 35 줄 · 손 규칙 22 -> 2 개
+    CSS 산출        10,212 -> 8,958 B
+    :root 변수      29개 그대로 (새로 쓴 유틸리티가 이미 있던 토큰만 썼다)
+    tsc 0 · eslint 클린 · build 성공 · 58 files / 438 passed
+
+  globals.css 에 남는 것: @import · @source not 2줄 · @theme · 의사클래스 2규칙
+
+  ⚠️⚠️ 네 시점 CSS 크기가 오르다가 내려간다.
+      9,221 (E-1 종료) -> 9,713 (Step 5) -> 10,212 (Step 6) -> 8,958 (과제 완료)
+      중간에는 손 CSS 와 유틸리티가 함께 있어서 늘고, 손 CSS 가 다 빠지면
+      시작점보다 작아진다. "Tailwind 를 쓰면 CSS 가 작아진다" 는
+      마이그레이션이 끝난 뒤에만 참이다. Step 5·6 만 보고 결론 내면 거짓이 된다.
+
+  ⚠️ 죽은 클래스가 둘 있었다 — 대응 CSS 규칙이 아예 없는 이름.
+     Section 의 class="section" (Step 5 에서 처리)
+     RefVsStateDemo 의 class="ref-demo" (과제 범위)
+
+  반복된 유틸리티 조합 4종 (컴포넌트로 묶을 후보 — B-3 기준을 스타일에 적용하는 자리)
+    mb-4 rounded-lg border border-line bg-surface p-3       key-demo · effect-demo
+    flex-1 rounded-lg border border-line bg-surface p-3     input-demo · response-panel
+    cursor-pointer rounded-md border border-line bg-canvas px-3 py-1.5 text-note
+                                          effect-demo-button · profile-picker-button
+    text-note text-subtle    profile-picker-name · input-demo p · response-verdict
+
+  채증 diff 전문: scratch/e2-homework-answer.txt

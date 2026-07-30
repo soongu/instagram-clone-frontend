@@ -1,0 +1,369 @@
+E-2 과제 [구현] 답안 채증 — 교습용 데모 20규칙을 토큰 유틸리티로
+======================================================================
+
+이 파일은 과제 정답 상태를 실제로 만들어 검증한 기록이다.
+코드베이스에는 반영하지 않는다(학생이 하는 몫). 아래 diff 는 실행·검증된 것이다.
+
+검증 결과 (리포지토리 루트에서)
+  tsc --noEmit      exit 0
+  eslint .          클린
+  vite build        성공
+  vitest            58 files / 438 passed
+
+최종 수치
+  globals.css     167 -> 35 줄 · 손 규칙 22 -> 2 개
+  CSS 산출        10,212 -> 8,958 B
+  :root 변수      29개 (그대로 — 새로 쓴 유틸리티가 이미 있던 토큰만 썼다)
+
+⚠️ 과제까지 마치면 CSS 산출이 8,958 B 로 E-1 종료 시점(9,221 B)보다 작아진다.
+   Step 5·6 중간에는 손 CSS 와 유틸리티가 함께 있어 오히려 늘었다(10,212).
+   "Tailwind 를 쓰면 CSS 가 작아진다" 는 마이그레이션이 끝난 뒤에만 참이다.
+
+⚠️ RefVsStateDemo 의 class="ref-demo" 는 대응하는 CSS 규칙이 아예 없는
+   죽은 이름이었다(Section 의 class="section" 과 같은 경우). 지우면 끝이다.
+
+⚠️ .key-demo-list 는 list-style/margin/padding 세 선언뿐이라 Preflight 가
+   이미 다 해준다. 유틸리티 0개로 클래스만 지우면 된다.
+   .input-demo-field 의 box-sizing:border-box 도 Preflight 가 전역으로 준다.
+
+반복해서 쓰인 조합 (같은 문자열이 여러 곳에 나온다 — 컴포넌트로 묶을 후보)
+  박스   mb-4 rounded-lg border border-line bg-surface p-3        (key-demo · effect-demo)
+  패널   flex-1 rounded-lg border border-line bg-surface p-3      (input-demo · response-panel)
+  작은버튼 cursor-pointer rounded-md border border-line bg-canvas px-3 py-1.5 text-note
+                                                          (effect-demo-button · profile-picker-button)
+  잔글씨 text-note text-subtle                                    (profile-picker-name · input-demo p · response-verdict)
+
+======================================================================
+실제 diff
+======================================================================
+diff --git a/apps/web-spa/src/components/EffectTimingDemo.tsx b/apps/web-spa/src/components/EffectTimingDemo.tsx
+index f951b1c..8766b60 100644
+--- a/apps/web-spa/src/components/EffectTimingDemo.tsx
++++ b/apps/web-spa/src/components/EffectTimingDemo.tsx
+@@ -23,14 +23,14 @@ export function EffectTimingDemo() {
+   }, [count]);
+ 
+   return (
+-    <div className="effect-demo">
+-      <p className="effect-demo-values">
++    <div className="mb-4 rounded-lg border border-line bg-surface p-3">
++      <p className="mb-2 text-sm">
+         count: {count} / other: {other}
+       </p>
+-      <button className="effect-demo-button" onClick={() => setCount(count + 1)}>
++      <button className="cursor-pointer rounded-md border border-line bg-canvas px-3 py-1.5 text-note" onClick={() => setCount(count + 1)}>
+         count +1
+       </button>
+-      <button className="effect-demo-button" onClick={() => setOther(other + 1)}>
++      <button className="cursor-pointer rounded-md border border-line bg-canvas px-3 py-1.5 text-note" onClick={() => setOther(other + 1)}>
+         other +1
+       </button>
+     </div>
+diff --git a/apps/web-spa/src/components/InputValueDemo.tsx b/apps/web-spa/src/components/InputValueDemo.tsx
+index edf6deb..7e664bf 100644
+--- a/apps/web-spa/src/components/InputValueDemo.tsx
++++ b/apps/web-spa/src/components/InputValueDemo.tsx
+@@ -10,15 +10,15 @@ export function ControlledInput() {
+   const [nickname, setNickname] = useState('');
+ 
+   return (
+-    <section className="input-demo" aria-label="상태가 값을 든 입력창">
+-      <h3>상태가 값을 든다</h3>
++    <section className="flex-1 rounded-lg border border-line bg-surface p-3" aria-label="상태가 값을 든 입력창">
++      <h3 className="mb-2 text-sm">상태가 값을 든다</h3>
+       <input
+-        className="input-demo-field"
++        className="w-full rounded-md border border-line px-2 py-1.5 text-sm"
+         aria-label="controlled 닉네임"
+         value={nickname}
+         onChange={(event) => setNickname(event.target.value)}
+       />
+-      <p>지금 값: {nickname}</p>
++      <p className="mt-2 text-note text-subtle">지금 값: {nickname}</p>
+     </section>
+   );
+ }
+@@ -31,16 +31,16 @@ export function UncontrolledInput() {
+   const [readValue, setReadValue] = useState('');
+ 
+   return (
+-    <section className="input-demo" aria-label="DOM 이 값을 든 입력창">
+-      <h3>DOM 이 값을 든다</h3>
++    <section className="flex-1 rounded-lg border border-line bg-surface p-3" aria-label="DOM 이 값을 든 입력창">
++      <h3 className="mb-2 text-sm">DOM 이 값을 든다</h3>
+       <input
+-        className="input-demo-field"
++        className="w-full rounded-md border border-line px-2 py-1.5 text-sm"
+         aria-label="uncontrolled 닉네임"
+         defaultValue=""
+         ref={nicknameRef}
+       />
+       <Button onClick={() => setReadValue(nicknameRef.current?.value ?? '')}>값 읽기</Button>
+-      <p>읽어온 값: {readValue}</p>
++      <p className="mt-2 text-note text-subtle">읽어온 값: {readValue}</p>
+     </section>
+   );
+ }
+@@ -48,7 +48,7 @@ export function UncontrolledInput() {
+ // 두 입력창을 나란히 놓고 같은 글자를 쳐보는 화면이다.
+ export function InputValueDemo() {
+   return (
+-    <div className="input-demo-pair">
++    <div className="mb-4 flex gap-3">
+       <ControlledInput />
+       <UncontrolledInput />
+     </div>
+diff --git a/apps/web-spa/src/components/KeyDemo.tsx b/apps/web-spa/src/components/KeyDemo.tsx
+index b47759e..9679474 100644
+--- a/apps/web-spa/src/components/KeyDemo.tsx
++++ b/apps/web-spa/src/components/KeyDemo.tsx
+@@ -7,7 +7,7 @@ function DemoRow({ username }: { username: string }) {
+   const [liked, setLiked] = useState(false);
+ 
+   return (
+-    <li className="key-demo-row">
++    <li className="flex items-center gap-3 py-1">
+       <strong>{username}</strong>
+       <button
+         className={`cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm ${
+@@ -26,9 +26,9 @@ export function IndexKeyList() {
+   const [posts, setPosts] = useState(feedPosts);
+ 
+   return (
+-    <section className="key-demo">
++    <section className="mb-4 rounded-lg border border-line bg-surface p-3">
+       <h3>key = 순서 번호</h3>
+-      <ul className="key-demo-list">
++      <ul>
+         {posts.map((post, index) => (
+           <DemoRow key={index} username={post.username} />
+         ))}
+@@ -45,9 +45,9 @@ export function IdKeyList() {
+   const [posts, setPosts] = useState(feedPosts);
+ 
+   return (
+-    <section className="key-demo">
++    <section className="mb-4 rounded-lg border border-line bg-surface p-3">
+       <h3>key = 게시물 id</h3>
+-      <ul className="key-demo-list">
++      <ul>
+         {posts.map((post) => (
+           <DemoRow key={post.id} username={post.username} />
+         ))}
+diff --git a/apps/web-spa/src/components/ProfileImagePicker.tsx b/apps/web-spa/src/components/ProfileImagePicker.tsx
+index 4d19f0c..25202e2 100644
+--- a/apps/web-spa/src/components/ProfileImagePicker.tsx
++++ b/apps/web-spa/src/components/ProfileImagePicker.tsx
+@@ -21,10 +21,10 @@ export function ProfileImagePicker({ onPick }: ProfileImagePickerProps) {
+   }
+ 
+   return (
+-    <div className="profile-picker">
++    <div className="flex items-center gap-2">
+       {/* 파일 선택 창을 여는 건 React 로 표현할 수 없다. 손잡이를 잡고 직접 시킨다. */}
+       <input
+-        className="profile-picker-input"
++        className="hidden"
+         type="file"
+         accept="image/*"
+         ref={fileInputRef}
+@@ -32,12 +32,12 @@ export function ProfileImagePicker({ onPick }: ProfileImagePickerProps) {
+         aria-label="프로필 사진 파일"
+       />
+       <Button
+-        className="profile-picker-button"
++        className="cursor-pointer rounded-md border border-line bg-canvas px-3 py-1.5 text-note"
+         onClick={() => fileInputRef.current?.click()}
+       >
+         프로필 사진 고르기
+       </Button>
+-      <span className="profile-picker-name">{pickedName || '아직 고르지 않았어요'}</span>
++      <span className="text-note text-subtle">{pickedName || '아직 고르지 않았어요'}</span>
+     </div>
+   );
+ }
+diff --git a/apps/web-spa/src/components/RefVsStateDemo.tsx b/apps/web-spa/src/components/RefVsStateDemo.tsx
+index 37b052c..228b354 100644
+--- a/apps/web-spa/src/components/RefVsStateDemo.tsx
++++ b/apps/web-spa/src/components/RefVsStateDemo.tsx
+@@ -9,7 +9,7 @@ export function RefVsStateDemo() {
+   const refCount = useRef(0);
+ 
+   return (
+-    <section className="ref-demo" aria-label="ref 와 state 비교">
++    <section aria-label="ref 와 state 비교">
+       <p>state 로 센 수: {stateCount}</p>
+       <p>ref 로 센 수: {refCount.current}</p>
+       <Button onClick={() => setStateCount(stateCount + 1)}>state +1</Button>
+diff --git a/apps/web-spa/src/components/ResponseCheckDemo.tsx b/apps/web-spa/src/components/ResponseCheckDemo.tsx
+index a0c69cb..c62f544 100644
+--- a/apps/web-spa/src/components/ResponseCheckDemo.tsx
++++ b/apps/web-spa/src/components/ResponseCheckDemo.tsx
+@@ -51,13 +51,13 @@ function Panel({ title, payload }: PanelProps) {
+   const found = complaints(payload);
+ 
+   return (
+-    <section className="response-panel" aria-label={title}>
+-      <h4 className="response-title">{title}</h4>
+-      <p className="response-verdict">{isPost(payload) ? 'isPost: 통과' : 'isPost: 막힘'}</p>
+-      <p className="response-verdict">
++    <section className="flex-1 rounded-lg border border-line bg-surface p-3" aria-label={title}>
++      <h4 className="mb-2 text-sm">{title}</h4>
++      <p className="mt-1 text-note text-subtle">{isPost(payload) ? 'isPost: 통과' : 'isPost: 막힘'}</p>
++      <p className="mt-1 text-note text-subtle">
+         {found.length === 0 ? '스키마: 통과' : '스키마: 막힘'}
+       </p>
+-      <ul className="response-issues">
++      <ul className="mt-2 pl-4.5 text-xs text-danger">
+         {found.map((line) => (
+           <li key={line}>{line}</li>
+         ))}
+@@ -68,7 +68,7 @@ function Panel({ title, payload }: PanelProps) {
+ 
+ export function ResponseCheckDemo() {
+   return (
+-    <div className="response-demo">
++    <div className="flex gap-3">
+       <Panel title="성한 응답" payload={healthy} />
+       <Panel title="망가진 응답" payload={broken} />
+     </div>
+diff --git a/apps/web-spa/src/styles/globals.css b/apps/web-spa/src/styles/globals.css
+index 6fda0a8..df65e2f 100644
+--- a/apps/web-spa/src/styles/globals.css
++++ b/apps/web-spa/src/styles/globals.css
+@@ -33,135 +33,3 @@
+   color: #262626;
+ }
+ 
+-.key-demo {
+-  background: #ffffff;
+-  border: 1px solid #dbdbdb;
+-  border-radius: 8px;
+-  padding: 12px;
+-  margin-bottom: 16px;
+-}
+-
+-.key-demo-list {
+-  list-style: none;
+-  margin: 0;
+-  padding: 0;
+-}
+-
+-.key-demo-row {
+-  display: flex;
+-  align-items: center;
+-  gap: 12px;
+-  padding: 4px 0;
+-}
+-
+-.effect-demo {
+-  background: #ffffff;
+-  border: 1px solid #dbdbdb;
+-  border-radius: 8px;
+-  padding: 12px;
+-  margin-bottom: 16px;
+-}
+-
+-.effect-demo-values {
+-  margin: 0 0 8px;
+-  font-size: 14px;
+-}
+-
+-.effect-demo-button {
+-  margin-right: 8px;
+-  padding: 6px 12px;
+-  border: 1px solid #dbdbdb;
+-  border-radius: 6px;
+-  background: #fafafa;
+-  font-size: 13px;
+-  cursor: pointer;
+-}
+-
+-.input-demo-pair {
+-  display: flex;
+-  gap: 12px;
+-  margin-bottom: 16px;
+-}
+-
+-.input-demo {
+-  flex: 1;
+-  background: #ffffff;
+-  border: 1px solid #dbdbdb;
+-  border-radius: 8px;
+-  padding: 12px;
+-}
+-
+-.input-demo h3 {
+-  margin: 0 0 8px;
+-  font-size: 14px;
+-}
+-
+-.input-demo p {
+-  margin: 8px 0 0;
+-  font-size: 13px;
+-  color: #737373;
+-}
+-
+-.input-demo-field {
+-  width: 100%;
+-  box-sizing: border-box;
+-  border: 1px solid #dbdbdb;
+-  border-radius: 6px;
+-  padding: 6px 8px;
+-  font-size: 14px;
+-}
+-
+-.profile-picker {
+-  display: flex;
+-  align-items: center;
+-  gap: 8px;
+-}
+-
+-.profile-picker-input {
+-  display: none;
+-}
+-
+-.profile-picker-button {
+-  border: 1px solid #dbdbdb;
+-  border-radius: 6px;
+-  background: #fafafa;
+-  padding: 6px 12px;
+-  font-size: 13px;
+-  cursor: pointer;
+-}
+-
+-.profile-picker-name {
+-  font-size: 13px;
+-  color: #737373;
+-}
+-
+-.response-demo {
+-  display: flex;
+-  gap: 12px;
+-}
+-
+-.response-panel {
+-  flex: 1;
+-  background: #ffffff;
+-  border: 1px solid #dbdbdb;
+-  border-radius: 8px;
+-  padding: 12px;
+-}
+-
+-.response-title {
+-  margin: 0 0 8px;
+-  font-size: 14px;
+-}
+-
+-.response-verdict {
+-  margin: 4px 0 0;
+-  font-size: 13px;
+-  color: #737373;
+-}
+-
+-.response-issues {
+-  margin: 8px 0 0;
+-  padding-left: 18px;
+-  font-size: 12px;
+-  color: #ed4956;
+-}
