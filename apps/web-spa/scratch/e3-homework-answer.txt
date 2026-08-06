@@ -1,0 +1,92 @@
+E-3 과제 채증 — 실제로 만들어 재보고 되돌렸다
+================================================
+
+[구현 1] 가입하기 버튼의 링 색 고치기
+--------------------------------------
+
+  SignUpForm.tsx 한 곳만 바꾼다.
+
+    - focus-visible:outline-brand
+    + focus-visible:outline-ink
+
+  대비비(WCAG 상대 명도로 계산). 포커스 표시 같은 비텍스트 요소는 3:1 이상이 기준이다.
+
+    링 색            vs 버튼 배경(brand)   vs 폼 배경(surface)   판정
+    ---------------  -------------------   -------------------   ----
+    brand (고치기 전)       1.00                  3.17           버튼 위에서 완전 미달
+    ink   (고친 뒤)         4.78                 15.13           둘 다 통과
+    danger (골랐다면)       1.17                    -            미달 — 좋은 오답
+
+  ⚠️ danger 를 고르면 안 된다. 빨강과 파랑은 밝기가 비슷해서 대비가 1.17 밖에 안 나온다.
+     "색이 다르니까 보이겠지" 가 틀리는 사례다. 색상이 아니라 밝기가 대비를 만든다.
+
+  ⚠️ 고치기 전에도 화면에서 링이 보이기는 했다. outline-offset-2 가 만든 2px 흰 틈
+     덕분이다. 즉 "안 보인다" 가 아니라 "틈에 기대고 있다" 가 정확한 진단이다.
+     offset 을 0으로 두면 링이 통째로 사라진다.
+
+
+[구현 2] 좁은 화면에서 댓글 수 줄 감추기
+------------------------------------------
+
+  두 방향 모두 화면 결과가 같다.
+
+    (가) max- 방향     className="px-3 pt-1 pb-3 text-sm text-muted max-sm:hidden"
+    (나) mobile-first  className="px-3 pt-1 pb-3 text-sm text-muted hidden sm:block"
+
+  (가)로 만들어 iframe 폭 고정으로 실측:
+
+    폭     display   보이나
+    ----   -------   ------
+     390   none      X
+     640   block     O
+    1200   block     O
+
+  640 에서 이미 보인다. sm 은 "640 이상" 이라 640 자체가 포함되기 때문이다.
+
+  ⚠️ (나)는 유틸리티가 하나 더 든다(hidden + sm:block = 2개 vs max-sm:hidden = 1개).
+     대신 (나)는 "기본은 숨김, 넓어지면 보임" 이라 mobile-first 흐름과 같은 방향으로 읽힌다.
+     한 곳만 예외를 둘 때는 (가), 앱 전체를 mobile-first 로 통일할 때는 (나)가 낫다.
+
+
+[탐구] 네 실험의 답
+---------------------
+
+  1. sm:text-danger lg:text-brand 의 순서를 바꾸면?
+
+     ⚠️⚠️ 빌드 산출 CSS 가 **바이트까지 완전히 동일**했다(파일 해시까지 같음).
+     className 순서는 CSS 에 아무 영향이 없다.
+
+     CSS 안의 위치:  sm:text-danger 4169  <  lg:text-brand 4461
+     => 1024px 이상에서는 lg 가 이긴다. 640~1023 에서는 sm 만 걸려서 danger.
+
+  2. min-[900px]:text-danger sm:text-brand 를 1000px 에서 보면?
+
+     CSS 안의 위치:  min-[900px]:text-danger 3976  <  sm:text-brand 4128
+     => **sm 이 이긴다.** 글자색은 brand.
+
+     900 > 640 인데도 sm 이 뒤에 나온다. 대괄호로 직접 적은 크기는 named 중단점보다
+     **앞에** 몰려 나오기 때문이다. "숫자가 큰 쪽이 이긴다" 고 믿으면 틀린다.
+
+  3. hover:text-ink 를 active:text-ink 로 바꾸면?
+
+     hover:  @media (hover:hover){ .hover\:text-ink:hover{...} }   <- 미디어로 감싼다
+     active: .active\:text-ink:active{...}                          <- 안 감싼다
+
+     => active 는 감싸지 않으므로 터치 기기에서도 걸린다. 다만 누르고 있는 동안만이라
+        마우스로 올려두는 것과는 보이는 시점이 다르다.
+
+  4. disabled:text-danger 를 <div> 에 붙이면?
+
+     규칙은 **생긴다**:  .disabled\:text-danger:disabled{color:var(--color-danger)}
+     화면은 **안 바뀐다**: <div> 는 :disabled 가 될 수 없어서 영원히 안 걸린다.
+
+     => Tailwind 는 클래스 이름 글자만 보고 규칙을 만든다. 그 요소가 그 상태가 될 수
+        있는지는 안 따진다. E-1 의 "글자로 훑는다" 가 변형에도 그대로 적용된다.
+        쓸모없는 규칙이 CSS 에 남는다는 뜻이기도 하다.
+
+
+되돌리기
+----------
+
+  위 실험을 모두 되돌린 뒤 코드베이스는 Step 5 종료 상태를 유지한다.
+  index.html 의 probe div 도 함께 제거했다.
