@@ -424,3 +424,29 @@ canvas 에 칠하고 getImageData 로 읽은 값이 학생이 실제로 보는 �
   본문 문단      14px / 20px   (손 CSS 때 21px)
 
   Step 5 에 적은 "36 -> 32, 21 -> 20" 이 실제 앱에서 그대로 나온다.
+
+
+19. ⚠️ 중간 상태 재구성이 남기는 두 가지 함정
+------------------------------------------------
+
+  교안이 인용할 중간 수치를 재려고 `git checkout <옛커밋> -- apps/web-spa/src` 를
+  반복했다. 여기서 두 번 발이 걸렸다.
+
+  (1) src 에는 테스트 파일도 들어 있다.
+      옛 커밋으로 되돌리면 그 시점의 테스트까지 함께 돌아간다.
+      되돌린 뒤 npm test 를 돌리면 "옛 테스트 + 옛 컴포넌트" 로 통과해버려
+      아무것도 검증하지 못한다.
+
+  (2) Vitest/Vite 가 변환 결과를 캐시한다.
+      소스를 HEAD 로 복원한 뒤에도 캐시가 옛 상태를 물고 있어
+      **실재하지 않는 실패 3건**이 났다. git status 는 깨끗한데
+      테스트는 옛 기대값과 옛 렌더를 보여주는 기묘한 상태였다.
+
+      해결: rm -rf node_modules/.vite apps/web-spa/node_modules/.vite
+      그 뒤 58 files / 438 passed 로 정상.
+
+  => 중간 상태를 재구성했으면 마지막에 반드시
+       git checkout HEAD -- apps/web-spa/src apps/web-spa/index.html
+       rm -rf node_modules/.vite apps/web-spa/node_modules/.vite
+       npm test --workspace apps/web-spa
+     까지 한 세트로 돌릴 것. 캐시를 안 비우면 유령 실패에 시간을 쓴다.
