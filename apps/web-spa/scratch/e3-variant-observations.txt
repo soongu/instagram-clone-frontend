@@ -223,3 +223,86 @@ E-3 변형(상태·반응형) 관찰 (Tailwind v4.3.3 · Vite 8.1.5 · Chrome)
      b3-class-bridge 9개 항목 + b3-button.test.tsx 의 하드코딩 HTML 1곳이 깨졌다.
      (b3-button 쪽은 브리지를 안 거치고 기대 문자열을 직접 적어둔 자리였다.)
      브리지에는 RING 상수를 두어 여덟 문자열이 한 곳에서 갈리게 했다.
+
+
+8. Step 4 — .container 가 규칙 6개인 이유 (E-1 과제 [탐구] 회수)
+------------------------------------------------------------------
+
+  빌드 산출 CSS 에서 .container 를 전부 뽑으면:
+
+    .container{width:100%}
+    @media (width>=40rem){.container{max-width:40rem}}
+    @media (width>=48rem){.container{max-width:48rem}}
+    @media (width>=64rem){.container{max-width:64rem}}
+    @media (width>=80rem){.container{max-width:80rem}}
+    @media (width>=96rem){.container{max-width:96rem}}
+
+  기본 1개 + 중단점 5개 = 6개. E-1 답안이 적은 "1 + 5" 가 정확히 맞다.
+  기본 중단점: sm 40rem(640) · md 48rem(768) · lg 64rem(1024) · xl 80rem(1280) · 2xl 96rem(1536)
+
+  ⚠️ v4 는 min-width 가 아니라 range 문법 `(width>=40rem)` 을 쓴다.
+     의미는 같지만 학생이 DevTools 에서 볼 글자가 다르다.
+
+
+9. Step 5 — 반응형 피드 그리드 실측 (iframe 으로 폭 고정)
+------------------------------------------------------------
+
+  ⚠️ 창 리사이즈 도구가 이 렌더링 컨텍스트에는 안 먹었다(innerWidth 가 안 변함).
+     대신 같은 페이지를 폭 고정 iframe 에 띄워 쟀다 — 미디어 쿼리는 iframe
+     뷰포트를 따르므로 결과가 같다. 재현 코드는 이 파일 아래 메모 참조.
+
+  적용:
+    App     mx-auto max-w-[470px] py-4 sm:px-4 lg:max-w-[964px]
+    Feed    List 에 className="lg:grid lg:grid-cols-2 lg:gap-6"
+    PostCard  ... bg-surface lg:mb-0
+    SignUpForm ... p-4 lg:max-w-[470px]
+
+  뷰포트   main폭  좌우pad  ul display  카드폭  첫줄카드  카드아래여백  가입폼폭
+  ------   -----   ------   ---------   -----   -------   -----------   -------
+   390      390     0px      block       390      1         24px          390
+   640      470     16px     block       438      1         24px          438
+   700      470     16px     block       438      1         24px          438
+  1023      470     16px     block       438      1         24px          438
+  1024      964     16px     grid        454      2          0px          470
+  1200      964     16px     grid        454      2          0px          470
+
+  경계가 640·1024 에서 정확히 갈린다(그 값 포함). >= 이므로 640 은 이미 sm.
+
+  숫자 확인:
+    438 = 470 - 16*2                       (sm 이후 카드 폭)
+    454 = (964 - 16*2 - 24) / 2            (lg 2열 · gap 24)
+    390 폰에서 카드가 화면을 꽉 채운다      (base 에 좌우 padding 이 없어서)
+
+  ⚠️ 카드 아래 여백이 24px -> 0px 로 바뀐다. 세로로 쌓을 때는 mb-6 이 간격을
+     만들지만 그리드에서는 gap 이 그 일을 한다. 둘 다 두면 아래쪽만 벌어진다.
+     그래서 lg:mb-0 으로 넘긴다 — 간격의 책임이 옮겨가는 자리.
+
+  ⚠️⚠️ main 을 lg 에서 964px 로 넓혔더니 **회원가입 폼이 같이 늘어났다**(964px).
+     피드만 넓히려던 건데 형제 요소가 딸려 온 것이다.
+     SignUpForm 에 lg:max-w-[470px] 을 붙여 잡았다.
+     "컨테이너를 넓히면 그 안의 모든 것이 넓어진다" 는 실제 사고 사례.
+
+  자바스크립트가 한 줄도 없다. B-4 과제에서 만든 useWindowWidth 훅으로
+  창 너비를 재서 열 수를 계산할 수도 있었지만, 그러면 리사이즈마다 리렌더가 돌고
+  첫 화면에서 잠깐 틀린 열 수가 보인다. CSS 는 그 두 가지가 다 없다.
+
+
+10. 재현 — 폭을 바꿔가며 재는 iframe 방법
+--------------------------------------------
+
+  dev 서버를 띄운 뒤 브라우저 콘솔에서:
+
+    async function atWidth(w) {
+      const f = document.createElement('iframe');
+      f.style.cssText = `width:${w}px;height:900px;position:fixed;left:-99999px`;
+      document.body.appendChild(f); f.src = location.href;
+      await new Promise(r => f.onload = r);
+      await new Promise(r => setTimeout(r, 700));
+      const win = f.contentWindow, d = f.contentDocument;
+      const ul = d.querySelector('ul[aria-label="피드 목록"]');
+      const out = { 뷰포트: win.innerWidth, display: win.getComputedStyle(ul).display };
+      f.remove(); return out;
+    }
+    await atWidth(390); await atWidth(1200);
+
+  ⚠️ onload 뒤에 곧장 재면 React 가 아직 안 그렸다. 700ms 정도 기다려야 한다.

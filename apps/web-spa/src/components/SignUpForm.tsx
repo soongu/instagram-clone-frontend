@@ -38,7 +38,7 @@ export function SignUpForm({ onSubmit }: SignUpFormProps) {
 
   return (
     <form
-      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 lg:max-w-[470px]"
       onSubmit={handleSubmit(handleValid)}
     >
       <ProfileImagePicker />

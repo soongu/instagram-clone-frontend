@@ -20,10 +20,10 @@ const RING =
 // [E-2·E-3 유틸리티 문자열, B-3 시점 이름]
 // liked 쪽을 먼저 둔다 — 두 좋아요 버튼 문자열은 뒷부분만 다르다.
 const BRIDGE: Array<[string, string]> = [
-  ['class="mx-auto max-w-[470px] p-4"', 'class="feed"'],
+  ['class="mx-auto max-w-[470px] py-4 sm:px-4 lg:max-w-[964px]"', 'class="feed"'],
   ['class="mb-4 flex items-baseline justify-between"', 'class="feed-header"'],
   ['class="mb-4 text-2xl font-bold"', 'class="feed-title"'],
-  ['class="mb-6 overflow-hidden rounded-lg border border-line bg-surface"', 'class="post-card"'],
+  ['class="mb-6 overflow-hidden rounded-lg border border-line bg-surface lg:mb-0"', 'class="post-card"'],
   ['class="flex items-center justify-between"', 'class="post-header"'],
   [`class="cursor-pointer p-3 text-lg leading-none${RING}"`, 'class="post-more"'],
   ['class="w-full cursor-pointer"', 'class="post-image"'],
@@ -60,7 +60,7 @@ const BRIDGE: Array<[string, string]> = [
     'class="toast"',
   ],
   [
-    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"',
+    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 lg:max-w-[470px]"',
     'class="signup-form"',
   ],
   ['class="flex flex-col gap-1"', 'class="signup-field"'],
@@ -74,7 +74,7 @@ const BRIDGE: Array<[string, string]> = [
   // feed-liked-count 는 다른 곳과 겹치지 않는 조합이라 마지막에 둔다
   ['class="text-sm text-muted"', 'class="feed-liked-count"'],
   // E-2 에서 통째로 사라진 두 이름은 되살려 넣는다
-  ['<ul aria-label="피드 목록"', '<ul class="feed-list" aria-label="피드 목록"'],
+  ['<ul class="lg:grid lg:grid-cols-2 lg:gap-6" aria-label="피드 목록"', '<ul class="feed-list" aria-label="피드 목록"'],
   ['<section aria-label=', '<section class="section" aria-label='],
 ];
 

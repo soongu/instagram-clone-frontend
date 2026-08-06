@@ -29,7 +29,7 @@ export function PostCard({
 
   return (
     <Card
-      className="mb-6 overflow-hidden rounded-lg border border-line bg-surface"
+      className="mb-6 overflow-hidden rounded-lg border border-line bg-surface lg:mb-0"
       header={<PostHeader username={username} profileImageUrl={profileImageUrl} />}
       footer={<CommentForm onSubmit={(text) => dispatch({ type: 'add', content: text })} />}
     >

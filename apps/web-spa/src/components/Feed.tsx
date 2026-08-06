@@ -14,6 +14,7 @@ export function Feed({ posts, onToggleLike }: FeedProps) {
   return (
     <List
       items={posts}
+      className="lg:grid lg:grid-cols-2 lg:gap-6"
       aria-label="피드 목록"
       renderItem={(post) => <PostCard {...post} onToggleLike={onToggleLike} />}
     />
