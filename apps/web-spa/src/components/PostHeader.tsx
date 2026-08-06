@@ -13,7 +13,10 @@ export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <Avatar username={username} profileImageUrl={profileImageUrl} />
-      <IconButton className="cursor-pointer p-3 text-lg leading-none" aria-label="게시물 메뉴">
+      <IconButton
+        className="cursor-pointer p-3 text-lg leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        aria-label="게시물 메뉴"
+      >
         ⋯
       </IconButton>
     </div>

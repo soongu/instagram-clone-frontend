@@ -12,7 +12,12 @@
 // ⚠️ 이 되돌리기가 조용히 안 걸리면 비교는 아무것도 증명하지 못한다.
 //    그래서 b3BridgeHits() 로 "무엇이 실제로 되돌려졌는지" 를 함께 확인한다.
 
-// [E-2 유틸리티 문자열, B-3 시점 이름]
+// E-3 Step 3 이 조작 가능한 요소 여덟 곳에 똑같이 붙인 포커스 링.
+// 한 글자라도 어긋나면 되돌리기가 조용히 안 걸리므로 상수로 둔다.
+const RING =
+  ' focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
+
+// [E-2·E-3 유틸리티 문자열, B-3 시점 이름]
 // liked 쪽을 먼저 둔다 — 두 좋아요 버튼 문자열은 뒷부분만 다르다.
 const BRIDGE: Array<[string, string]> = [
   ['class="mx-auto max-w-[470px] p-4"', 'class="feed"'],
@@ -20,18 +25,18 @@ const BRIDGE: Array<[string, string]> = [
   ['class="mb-4 text-2xl font-bold"', 'class="feed-title"'],
   ['class="mb-6 overflow-hidden rounded-lg border border-line bg-surface"', 'class="post-card"'],
   ['class="flex items-center justify-between"', 'class="post-header"'],
-  ['class="cursor-pointer p-3 text-lg leading-none"', 'class="post-more"'],
+  [`class="cursor-pointer p-3 text-lg leading-none${RING}"`, 'class="post-more"'],
   ['class="w-full cursor-pointer"', 'class="post-image"'],
   ['class="px-3 py-1 text-sm"', 'class="post-content"'],
-  ['class="cursor-pointer pl-1 text-sm text-muted"', 'class="caption-toggle"'],
+  [`class="cursor-pointer pl-1 text-sm text-muted${RING}"`, 'class="caption-toggle"'],
   ['class="px-3 pt-1 pb-3 text-sm text-muted"', 'class="post-comments"'],
   ['class="px-3 pt-2"', 'class="like-area"'],
   [
-    'class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm border-danger font-semibold text-danger"',
+    `class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm${RING} border-danger font-semibold text-danger"`,
     'class="like-button liked"',
   ],
   [
-    'class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm border-line"',
+    `class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm${RING} border-line"`,
     'class="like-button"',
   ],
   ['class="px-3 pt-3 pb-1 text-sm font-semibold"', 'class="post-likes"'],
@@ -39,15 +44,15 @@ const BRIDGE: Array<[string, string]> = [
   ['class="cursor-pointer px-3 py-1 text-note text-muted"', 'class="hide-button"'],
   // ── 댓글·폼·토스트 (Step 6) ────────────────────────────────
   ['class="flex gap-2 border-t border-line-soft p-3"', 'class="comment-form"'],
-  ['class="flex-1 text-sm"', 'class="comment-input"'],
+  [`class="flex-1 text-sm${RING}"`, 'class="comment-input"'],
   // E-3 이 :disabled·:hover 규칙을 변형으로 옮기면서 손 이름 두 개가 마저 떨어졌다
   [
-    'class="cursor-pointer text-sm font-semibold text-brand disabled:cursor-default disabled:text-brand/30"',
+    `class="cursor-pointer text-sm font-semibold text-brand disabled:cursor-default disabled:text-brand/30${RING}"`,
     'class="comment-submit"',
   ],
   ['class="px-3 pb-3 text-sm"', 'class="comment-list"'],
   [
-    'class="cursor-pointer px-1 text-sm leading-none text-muted hover:text-ink"',
+    `class="cursor-pointer px-1 text-sm leading-none text-muted hover:text-ink${RING}"`,
     'class="comment-remove"',
   ],
   [
@@ -60,10 +65,10 @@ const BRIDGE: Array<[string, string]> = [
   ],
   ['class="flex flex-col gap-1"', 'class="signup-field"'],
   ['class="text-xs text-subtle"', 'class="signup-label"'],
-  ['class="rounded-md border border-line p-2 text-sm"', 'class="signup-input"'],
+  [`class="rounded-md border border-line p-2 text-sm${RING}"`, 'class="signup-input"'],
   ['class="text-xs text-danger"', 'class="signup-error"'],
   [
-    'class="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white"',
+    `class="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white${RING}"`,
     'class="signup-submit"',
   ],
   // feed-liked-count 는 다른 곳과 겹치지 않는 조합이라 마지막에 둔다

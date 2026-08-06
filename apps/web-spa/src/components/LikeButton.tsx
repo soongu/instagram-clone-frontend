@@ -11,7 +11,7 @@ export function LikeButton({ liked, likeCount, onToggle }: LikeButtonProps) {
   return (
     <div className="px-3 pt-2">
       <Button
-        className={`cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm ${
+        className={`cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
           liked ? 'border-danger font-semibold text-danger' : 'border-line'
         }`}
         onClick={onToggle}

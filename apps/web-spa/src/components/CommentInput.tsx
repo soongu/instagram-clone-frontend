@@ -9,7 +9,7 @@ interface CommentInputProps {
 export function CommentInput({ value, onChange, ref }: CommentInputProps) {
   return (
     <input
-      className="flex-1 text-sm"
+      className="flex-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       ref={ref}
       value={value}
       onChange={onChange}

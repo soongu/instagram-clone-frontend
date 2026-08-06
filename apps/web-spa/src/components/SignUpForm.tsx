@@ -74,7 +74,7 @@ export function SignUpForm({ onSubmit }: SignUpFormProps) {
       />
 
       <Button
-        className="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white"
+        className="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         type="submit"
         disabled={isSubmitting}
       >

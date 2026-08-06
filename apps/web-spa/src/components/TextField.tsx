@@ -15,7 +15,11 @@ export function TextField({ id, label, error, ...inputProps }: TextFieldProps) {
       <label className="text-xs text-subtle" htmlFor={id}>
         {label}
       </label>
-      <input className="rounded-md border border-line p-2 text-sm" id={id} {...inputProps} />
+      <input
+        className="rounded-md border border-line p-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        id={id}
+        {...inputProps}
+      />
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );

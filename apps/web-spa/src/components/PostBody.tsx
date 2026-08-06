@@ -35,7 +35,10 @@ export function PostBody({
       <p className="px-3 py-1 text-sm">
         <strong>{username}</strong> {shownContent}
         {isLong && (
-          <Button className="cursor-pointer pl-1 text-sm text-muted" onClick={toggleCaption}>
+          <Button
+            className="cursor-pointer pl-1 text-sm text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            onClick={toggleCaption}
+          >
             {captionOpen ? '접기' : '더 보기'}
           </Button>
         )}

@@ -164,3 +164,62 @@ E-3 변형(상태·반응형) 관찰 (Tailwind v4.3.3 · Vite 8.1.5 · Chrome)
 
   => Step 3 을 "Preflight 가 뺏은 걸 되살린다" 로 쓰면 거짓이다.
      기본 링은 있고, 문제는 그 링이 우리 색·모양과 맞는가다.
+
+
+7. Step 3 — focus-visible: 실측 (전부 실제 마우스/키보드로 조작해서 잼)
+-------------------------------------------------------------------------
+
+  같은 요소(게시물 메뉴 ⋯ 버튼)에 규칙만 바꿔가며 A/B/C 를 만들었다.
+
+    규칙              조작        :focus  :focus-visible  링
+    :focus            마우스 클릭  true    false           떴다 (rgb(200,0,0))
+    :focus-visible    마우스 클릭  true    false           안 떴다
+    :focus-visible    Tab 키       true    true            떴다 (rgb(0,200,0))
+
+  => focus: 로 스타일하면 마우스로 눌러도 링이 뜬다. 이게 옛날 사람들이
+     outline:none 을 쓰게 만든 원인이고, 그 순간 키보드 사용자도 링을 잃는다.
+     focus-visible: 은 브라우저가 조작 방식을 보고 갈라준다.
+
+  브라우저 기본 링(우리가 아무것도 안 했을 때, Tab 으로 밟았을 때):
+    outline: rgb(0, 95, 204) auto 0.8px
+    => 우리 brand(0,149,246)와 다른 파랑이다. Chrome 자기 색.
+
+  ⚠️⚠️ 텍스트 입력칸은 마우스로 눌러도 :focus-visible 이 true 다.
+     댓글 입력칸을 마우스로 클릭 -> :focus true · :focus-visible **true** · 링 뜸.
+     버튼은 마우스 클릭에 false 인데 입력칸은 true 다.
+     => "focus-visible: 은 키보드일 때만" 이라고 쓰면 거짓이다.
+        명세는 "글자를 입력받아야 하는 요소" 도 포함한다.
+        입력칸은 커서를 어디에 뒀는지 보여야 하니 당연한 동작이다.
+
+  ⚠️ 프로그램 호출 el.focus() 로는 :focus-visible 이 안 켜진다(false).
+     검증할 때 el.focus() 를 쓰면 "링이 안 뜬다" 는 잘못된 결론이 난다.
+     반드시 진짜 Tab 키로 밟아야 한다.
+
+  ⚠️ macOS 기본 설정에서는 버튼을 클릭해도 포커스가 안 가는 경우가 있다
+     (Full Keyboard Access 설정). 이번 Chrome 에서는 클릭 시 :focus 가 붙었다.
+
+  적용한 유틸리티 (조작 가능한 요소 8곳 전부 같은 문자열):
+    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand
+
+    LikeButton · PostBody(더 보기) · PostHeader(⋯) · CommentInput
+    CommentForm(게시) · CommentList(×) · TextField(입력칸) · SignUpForm(가입하기)
+
+    실측: outline solid 2px · offset 2px · color 0,149,246 (brand 와 픽셀 일치)
+
+  ⚠️ 가입하기 버튼만 링 색과 배경색이 **같다**(둘 다 brand 0,149,246).
+     offset 2px 이 만든 흰 틈 덕분에 화면에서 링이 보이기는 한다(스크린샷 확인).
+     다만 대비가 약하다 — 배경색이 있는 버튼에는 다른 색 링이 필요하다는 실례.
+     과제로 남긴다.
+
+  ⚠️ 우리가 안 건드린 요소(ProfileImagePicker 등 E-2 과제 범위 데모)는
+     브라우저 기본 링을 그대로 갖는다. 아무것도 빼앗지 않았기 때문이다.
+
+  Step 3 이후 계측:
+    CSS 산출 10,436 -> 10,772 B
+    globals.css 158 줄 그대로 · 손 규칙 20개 그대로 (이 Step 은 손 CSS 를 안 건드린다)
+    59 files / 444 passed · tsc 0 · eslint 0 · build 성공
+
+  ⚠️ blast radius 가 Step 1·2 보다 컸다. 8곳의 className 이 바뀌면서
+     b3-class-bridge 9개 항목 + b3-button.test.tsx 의 하드코딩 HTML 1곳이 깨졌다.
+     (b3-button 쪽은 브리지를 안 거치고 기대 문자열을 직접 적어둔 자리였다.)
+     브리지에는 RING 상수를 두어 여덟 문자열이 한 곳에서 갈리게 했다.

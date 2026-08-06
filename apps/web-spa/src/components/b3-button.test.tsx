@@ -123,7 +123,9 @@ describe('LikeButton — 버튼을 갈아끼워도 동작은 그대로다', () =
 
     expect(withButtonComponent).toBe(
       '<div class="px-3 pt-2">' +
-        '<button class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm border-line" type="button">♡ 좋아요</button>' +
+        '<button class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm' +
+        ' focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand' +
+        ' border-line" type="button">♡ 좋아요</button>' +
         '<p class="px-3 pt-3 pb-1 text-sm font-semibold">좋아요 3개</p></div>',
     );
   });
