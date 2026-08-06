@@ -40,14 +40,14 @@ const BRIDGE: Array<[string, string]> = [
   // ── 댓글·폼·토스트 (Step 6) ────────────────────────────────
   ['class="flex gap-2 border-t border-line-soft p-3"', 'class="comment-form"'],
   ['class="flex-1 text-sm"', 'class="comment-input"'],
-  // :disabled·:hover 규칙이 이 이름을 붙잡고 있어 손 이름이 그대로 남아 있다
+  // E-3 이 :disabled·:hover 규칙을 변형으로 옮기면서 손 이름 두 개가 마저 떨어졌다
   [
-    'class="comment-submit cursor-pointer text-sm font-semibold text-brand"',
+    'class="cursor-pointer text-sm font-semibold text-brand disabled:cursor-default disabled:text-brand/30"',
     'class="comment-submit"',
   ],
   ['class="px-3 pb-3 text-sm"', 'class="comment-list"'],
   [
-    'class="comment-remove cursor-pointer px-1 text-sm leading-none text-muted"',
+    'class="cursor-pointer px-1 text-sm leading-none text-muted hover:text-ink"',
     'class="comment-remove"',
   ],
   [

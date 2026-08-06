@@ -24,7 +24,7 @@ export function CommentList({ comments, onRemove }: CommentListProps) {
           <strong>me</strong> {comment.content}
           {onRemove && (
             <IconButton
-              className="comment-remove cursor-pointer px-1 text-sm leading-none text-muted"
+              className="cursor-pointer px-1 text-sm leading-none text-muted hover:text-ink"
               aria-label="댓글 삭제"
               onClick={() => onRemove(comment.id)}
             >

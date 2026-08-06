@@ -1,0 +1,166 @@
+E-3 변형(상태·반응형) 관찰 (Tailwind v4.3.3 · Vite 8.1.5 · Chrome)
+====================================================================
+
+단위 테스트로 잡을 수 없는 사실을 기록한다.
+빌드 산출 CSS 계측 + 브라우저 computed style / canvas 픽셀 판독 / 실제 마우스 hover.
+
+재현 (리포지토리 루트에서):
+  npm run build --workspace apps/web-spa
+  LATEST=$(ls -t apps/web-spa/dist/assets/*.css | head -1)
+  wc -c < $LATEST
+
+색은 문자열이 아니라 픽셀로 잰다(E-2 와 같은 이유). 흰 배경을 먼저 칠하고
+그 위에 색을 칠한 뒤 getImageData 로 읽은 값이 학생이 실제로 보는 색이다.
+알파가 있는 색은 반드시 이렇게 재야 한다 — 배경 없이 칠하면 합성이 안 일어난다.
+
+
+1. 변형이 만드는 CSS 규칙의 모양 (실측)
+-----------------------------------------
+
+  hover:      @media (hover:hover){ .hover\:text-ink:hover{...} }   <- 미디어로 감싼다
+  disabled:   .disabled\:cursor-default:disabled{...}               <- 안 감싼다
+  focus-visible:  .focus-visible\:outline-2:focus-visible{...}      <- 안 감싼다
+  sm:         @media (width>=40rem){ .sm\:p-2{...} }                <- min-width 아니라 range 문법
+  dark:       @media (prefers-color-scheme:dark){ ... }             <- 설정 0줄 (E-4)
+
+  ⚠️ hover: 만 미디어로 감싸진다. 나머지 상태 변형은 순수 의사클래스다.
+
+
+2. ⚠️⚠️ 출력 순서는 className 에 쓴 순서와 무관하다
+-----------------------------------------------------
+
+  probe 에 일부러 뒤집어 썼다:
+    class="dark:bg-ink sm:bg-surface hover:dark:text-brand dark:hover:text-danger
+           max-sm:hidden focus:outline-4 group-hover:text-brand peer-checked:block
+           active:scale-95 sm:max-md:flex"
+
+  산출 CSS 안의 위치(앞에서부터):
+
+    3186  group-hover:text-brand
+    3264  peer-checked:block
+    3327  focus:outline-4
+    3407  active:scale-95
+    3559  max-sm:hidden
+    3611  sm:bg-surface
+    3699  sm:max-md:flex
+    3767  dark:bg-ink
+    3836  dark:hover:text-danger
+    3952  hover:dark:text-brand
+
+  dark:bg-ink 를 맨 앞에 썼는데 출력은 sm: 뒤다.
+  => 특정도가 같으므로 "나중에 나온 것" 이 이긴다. 즉 dark: 가 sm: 를 이긴다.
+     className 순서를 바꿔도 결과가 안 바뀐다.
+
+  정렬 순서: 상태변형 -> max-* -> min-width 오름차순 -> dark:
+  ⚠️ 임의 중단점(min-[900px]:)은 named 보다 **앞**에 나온다.
+     900px > 40rem(640px) 인데도 sm: 보다 먼저다 => sm: 가 min-[900px]: 를 이긴다.
+     (E-4 에서 중단점 토큰 다룰 때 이 함정을 쓸 수 있다)
+
+  ⚠️ dark:hover: 와 hover:dark: 는 둘 다 동작하지만 중첩 순서가 반대로 나온다.
+     dark:hover: -> @media(prefers-color-scheme:dark){ @media(hover:hover){...} }
+     hover:dark: -> @media(hover:hover){ @media(prefers-color-scheme:dark){...} }
+     매칭 결과는 같지만 출력 위치가 달라 cascade 에서 갈릴 수 있다.
+
+
+3. Step 1 — .comment-submit:disabled 를 옮기며 잰 것
+------------------------------------------------------
+
+  옛 손 규칙:  .comment-submit:disabled { color: #b2dffc; cursor: default; }
+  새 유틸리티: disabled:text-brand/30 disabled:cursor-default
+
+  ⚠️⚠️ 픽셀이 1 어긋난다 — "같다" 고 쓰면 거짓이다.
+
+    #b2dffc         흰 배경 위  178, 223, 252
+    brand/30        흰 배경 위  179, 223, 252   <- R 만 1 크다
+
+  이유: brand(#0095f6)를 30% 로 얹으면 R = 0.7 * 255 = 178.5 이고 Chrome 이 올림한다.
+  눈으로는 구분 못 하지만 수치로는 다르다.
+
+  ⚠️ 산출 CSS 에는 같은 선택자가 두 번 나온다 (@supports 점진 향상):
+
+    .disabled\:text-brand\/30:disabled{color:#0095f64d}
+    @supports (color:color-mix(in lab, red, red)){
+      .disabled\:text-brand\/30:disabled{color:color-mix(in oklab, var(--color-brand) 30%, transparent)}
+    }
+
+    재미있는 것은 fallback 쪽 #0095f64d 의 알파가 0x4d = 77 이라
+    255 - 77 = 178 로 옛 색과 **정확히** 같다는 점이다.
+    color-mix 를 지원하는 브라우저(Chrome)만 179 가 된다.
+
+  ⚠️⚠️ 그런데 진짜 차이는 1 픽셀이 아니라 **배경 의존성** 이다:
+
+    배경          #b2dffc (불투명)   brand/30 (알파)
+    흰색 #ffffff  178,223,252        179,223,252
+    어두움 #121212 178,223,252        13,57,86      <- 배경을 타고 섞인다
+
+    손으로 적은 hex 는 흰 배경을 전제로 고른 값이라 어두운 화면에서 그대로 밝게 뜬다.
+    알파로 적으면 뒤에 무엇이 오든 그것에 섞인다.
+    => E-4(다크모드)로 넘어가는 코드 근거. 지금은 둘 다 맞아 보이지만 하나만 살아남는다.
+
+  실제 앱 실측 (dev 서버, 댓글 폼):
+    잠김   color oklab(0.6546 -0.0657321 -0.164342 / 0.3) · cursor default · 픽셀 179,223,252
+    풀림   color oklch(0.6546 0.177 248.2)                · cursor pointer · 픽셀 0,149,246
+
+  ⚠️ cursor 가 잠김일 때 default 로 바뀐다 = disabled:cursor-default 가 cursor-pointer 를 이긴다.
+     E-2 에서는 손 규칙이 유틸리티를 이겼는데(layer 밖 > 안), 이제는 둘 다 utilities layer
+     안에 있어서 **출력 순서**로 갈린다(2번). 이긴 이유가 E-2 때와 다르다.
+
+
+4. Step 2 — .comment-remove:hover 를 옮기며 잰 것
+---------------------------------------------------
+
+  옛 손 규칙:  .comment-remove:hover { color: #262626; }
+  새 유틸리티: hover:text-ink
+
+  실제 마우스를 올려서 잰 값 (computer hover -> :hover 매칭 확인 후 판독):
+
+    평소     oklch(0.647 0 none)   = 142,142,142 (muted)
+    hover 중 oklch(0.269 0 none)   =  38, 38, 38 (ink)
+    옛 목표  #262626               =  38, 38, 38
+
+  => 픽셀까지 정확히 같다. Step 1 과 달리 여기는 어긋남이 없다
+     (--color-ink 가 #262626 을 정확히 옮긴 값이라서).
+
+  ⚠️ @media (hover:hover) 가 조건이 어긋나면 정말 죽는지 실행으로 확인했다:
+
+    #probe { color: rgb(1,2,3) }
+    @media (hover: hover) { #probe { color: rgb(11,22,33) } }   -> 적용됨 (11,22,33)
+    @media (hover: none)  { #probe { color: rgb(99,88,77) } }   -> 안 걸림 (1,2,3 유지)
+
+    이 데스크톱은 matchMedia('(hover: hover)').matches === true 다.
+    터치 전용 기기에서는 이 값이 false 라 hover: 유틸리티가 통째로 안 걸린다.
+    (기기를 직접 바꿔 재지는 못했다 — 위 실행은 "조건이 어긋난 미디어 규칙은
+     기본값을 그대로 둔다" 는 메커니즘까지만 확인한 것이다.)
+
+
+5. 두 Step 을 마친 뒤 계측
+----------------------------
+
+  globals.css   167 -> 158 줄 · 손 규칙 22 -> 20 개 (의사클래스 2개가 빠졌다)
+  CSS 산출      10,212 -> 10,436 B (+224)
+  :root 변수    29개 그대로  <- 새로 쓴 유틸리티가 이미 있던 토큰만 썼다
+  테스트        58 files/438 passed -> 59 files/444 passed
+  tsc 0 · eslint 0 · build 성공
+
+  ⚠️ 남은 손 규칙 20개는 전부 E-2 과제로 넘긴 교습용 데모다.
+     즉 "교안이 다루는 손 CSS" 는 이 시점에 0이 됐다.
+     E-1 Step 1 에서 시작한 이름 걷어내기가 여기서 닫힌다.
+
+  ⚠️ blast radius: scratch/e2-b3-class-bridge.ts 의 두 항목을 함께 고쳐야 했다.
+     그 파일은 B-3 시점 스냅샷과 견주려고 E-2 유틸리티를 옛 이름으로 되돌리는데,
+     className 이 바뀌면 되돌리기가 조용히 안 걸린다.
+     b3BridgeHits() 가 무엇이 실제로 되돌려졌는지 함께 확인하므로 헛 통과는 아니다.
+
+
+6. Preflight 는 포커스 링을 없애지 않는다 (E-2 관찰 10번 정정)
+----------------------------------------------------------------
+
+  E-2 관찰 10번에 input 이 "outline none" 이라고 적었는데, 그건 포커스가 안 된
+  요소를 잰 값이었다. 빌드 산출 CSS 의 @layer base 를 훑어보면 Preflight 는
+  outline 을 건드리는 선언을 갖고 있지 않다(:-moz-focusring 에 outline:auto 를
+  주는 줄이 오히려 있다).
+
+  실제로 dev 서버 화면에서 댓글 입력칸에 포커스가 가면 브라우저 기본 파란 링이 뜬다.
+
+  => Step 3 을 "Preflight 가 뺏은 걸 되살린다" 로 쓰면 거짓이다.
+     기본 링은 있고, 문제는 그 링이 우리 색·모양과 맞는가다.

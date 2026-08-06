@@ -15,7 +15,7 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
     <form className="flex gap-2 border-t border-line-soft p-3" onSubmit={handleSubmit}>
       <CommentInput ref={inputRef} value={content} onChange={handleChange} />
       <Button
-        className="comment-submit cursor-pointer text-sm font-semibold text-brand"
+        className="cursor-pointer text-sm font-semibold text-brand disabled:cursor-default disabled:text-brand/30"
         type="submit"
         disabled={isEmpty}
       >

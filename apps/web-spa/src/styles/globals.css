@@ -24,15 +24,6 @@
   --font-sans: system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
 }
 
-.comment-submit:disabled {
-  color: #b2dffc;
-  cursor: default;
-}
-
-.comment-remove:hover {
-  color: #262626;
-}
-
 .key-demo {
   background: #ffffff;
   border: 1px solid #dbdbdb;
