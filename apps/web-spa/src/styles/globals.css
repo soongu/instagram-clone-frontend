@@ -23,8 +23,18 @@
   /* Tailwind 가 이미 갖고 있는 토큰을 우리 값으로 덮어쓴다 */
   --font-sans: system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
 
-  /* 카드 470 두 장 + 사이 24 = 964, 좌우 여백 16 씩 = 996px 부터 두 열이 들어간다 */
+  /* 카드 470 두 장 + 사이 24 + 통의 좌우 여백 32 = 996px 부터 두 열이 들어간다 */
   --breakpoint-2col: 62.25rem;
+}
+
+/* 화면이 어두우면 같은 이름에 다른 값을 담는다.
+   유틸리티는 var(--color-*) 를 보고 있으므로 className 은 하나도 안 고친다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: oklch(0% 0 none);
+    --color-surface: oklch(18.2% 0 none);
+    --color-ink: oklch(97% 0 none);
+  }
 }
 
 .key-demo {
