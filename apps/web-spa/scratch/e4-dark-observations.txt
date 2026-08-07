@@ -327,6 +327,7 @@ E-3 채증(e3-variant-observations.txt)의 이어짐. 단위 테스트로 못 �
     @media (prefers-color-scheme: dark) { :root { --color-canvas: ...; ... } }
     className 은 **한 글자도 안 고친다**.
     비용: CSS 11,171 -> 11,453 B (**+282**) · :root 29개 그대로 · 파일 1개
+         (Step 6 종료 시점. Step 7 의 토스트 교체로 최종은 11,467 B)
 
   정리:
                     새 이름   손대는 곳    파일   CSS 증가
@@ -380,7 +381,7 @@ E-3 채증(e3-variant-observations.txt)의 이어짐. 단위 테스트로 못 �
   tsc --noEmit       0
   eslint .           0
   vite build         성공
-  CSS                11,142 -> 11,453 B
+  CSS                11,142 -> 11,467 B
   :root,:host 변수   29개 그대로 (다크 재정의는 :root 별도 블록)
   globals.css        158 -> 180줄 · 손 규칙 20개 그대로(E-2 과제분)
   커밋               4개 (Step 1 / 5 / 6 / 7)
@@ -518,4 +519,23 @@ E-3 채증(e3-variant-observations.txt)의 이어짐. 단위 테스트로 못 �
 
   최종: grep-check.sh E4 FAIL 0/WARN 0 · 이탤릭 0 · 이모지 5/3종 · tic 0.08%/0.22%
         · 250자 0 · 다이어그램 정렬 0 · Step 7 · 토글 7 · h4 0 · EOF 누출 0
-        · 60 files / 452 passed · tsc 0 · eslint 0 · CSS 11,453 B
+        · 60 files / 452 passed · tsc 0 · eslint 0 · CSS 11,467 B
+
+
+15. ⚠️ 수치 정정 — 최종 CSS 는 11,467 B (11,453 은 Step 6 시점)
+------------------------------------------------------------------
+
+  마감 점검에서 dist 를 지우고 새로 빌드하니 11,467 B 가 나왔다. 채증·canon 에는
+  11,453 이 적혀 있었다. 원인은 단위 혼동이 아니라 **시점 혼동** 이었다.
+
+    Step 1 종료   11,171 B
+    Step 5 종료   11,311 B   (다크 토큰 3개)
+    Step 6 종료   11,453 B   (다크 토큰 7개)  <- 이 값을 '최종'으로 적었다
+    Step 7 종료   11,467 B   (토스트 bg-black/82 -> bg-ink/90 text-canvas, +14)
+
+  교안의 11,171 -> 11,899(+728) 과 +282 는 Step 4·5 시점 비교라 **그대로 맞다.**
+  (둘 다 Step 1 상태를 기준선으로 잰 값이고 토스트 교체 이전이다.)
+
+  ⚠️ 교훈: 모듈이 여러 Step 에 걸쳐 같은 지표를 재면 **각 수치에 시점을 붙여 적을 것.**
+     "최종" 이라고 쓸 값은 마지막 Step 까지 끝난 뒤 다시 재야 한다.
+     확인 방법: rm -rf dist && npm run build && wc -c < $(ls -t dist/assets/*.css | head -1)
