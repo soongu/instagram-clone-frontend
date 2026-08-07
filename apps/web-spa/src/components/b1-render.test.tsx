@@ -47,7 +47,7 @@ describe('PostCard', () => {
     // Avatar 만 내는 출력(대체 텍스트)으로 확인한다 — 클래스 이름은 E-1·E-2 에서 바뀐다
     expect(html).toContain('alt="jaehoon 프로필 사진"');
     expect(html).toContain(
-      '<article class="mb-6 overflow-hidden rounded-lg border border-line bg-surface lg:mb-0">',
+      '<article class="mb-6 overflow-hidden rounded-lg border border-line bg-surface 2col:mb-0">',
     );
   });
 

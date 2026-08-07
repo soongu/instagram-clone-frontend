@@ -22,6 +22,9 @@
 
   /* Tailwind 가 이미 갖고 있는 토큰을 우리 값으로 덮어쓴다 */
   --font-sans: system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+
+  /* 카드 470 두 장 + 사이 24 = 964, 좌우 여백 16 씩 = 996px 부터 두 열이 들어간다 */
+  --breakpoint-2col: 62.25rem;
 }
 
 .key-demo {

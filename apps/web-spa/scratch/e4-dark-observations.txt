@@ -1,0 +1,288 @@
+E-4 다크모드(중단점 토큰과 dark:) 관찰 — Tailwind v4.3.3 · Vite 8.1.5 · Chrome
+================================================================================
+
+E-3 채증(e3-variant-observations.txt)의 이어짐. 단위 테스트로 못 잡는 것만 적는다.
+
+재현 (리포지토리 루트에서):
+  npm run build --workspace apps/web-spa
+  LATEST=$(ls -t apps/web-spa/dist/assets/*.css | head -1)
+
+시작 시점(E-3 종료 상태): CSS 11,142 B · :root,:host 변수 29개 · globals.css 158줄 · 손 규칙 20개
+
+
+0. 시의성 확인 (착수일 2026-08-07)
+------------------------------------
+
+  tailwindcss  4.3.3  = npm latest 와 동일. E-3 착수 때와 변동 없음.
+  dist-tags: latest 4.3.3 / next 4.0.0 / v3-lts 3.4.19
+
+  공식 문서 확인:
+    dark: 기본값은 prefers-color-scheme 미디어 특성
+    셀렉터 방식   @custom-variant dark (&:where(.dark, .dark *));
+    데이터속성 방식 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+    --breakpoint-* 는 @theme 네임스페이스 목록에 정식으로 있다
+
+  ⚠️ 공식 문서의 "테마 변수" 페이지는 컴파일 결과 예시에서 :root 에
+     --breakpoint-sm ... 이 들어 있는 것처럼 보여준다. 우리 빌드와 다르다(1번 참조).
+     문서 예시는 전체 테마를 다 내보낸 그림이고, 실제로는 쓴 것만 나온다.
+     => 문서를 그대로 옮기지 말고 우리 빌드를 재서 쓸 것.
+
+
+1. ⚠️⚠️ --breakpoint-* 는 :root 에 안 나온다 (커리큘럼 전제 — 실측으로 확인)
+-------------------------------------------------------------------------------
+
+  E-3 종료 상태 그대로 빌드(sm:·lg: 를 실제로 쓰고 있다):
+
+    :root,:host 변수 29개 — breakpoint 계열 0개
+    CSS 전체에서 문자열 "--breakpoint" 등장 횟수 = 0
+
+  @theme 에 직접 두 개를 추가해도 마찬가지였다:
+
+    --breakpoint-3xl: 120rem;
+    --breakpoint-tab: 55rem;
+
+    -> :root 변수 여전히 29개. "--breakpoint" 등장 0회.
+    -> 대신 값이 미디어 조건에 그대로 박힌다:
+         @media (width>=55rem){.tab\:text-brand{color:var(--color-brand)}}
+         @media (width>=120rem){...}
+
+  즉 색 토큰은 var() 로 남고, 중단점 토큰은 값이 인라인된다.
+  이유: 미디어 쿼리 조건은 var() 를 못 쓴다. @media (width>=var(--x)) 는 성립하지 않는다.
+  그래서 Tailwind 가 빌드 시점에 값을 계산해 박을 수밖에 없다.
+
+  => 학생이 DevTools 에서 --color-brand 는 찾을 수 있지만 --breakpoint-sm 은 못 찾는다.
+     "토큰인데 왜 안 보이지" 가 E-4 의 첫 이야기 (E-3 마무리가 지정한 자리).
+
+
+2. ⚠️ 미디어 쿼리 출력 순서 — named 는 크기순, 임의는 앞으로 몰린다
+---------------------------------------------------------------------
+
+  프로브에 여러 조건을 섞어 쓰고 산출 CSS 안의 위치를 읽었다:
+
+     9117  (hover:hover)
+     9670  (width>=900px)      <- min-[900px]:  임의
+     9747  (width>=40rem)      <- sm   640
+     9861  (width>=55rem)      <- tab  880  (우리가 만든 named)
+     9926  (width>=64rem)      <- lg  1024
+    10175  (width>=120rem)     <- 3xl 1920 (우리가 만든 named)
+    10246  (prefers-color-scheme:dark)   <- dark: 가 가장 뒤
+
+  두 가지가 동시에 보인다:
+    (1) 우리가 만든 named 중단점은 기본 중단점들 사이에 **크기순 제자리**로 꽂힌다.
+        55rem 이 40rem 과 64rem 사이. 이름이 뭔지는 상관없고 값으로 정렬된다.
+    (2) 임의 중단점 min-[900px]: 은 900px 인데도 40rem(640px)보다 **앞**이다.
+        => sm: 이 min-[900px]: 을 이긴다 (E-3 canon 재확인).
+
+  정리: 임의값은 named 무리보다 앞에 통째로 몰리고, named 끼리는 값 순서로 선다.
+
+  ⚠️ dark: 가 모든 조건보다 뒤 = E-3 Step 4 가 비워둔 자리. 복선 회수 지점.
+
+
+3. dark: 는 설정 0줄 (실측)
+-----------------------------
+
+  globals.css 에 아무 설정도 안 넣은 채 dark:bg-canvas 등을 쓰면:
+
+    @media (prefers-color-scheme:dark){
+      .dark\:border-line{border-color:var(--color-line)}
+      .dark\:bg-canvas{background-color:var(--color-canvas)}
+      .dark\:text-ink{color:var(--color-ink)}
+      ...
+    }
+
+  ⚠️⚠️ 결정적: .dark\:bg-canvas 가 가리키는 것은 **같은** var(--color-canvas) 다.
+     즉 토큰 값이 안 바뀌면 dark:bg-canvas 는 bg-canvas 와 똑같은 색을 낸다.
+     "dark: 를 붙이면 알아서 어두워진다" 가 아니다. 다른 값을 어딘가에서 줘야 한다.
+     이 사실이 Step 4(유틸리티마다 붙이기)와 Step 5(토큰 재정의)를 가르는 근거다.
+
+  중첩 순서 (E-3 canon 재확인 — 둘 다 동작하지만 출력이 반대):
+    dark:hover:  -> @media (prefers-color-scheme:dark){ @media (hover:hover){ ... } }
+    hover:dark:  -> @media (hover:hover){ @media (prefers-color-scheme:dark){ ... } }
+    dark:sm:     -> @media (prefers-color-scheme:dark){ @media (width>=40rem){ ... } }
+
+  prefers-color-scheme 이 실제로 평가되는지 확인 (E-3 의 hover 검증과 같은 방식):
+    #probe { color: rgb(1,2,3) }
+    @media (prefers-color-scheme: dark)  { #probe { color: rgb(11,22,33) } }
+    @media (prefers-color-scheme: light) { #probe { color: rgb(99,88,77) } }
+    -> 결과 rgb(99, 88, 77). light 블록이 걸렸다.
+       matchMedia('(prefers-color-scheme: dark)').matches === false
+    측정 기계는 macOS 라이트 모드 (defaults read -g AppleInterfaceStyle 키 없음).
+
+
+4. ⚠️⚠️ 토큰 재정의가 이기는 이유는 순서가 아니라 cascade layer 다
+---------------------------------------------------------------------
+
+  globals.css 에 이렇게 쓰면 모든 유틸리티가 따라온다:
+
+    @media (prefers-color-scheme: dark) {
+      :root { --color-canvas: oklch(0% 0 none); ... }
+    }
+
+  빌드 산출에서 각 지점이 속한 레이어를 추적했다:
+
+    @theme 이 낸 :root,:host   위치   798   레이어 theme
+    유틸리티 .bg-surface        위치  7100   레이어 utilities
+    우리 다크 override :root    위치 11096   레이어 없음 (unlayered)
+
+  왜 이기는지 순서를 뒤집어 갈라 봤다 (E-3 의 특정도 검증과 같은 방식):
+
+    A) unlayered 를 먼저, layered 를 나중에
+         #lp { --c: rgb(10,10,10) }                       <- 먼저, unlayered
+         @layer theme { #lp { --c: rgb(200,200,200) } }    <- 나중, layered
+         => 결과 rgb(10,10,10). **먼저 썼는데도 unlayered 가 이겼다.**
+
+    B) 반대로 써도 결과 동일 rgb(10,10,10).
+    C) 둘 다 같은 레이어 안에 두면 나중 것이 이긴다 rgb(10,10,10).
+
+  => 결정하는 것은 **레이어**다. 순서가 아니다.
+     E-2 에서 손 CSS 가 유틸리티를 이겼던 그 규칙(layer 밖 > layer 안)이
+     이번에는 우리 편으로 일한다. 같은 규칙, 반대 방향.
+
+  ⚠️ 이 과목에서 "이겼다" 의 이유 정리 (E-3 canon 에 이어붙임):
+       E-2 손 CSS vs 유틸리티        cascade layer (밖 > 안)
+       E-3 상태 변형 vs base         특정도 (:disabled 가 한 겹 더)
+       E-3 반응형 변형끼리           출력 순서 (미디어는 특정도를 안 더함)
+       E-4 다크 토큰 vs @theme       cascade layer — E-2 와 **같은** 이유
+     => E-4 는 새 이유가 아니다. "네 번째 이유" 라고 쓰면 거짓.
+
+
+5. 다크 팔레트 — 값을 계산해서 정하고 브라우저로 되검증
+-----------------------------------------------------------
+
+  결정 원칙: 라이트에서 재둔 대비를 유지하되, 4.5 미만이던 글자색은 이번에 넘긴다.
+  brand·danger 는 안 바꾼다(브랜드색은 양쪽에서 같아야 한다).
+
+    토큰            라이트     ->  다크        다크 OKLCH
+    --color-canvas   #fafafa      #000000     oklch(0% 0 none)
+    --color-surface  #ffffff      #121212     oklch(18.2% 0 none)
+    --color-ink      #262626      #f5f5f5     oklch(97% 0 none)
+    --color-muted    #8e8e8e      #a8a8a8     oklch(73.2% 0 none)
+    --color-subtle   #737373      #c7c7c7     oklch(83% 0 none)
+    --color-line     #dbdbdb      #363636     oklch(33.3% 0 none)
+    --color-line-soft #efefef     #262626     oklch(26.9% 0 none)
+    --color-brand    #0095f6      (그대로)
+    --color-danger   #ed4956      (그대로)
+
+  대비비 (각자의 surface 위):
+    토큰        라이트    다크
+    ink         15.13    17.18
+    muted        3.28     7.88   <- 라이트가 4.5 미달이었다. 다크에서 넘겼다.
+    subtle       4.74    11.08
+    brand        3.17     5.91
+    danger       3.69     5.07
+    line         1.38     1.55   (테두리라 글자 기준 아님)
+    line-soft    1.15     1.24
+
+  ⚠️ 밝기 서열은 양쪽에서 같아야 한다 (값은 반대편으로 가지만 순서는 유지):
+    라이트(어두운 순)  ink > subtle > muted > line > line-soft
+    다크  (밝은 순)    ink > subtle > muted > line > line-soft
+    => subtle 을 muted 보다 **밝게** 잡아야 서열이 안 뒤집힌다.
+       라이트에서 subtle(#737373)이 muted(#8e8e8e)보다 어두워 더 또렷했기 때문.
+       그냥 밝기만 뒤집으면 라벨과 보조문구의 위계가 조용히 바뀐다.
+
+  canvas / surface 가 실제로 갈라지는가:
+    라이트 #fafafa vs #ffffff  둘 사이 대비 1.04
+    다크   #000000 vs #121212  둘 사이 대비 1.12
+    => 다크에서 오히려 더 벌어진다. E-2 가 "이름만 지어두고 안 갈라놨다" 한 자리가 여기서 닫힌다.
+
+  브라우저 되검증 (다크 값 주입 후 실제 화면 computed style):
+    body 배경   0,0,0        (canvas)
+    body 글자   245,245,245  (ink)
+    카드 배경   18,18,18     (surface)
+    카드 테두리 54,54,54     (line)
+    댓글 보조문구 168,168,168 (muted)
+    폼 라벨     199,199,199  (subtle)
+    가입 버튼   배경 0,149,246 · 글자 255,255,255  (brand·white 안 바꿨으니 그대로)
+    => 계산값과 전부 일치. className 은 한 글자도 안 고쳤다.
+
+
+6. ⚠️⚠️ 값만 갈아끼워서 안 되는 자리 — 실측 3종
+--------------------------------------------------
+
+  (1) 손으로 적은 hex 는 안 움직인다 + 반쪽만 움직여 충돌한다
+
+    .profile-picker-button (E-2 과제로 남긴 손 CSS 데모, SignUpForm 첫 자식으로 실제 렌더)
+
+      배경    #fafafa  손으로 적음  -> 250,250,250  그대로
+      테두리  #dbdbdb  손으로 적음  -> 219,219,219  그대로
+      글자    선언 없음            -> 245,245,245  body 의 text-ink 를 상속해서 **따라 움직임**
+
+      글자 대 배경 대비  라이트 14.50  ->  다크 **1.04**   ❌ 글자가 배경에 묻힌다
+
+    ⚠️ 이게 단순한 "hex 는 안 바뀐다" 보다 좋은 교보재다.
+       한 요소 안에서 배경은 안 움직이고 글자만 움직여서 서로 부딪힌다.
+       스크린샷으로 눈에 바로 보인다(흰 버튼 위 흰 글씨).
+
+    옆의 .profile-picker-name (color: #737373 손으로 적음)
+      글자 115,115,115 그대로 · 뒷배경은 surface 라 18,18,18 로 움직임
+      대비 라이트 4.74 -> 다크 3.95. 읽히긴 하지만 의도보다 흐려졌다.
+
+  (2) 우리 토큰이 아닌 색은 재정의가 안 닿는다
+
+    Toast: bg-black/82 text-white  (black 은 Tailwind 기본색, 우리 토큰 아님)
+      라이트 canvas #fafafa 위   실제 45,45,45   배경과 대비 13.19  잘 보임
+      다크   surface #121212 위  실제  3,3,3     배경과 대비  1.10
+      다크   canvas  #000000 위  실제  0,0,0     배경과 대비  1.00  **상자가 완전히 사라짐**
+      (글자는 흰색이라 읽히지만 알림 상자의 윤곽이 없어져 글자만 떠 있는 꼴)
+
+  (3) 반대 사례 — 알파는 저절로 잘 따라온다 (실패가 아니라 성공)
+
+    잠긴 게시 버튼 text-brand/30 (E-3 Step 1 에서 옮긴 것)
+      라이트 surface #ffffff 위   179,223,252
+      다크   surface #121212 위    13,57,86      (0.3·색 + 0.7·배경)
+
+    => E-3 이 미뤄둔 확인의 답. 알파는 뒤에 무엇이 오든 그것에 섞이므로
+       토큰을 안 바꿔도 배경을 따라간다. 손으로 적은 #b2dffc 였다면
+       어두운 화면에서 178,223,252 그대로 밝게 떠서 틀렸을 자리다.
+    ⚠️ 대비만 보면 라이트 1.41 · 다크 1.55 로 비슷하다.
+       "다크에서 안 보이게 된다" 고 쓰면 **거짓**. 양쪽 다 흐린 게 정상(잠김 표시니까).
+       요지는 "안 보이게 된다" 가 아니라 "배경을 따라가느냐" 다.
+
+  (4) 사진은 값을 갈아끼울 수 없다
+    PostImage 는 사용자가 올린 사진이라 어두운 화면에서도 그대로 밝다.
+    인스타 실물도 사진을 어둡게 하지 않는다. 다크모드가 손댈 수 없는 영역.
+
+
+7. ⚠️ 측정 방법 정정 — 캔버스는 알파색에서 ±1 어긋난다
+--------------------------------------------------------
+
+  E-3 채증은 알파색을 캔버스에 칠해 getImageData 로 읽었다. 이번에 같은 방법으로
+  text-brand/30 을 재니 다크 카드 위에서 12,57,86 이 나왔다. E-3 기록은 13,57,86.
+
+  분석식으로 계산하면:
+    R 0.3·0   + 0.7·18 = 12.6 -> 13
+    G 0.3·149 + 0.7·18 = 57.3 -> 57
+    B 0.3·246 + 0.7·18 = 86.4 -> 86
+  => (13, 57, 86). E-3 기록이 맞다.
+
+  캔버스가 틀리는 이유: canvas2d 는 알파를 8비트 premultiplied 로 저장해서
+  0.3 알파를 칠하는 순간 정밀도가 깎인다. 흰 배경에서도 178 이 나와
+  E-3 이 구분했던 178(fallback) vs 179(color-mix) 를 재현하지 못했다
+  (color-mix 지원 여부와 무관하게 세 경로가 전부 178 로 나왔다).
+
+  => 규칙: **불투명 색은 캔버스로 재도 되지만, 알파색은 분석식으로 계산할 것.**
+     E-3 의 179/13 수치는 유지한다. 이번 캔버스 값이 틀린 쪽이다.
+
+
+8. 우리 중단점 — 값이 아니라 콘텐츠에서 나온다
+------------------------------------------------
+
+  E-3 은 lg(1024px)에서 2열로 갈랐다. 그런데 그 1024 는 Tailwind 가 준 숫자다.
+  우리 레이아웃이 실제로 요구하는 값을 계산하면:
+
+    카드 470 × 2 + gap 24            = main 콘텐츠 964px   (E-3 의 max-w-[964px])
+    sm 이후 좌우 padding 16 씩        = 뷰포트 996px 필요
+    => 경계 996px = 62.25rem
+
+  lg(1024)는 28px 늦다. 그만큼 2열이 들어갈 수 있는데도 1열로 버틴다.
+
+  => --breakpoint-2col: 62.25rem 을 정의하면 우리 콘텐츠가 정한 자리에서 갈린다.
+     "이름을 준다" 가 아니라 "값의 근거가 생긴다" 가 핵심.
+  (구현·경계 실측은 TDD 단계에서. 아직 코드에 반영 안 함.)
+
+
+9. 현재 상태
+--------------
+
+  프로브 전부 되돌림. globals.css git clean.
+  빌드 CSS 11,142 B = E-3 종료 시점과 동일. 코드 변경 0.
