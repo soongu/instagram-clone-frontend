@@ -43,3 +43,28 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
     expect(html).not.toMatch(/\blg:/);
   });
 });
+
+describe('Step 5·6 — 다크 값은 토큰 한 곳에서 갈린다', () => {
+  // 값이 갈리는 것 자체는 globals.css 안이라 여기서 못 본다.
+  // 여기서 지키는 것은 "그 대신 className 이 하나도 안 늘었다" 는 쪽이다.
+  it('색을 쓰는 곳 어디에도 dark: 짝이 붙지 않았다', () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).not.toMatch(/dark:/);
+  });
+
+  it('카드는 다크모드 전과 똑같은 이름을 쓴다 — 값만 갈린다', () => {
+    const html = renderToStaticMarkup(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />);
+
+    expect(html).toContain('border border-line bg-surface');
+    expect(html).not.toContain('surface-dark');
+  });
+
+  it('보조 문구와 폼 라벨도 이름 그대로다', () => {
+    const feed = renderToStaticMarkup(<Feed posts={feedPosts} onToggleLike={() => {}} />);
+    const form = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
+
+    expect(feed).toContain('text-muted');
+    expect(form).toContain('text-subtle');
+  });
+});

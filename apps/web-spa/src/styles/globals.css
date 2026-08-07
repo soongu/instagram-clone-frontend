@@ -34,7 +34,16 @@
     --color-canvas: oklch(0% 0 none);
     --color-surface: oklch(18.2% 0 none);
     --color-ink: oklch(97% 0 none);
+
+    /* 회색 셋은 밝기를 뒤집되 서열은 그대로 둔다.
+       라이트에서 subtle 이 muted 보다 어두워 더 또렷했으므로
+       다크에서는 subtle 이 muted 보다 밝아야 한다. */
+    --color-muted: oklch(73.2% 0 none);
+    --color-subtle: oklch(83% 0 none);
+    --color-line: oklch(33.3% 0 none);
+    --color-line-soft: oklch(26.9% 0 none);
   }
+  /* brand·danger 는 안 바꾼다 — 브랜드색은 양쪽 화면에서 같아야 한다 */
 }
 
 .key-demo {
