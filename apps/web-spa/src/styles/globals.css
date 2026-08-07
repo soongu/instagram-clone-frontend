@@ -35,7 +35,7 @@
     --color-surface: oklch(18.2% 0 none);
     --color-ink: oklch(97% 0 none);
 
-    /* 회색 셋은 밝기를 뒤집되 서열은 그대로 둔다.
+    /* 회색 넷은 밝기를 뒤집되 서열은 그대로 둔다.
        라이트에서 subtle 이 muted 보다 어두워 더 또렷했으므로
        다크에서는 subtle 이 muted 보다 밝아야 한다. */
     --color-muted: oklch(73.2% 0 none);
