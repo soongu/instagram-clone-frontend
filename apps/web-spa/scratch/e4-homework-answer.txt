@@ -1,0 +1,124 @@
+E-4 과제 3종 — 실제로 만들어 재보고 되돌렸다
+================================================
+
+교안에 싣는 답안은 전부 아래 실측 위에 쓴다. 검증 후 git checkout 으로 되돌렸다.
+
+
+과제 1 [구현] 어두운 화면에서 사라진 버튼 되살리기
+-----------------------------------------------------
+
+  손 CSS 4개(.profile-picker / -input / -button / -name)를 토큰 유틸리티로 옮겼다.
+
+    .profile-picker        -> flex items-center gap-2
+    .profile-picker-input  -> hidden
+    .profile-picker-button -> cursor-pointer rounded-md border border-line bg-canvas
+                              px-3 py-1.5 text-note
+                              + focus-visible:outline-2 outline-offset-2 outline-brand
+    .profile-picker-name   -> text-note text-subtle
+
+  매핑 근거 (E-2 답안이 확립한 대응 그대로):
+    #dbdbdb -> line · #fafafa -> canvas · #737373 -> subtle · 13px -> text-note
+    border-radius 6px -> rounded-md · padding 6px 12px -> px-3 py-1.5
+
+  실측:
+
+    항목             라이트                다크
+    버튼 배경        250,250,250          0,0,0
+    버튼 글자        38,38,38             245,245,245
+    버튼 테두리      219,219,219          54,54,54
+    글자 대 배경     14.50                **19.26**   (고치기 전 1.04)
+    설명글           115,115,115          199,199,199
+    설명글 대 카드   4.74                 11.08
+
+  => dark: 를 한 번도 안 쓰고 해결된다. 토큰만 쓰면 저절로 따라오기 때문.
+  => 라이트 생김새는 그대로 유지된다(14.50 동일). 되돌아간 게 아니라 안 변한 것.
+
+  ⚠️ 포커스 링을 함께 붙이면 E-3 이 남긴 "아홉 번째 탭 스톱" 문제도 같이 닫힌다.
+     E-3 은 이 버튼만 브라우저 기본 링이었다. 과제 지문에 명시하진 않았지만
+     답안에서는 짚어준다(안 붙여도 과제 자체는 통과).
+
+  손 규칙 20 -> 16개. CSS 11,453 -> 11,347 B (줄어든다 — 손 CSS 가 빠져서).
+
+
+과제 2 [구현] 우리 중단점 하나 더 만들기
+--------------------------------------------
+
+  계산 (Step 1 과 같은 방법):
+    카드 470 × 3 + 간격 24 × 2 + 통의 좌우 여백 32 = 1490px = 93.125rem
+
+    --breakpoint-3col: 93.125rem;
+    App   ... 2col:max-w-[996px] 3col:max-w-[1490px]
+    Feed  ... 2col:gap-6 3col:grid-cols-3
+
+  경계 실측:
+
+    뷰포트   통폭    열   카드폭
+     995      470    1    438
+     996      996    2    470
+    1489      996    2    470
+    1490     1490    3    470
+    1800     1490    3    470
+
+  => 1489/1490 에서 정확히 갈린다. 그리고 열이 늘어도 카드는 계속 470 이다.
+     한 번 근거를 세워두면 다음 중단점은 같은 식에 숫자만 바꿔 넣으면 된다.
+
+  빌드 CSS 에서 --breakpoint-3col 검색: **0건** (Step 2 와 같은 이유).
+  대신 @media (width>=93.125rem) 으로 값이 인라인된다.
+
+
+과제 3 [탐구] 경계를 건드려 보기
+-----------------------------------
+
+  (1) 2col:text-danger dark:text-brand — 넓은 화면 + 어두운 모드
+
+      출력 순서에서 dark: 가 이름 붙은 중단점보다 뒤다(Step 3 그림).
+      미디어 쿼리는 특정도를 안 더하므로 뒤에 나온 쪽이 이긴다 => dark: 승.
+
+      메커니즘 확인 (같은 구조를 조건만 바꿔 실행):
+        @media (width>=1px)                 { #xp { color: rgb(1,1,1) } }   먼저
+        @media (prefers-color-scheme: light){ #xp { color: rgb(2,2,2) } }   나중
+        => rgb(2,2,2). 나중이 이김.
+        순서를 뒤집으면 => rgb(1,1,1). 즉 특정도가 아니라 순서가 결정한다.
+
+      ⚠️ 측정 기계가 라이트 모드라 dark 조건 자체는 매칭시킬 수 없었다.
+         그래서 light 로 같은 구조를 세워 "뒤에 나온 미디어 블록이 이긴다" 까지
+         실행으로 확인하고, dark 가 마지막이라는 것은 산출 CSS 위치로 확인했다.
+         둘을 합치면 결론이 선다. 교안에도 이 이상으로 단언하지 않는다.
+
+  (2) min-[900px]:text-danger sm:text-brand — 창 1000px
+
+      실행 결과 rgb(4,4,4) = sm 승 (창 폭 1080 에서).
+        @media (width>=900px) { #xp { color: rgb(9,9,9) } }   먼저
+        @media (width>=40rem) { #xp { color: rgb(4,4,4) } }   나중
+      => 900 > 640 인데도 sm 이 이긴다. 임의 중단점이 named 무리보다 앞에 몰리므로.
+      (E-3 canon 재확인)
+
+  (3) 다크 블록을 @theme 안으로 옮기면 — **빌드가 실패한다** (조용히 무시가 아니다)
+
+        Error: `@theme` blocks must only contain custom properties or `@keyframes`.
+
+          @theme {
+        >   @media (prefers-color-scheme: dark) {
+        >     --color-canvas: oklch(0% 0 none);
+          }
+
+      => 실패해 주는 게 다행이다. 조용히 무시됐다면 다크가 안 걸리는 이유를
+         한참 찾았을 것.
+
+  (4) 다크 블록을 @layer theme { } 로 감싸면 — **여전히 이긴다. 단 이유가 바뀐다.**
+
+      감싸기 전:  @theme 출력 = layer theme  /  우리 것 = layer 밖
+                  => layer 밖이 이긴다 (순서 무관)
+      감싼 뒤:    둘 다 layer theme, 우리 것이 뒤(411 -> 1381)
+                  => 같은 레이어 안에서는 나중이 이긴다
+
+      결과는 같지만 기대는 쪽이 다르다. 감싼 판은 순서에 기대므로 더 약하다.
+      import 위치가 바뀌거나 누가 뒤에 theme 레이어를 더 쓰면 뒤집힐 수 있다.
+      => "왜 이기는지" 를 알아야 하는 이유가 이 실험이다.
+
+
+되돌리기
+----------
+
+  git checkout -- apps/web-spa/src
+  빌드 CSS 11,453 B · 60 files / 452 passed · 워킹트리 클린 확인.
