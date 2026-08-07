@@ -9,7 +9,7 @@ interface ToastProps {
 export function Toast({ message }: ToastProps) {
   return (
     <div
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-[20px] bg-black/82 px-4.5 py-2.5 text-sm text-white"
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-[20px] bg-ink/90 px-4.5 py-2.5 text-sm text-canvas"
       role="status"
     >
       {message}

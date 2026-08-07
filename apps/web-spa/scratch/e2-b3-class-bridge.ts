@@ -56,7 +56,7 @@ const BRIDGE: Array<[string, string]> = [
     'class="comment-remove"',
   ],
   [
-    'class="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-[20px] bg-black/82 px-4.5 py-2.5 text-sm text-white"',
+    'class="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-[20px] bg-ink/90 px-4.5 py-2.5 text-sm text-canvas"',
     'class="toast"',
   ],
   [
