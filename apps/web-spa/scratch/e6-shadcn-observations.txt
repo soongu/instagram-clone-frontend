@@ -248,7 +248,8 @@ E-5 채증(e5-shadcn-observations.txt)의 이어짐. 단위 테스트로 못 잡
 9. 최종 게이트 (모듈 종료 시점)
 --------------------------------------------------------------------------------
 
-  npm test          63 files / 476 passed   (E-5: 63 / 475)
+  npm test          64 files / 488 passed   (E-5: 63 / 475)
+                    (늘어난 한 파일 = e6-shadcn-components.test.tsx 12건)
   tsc --noEmit      0
   eslint .          0
   vite build        성공
