@@ -63,6 +63,11 @@ function withoutSignUpSection(html: string) {
   return html.replace(/<section class="section" aria-label="회원가입">.*?<\/section>/, '');
 }
 
+// E-5 는 머리말에 화면 밝기 고르개를 덧붙였다. 같은 이유로 견주기 전에 걷어낸다.
+function withoutThemeToggle(html: string) {
+  return html.replace(/<div class="[^"]*" role="group" aria-label="화면 밝기">.*?<\/div>/, '');
+}
+
 // E-1 은 제목에 font-bold 를, E-2 는 나머지를 토큰 유틸리티로 옮겼다.
 // 둘 다 B-3 이후에 덧붙은 변화이므로 견주기 전에 옛 이름으로 되돌린다.
 
@@ -71,11 +76,12 @@ describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', 
     const before = withoutSignUpSection(renderToStaticMarkup(<AppBeforeHook />));
     const rendered = renderToStaticMarkup(<App />);
     // 옛 이름으로 되돌린 뒤에 잘라낸다 — withoutSignUpSection 이 옛 이름을 찾기 때문이다
-    const after = withoutSignUpSection(toB3Classes(rendered));
+    const after = withoutThemeToggle(withoutSignUpSection(toB3Classes(rendered)));
 
     // 잘라낸 뒤에도 비교할 알맹이가 남아 있어야 한다
     expect(after).toContain('aria-label="피드"');
     expect(after).not.toContain('aria-label="회원가입"');
+    expect(after).not.toContain('aria-label="화면 밝기"');
     // 되돌리기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
     expect(b3BridgeHits(rendered)).toContain('feed');
     expect(b3BridgeHits(rendered)).toContain('post-card');
