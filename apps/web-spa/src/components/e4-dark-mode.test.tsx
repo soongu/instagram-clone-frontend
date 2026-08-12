@@ -12,17 +12,20 @@ import { PostCard } from './PostCard';
 import { SignUpForm } from './SignUpForm';
 import { feedPosts } from '../data/feed';
 
+// E-7 에서 갈리는 조건이 창에서 통으로 옮겨갔다(--breakpoint-2col → --container-2col).
+// 여기서 지키려던 것은 "우리가 지은 이름 하나로 두 열이 갈린다" 쪽이라
+// 이름 앞의 @ 만 따라가고 지키는 내용은 그대로 둔다.
 describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', () => {
-  it('바깥 통은 우리 중단점에서 폭을 넓힌다', () => {
+  it('바깥 통은 스스로 통이 되고 폭 상한을 하나만 갖는다', () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html).toContain('class="mx-auto max-w-[470px] py-4 sm:px-4 2col:max-w-[996px]"');
+    expect(html).toContain('class="@container mx-auto max-w-[996px] py-4 sm:px-4"');
   });
 
-  it('피드 목록은 우리 중단점에서 두 열이 된다', () => {
+  it('피드 목록은 우리 이름에서 두 열이 된다', () => {
     const html = renderToStaticMarkup(<Feed posts={feedPosts} onToggleLike={() => {}} />);
 
-    expect(html).toContain('class="2col:grid 2col:grid-cols-2 2col:gap-6"');
+    expect(html).toContain('class="@2col:grid @2col:grid-cols-2 @2col:gap-6"');
   });
 
   it('카드 아래 여백은 두 열이 되는 순간 gap 에게 넘긴다', () => {
@@ -31,13 +34,13 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
     // E-6 에서 카드 몸통이 들여온 것으로 바뀌었다.
     // 여기서 지키려던 것은 "두 열이 되면 아래 여백을 gap 에게 넘긴다" 쪽이라 그것만 본다.
     expect(html).toContain('mb-6');
-    expect(html).toContain('2col:mb-0');
+    expect(html).toContain('@2col:mb-0');
   });
 
   it('회원가입 폼은 통이 넓어져도 따라 늘어나지 않는다', () => {
     const html = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
 
-    expect(html).toContain('p-4 2col:max-w-[470px]');
+    expect(html).toContain('p-4 @2col:max-w-[470px]');
   });
 
   it('Tailwind 가 준 lg 는 더 이상 쓰지 않는다 — 우리 숫자로 갈린다', () => {

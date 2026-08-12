@@ -28,7 +28,7 @@ export function PostCard({
   const [comments, dispatch] = useReducer(commentReducer, initialCommentState);
 
   return (
-    <Card className="mb-6 2col:mb-0">
+    <Card className="mb-6 @2col:mb-0">
       <CardHeader>
         <PostHeader username={username} profileImageUrl={profileImageUrl} />
       </CardHeader>

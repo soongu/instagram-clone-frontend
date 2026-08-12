@@ -14,7 +14,7 @@ export function Feed({ posts, onToggleLike }: FeedProps) {
   return (
     <List
       items={posts}
-      className="2col:grid 2col:grid-cols-2 2col:gap-6"
+      className="@2col:grid @2col:grid-cols-2 @2col:gap-6"
       aria-label="피드 목록"
       renderItem={(post) => <PostCard {...post} onToggleLike={onToggleLike} />}
     />

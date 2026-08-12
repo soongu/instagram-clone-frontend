@@ -20,12 +20,12 @@ const RING =
 // E-6 에서 들여온 Card 가 카드 몸통에 얹는 클래스 한 뭉치.
 // 한 글자라도 어긋나면 되돌리기가 조용히 안 걸리므로 상수로 둔다.
 const CARD_UTILITIES =
-  'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[&gt;img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl mb-6 2col:mb-0';
+  'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[&gt;img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl mb-6 @2col:mb-0';
 
 // [E-2·E-3 유틸리티 문자열, B-3 시점 이름]
 // liked 쪽을 먼저 둔다 — 두 좋아요 버튼 문자열은 뒷부분만 다르다.
 const BRIDGE: Array<[string, string]> = [
-  ['class="mx-auto max-w-[470px] py-4 sm:px-4 2col:max-w-[996px]"', 'class="feed"'],
+  ['class="@container mx-auto max-w-[996px] py-4 sm:px-4"', 'class="feed"'],
   ['class="mb-4 flex items-baseline justify-between"', 'class="feed-header"'],
   ['class="mb-4 text-2xl font-bold"', 'class="feed-title"'],
   // E-6 에서 카드 몸통이 들여온 Card 로 바뀌었다. 되돌릴 대상 문자열도 함께 옮긴다.
@@ -66,7 +66,7 @@ const BRIDGE: Array<[string, string]> = [
     'class="toast"',
   ],
   [
-    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 2col:max-w-[470px]"',
+    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 @2col:max-w-[470px]"',
     'class="signup-form"',
   ],
   ['class="flex flex-col gap-1"', 'class="signup-field"'],
@@ -80,7 +80,7 @@ const BRIDGE: Array<[string, string]> = [
   // feed-liked-count 는 다른 곳과 겹치지 않는 조합이라 마지막에 둔다
   ['class="text-sm text-faint"', 'class="feed-liked-count"'],
   // E-2 에서 통째로 사라진 두 이름은 되살려 넣는다
-  ['<ul class="2col:grid 2col:grid-cols-2 2col:gap-6" aria-label="피드 목록"', '<ul class="feed-list" aria-label="피드 목록"'],
+  ['<ul class="@2col:grid @2col:grid-cols-2 @2col:gap-6" aria-label="피드 목록"', '<ul class="feed-list" aria-label="피드 목록"'],
   ['<section aria-label=', '<section class="section" aria-label='],
 ];
 

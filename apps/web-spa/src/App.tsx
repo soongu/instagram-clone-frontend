@@ -35,7 +35,7 @@ export function App() {
   }, [toast, dismissToast]);
 
   return (
-    <main className="mx-auto max-w-[470px] py-4 sm:px-4 2col:max-w-[996px]">
+    <main className="@container mx-auto max-w-[996px] py-4 sm:px-4">
       <header className="mb-4 flex items-baseline justify-between">
         <h1 className="mb-4 text-2xl font-bold">인스타그램</h1>
         <span className="text-sm text-faint">좋아요 누른 게시물 {likedCount}개</span>
