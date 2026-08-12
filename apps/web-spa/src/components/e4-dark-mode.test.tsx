@@ -64,7 +64,7 @@ describe('Step 5·6 — 다크 값은 토큰 한 곳에서 갈린다', () => {
     const feed = renderToStaticMarkup(<Feed posts={feedPosts} onToggleLike={() => {}} />);
     const form = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
 
-    expect(feed).toContain('text-muted');
+    expect(feed).toContain('text-faint');
     expect(form).toContain('text-subtle');
   });
 });

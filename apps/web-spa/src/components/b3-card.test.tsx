@@ -97,7 +97,7 @@ describe('입구가 하나뿐인 Section 과의 차이', () => {
 
     expect(html).toBe(
       '<section aria-label="게시물">' +
-        '<h2 class="mb-3 text-sm font-semibold text-muted">게시물</h2><p>꼬리</p><p>머리</p></section>',
+        '<h2 class="mb-3 text-sm font-semibold text-faint">게시물</h2><p>꼬리</p><p>머리</p></section>',
     );
   });
 

@@ -28,8 +28,8 @@ const BRIDGE: Array<[string, string]> = [
   [`class="cursor-pointer p-3 text-lg leading-none${RING}"`, 'class="post-more"'],
   ['class="w-full cursor-pointer"', 'class="post-image"'],
   ['class="px-3 py-1 text-sm"', 'class="post-content"'],
-  [`class="cursor-pointer pl-1 text-sm text-muted${RING}"`, 'class="caption-toggle"'],
-  ['class="px-3 pt-1 pb-3 text-sm text-muted"', 'class="post-comments"'],
+  [`class="cursor-pointer pl-1 text-sm text-faint${RING}"`, 'class="caption-toggle"'],
+  ['class="px-3 pt-1 pb-3 text-sm text-faint"', 'class="post-comments"'],
   ['class="px-3 pt-2"', 'class="like-area"'],
   [
     `class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm${RING} border-danger font-semibold text-danger"`,
@@ -40,8 +40,8 @@ const BRIDGE: Array<[string, string]> = [
     'class="like-button"',
   ],
   ['class="px-3 pt-3 pb-1 text-sm font-semibold"', 'class="post-likes"'],
-  ['class="mb-3 text-sm font-semibold text-muted"', 'class="section-title"'],
-  ['class="cursor-pointer px-3 py-1 text-note text-muted"', 'class="hide-button"'],
+  ['class="mb-3 text-sm font-semibold text-faint"', 'class="section-title"'],
+  ['class="cursor-pointer px-3 py-1 text-note text-faint"', 'class="hide-button"'],
   // ── 댓글·폼·토스트 (Step 6) ────────────────────────────────
   ['class="flex gap-2 border-t border-line-soft p-3"', 'class="comment-form"'],
   [`class="flex-1 text-sm${RING}"`, 'class="comment-input"'],
@@ -52,7 +52,7 @@ const BRIDGE: Array<[string, string]> = [
   ],
   ['class="px-3 pb-3 text-sm"', 'class="comment-list"'],
   [
-    `class="cursor-pointer px-1 text-sm leading-none text-muted hover:text-ink${RING}"`,
+    `class="cursor-pointer px-1 text-sm leading-none text-faint hover:text-ink${RING}"`,
     'class="comment-remove"',
   ],
   [
@@ -72,7 +72,7 @@ const BRIDGE: Array<[string, string]> = [
     'class="signup-submit"',
   ],
   // feed-liked-count 는 다른 곳과 겹치지 않는 조합이라 마지막에 둔다
-  ['class="text-sm text-muted"', 'class="feed-liked-count"'],
+  ['class="text-sm text-faint"', 'class="feed-liked-count"'],
   // E-2 에서 통째로 사라진 두 이름은 되살려 넣는다
   ['<ul class="2col:grid 2col:grid-cols-2 2col:gap-6" aria-label="피드 목록"', '<ul class="feed-list" aria-label="피드 목록"'],
   ['<section aria-label=', '<section class="section" aria-label='],

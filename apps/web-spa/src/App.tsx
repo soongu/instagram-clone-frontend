@@ -37,7 +37,7 @@ export function App() {
     <main className="mx-auto max-w-[470px] py-4 sm:px-4 2col:max-w-[996px]">
       <header className="mb-4 flex items-baseline justify-between">
         <h1 className="mb-4 text-2xl font-bold">인스타그램</h1>
-        <span className="text-sm text-muted">좋아요 누른 게시물 {likedCount}개</span>
+        <span className="text-sm text-faint">좋아요 누른 게시물 {likedCount}개</span>
       </header>
       <Section title="회원가입">
         <SignUpForm onSubmit={(values) => console.log('가입 요청', values.username)} />

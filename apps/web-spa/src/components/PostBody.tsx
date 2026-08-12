@@ -36,14 +36,14 @@ export function PostBody({
         <strong>{username}</strong> {shownContent}
         {isLong && (
           <Button
-            className="cursor-pointer pl-1 text-sm text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="cursor-pointer pl-1 text-sm text-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             onClick={toggleCaption}
           >
             {captionOpen ? '접기' : '더 보기'}
           </Button>
         )}
       </p>
-      <p className="px-3 pt-1 pb-3 text-sm text-muted">댓글 {commentCount}개 모두 보기</p>
+      <p className="px-3 pt-1 pb-3 text-sm text-faint">댓글 {commentCount}개 모두 보기</p>
     </>
   );
 }

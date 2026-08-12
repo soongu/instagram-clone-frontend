@@ -16,7 +16,9 @@
   --color-danger: oklch(64.1% 0.2 20.5);
   --color-line: oklch(89.1% 0 none);
   --color-line-soft: oklch(95.2% 0 none);
-  --color-muted: oklch(64.7% 0 none);
+  /* muted 는 shadcn 이 자기 이름으로 쓰고 있어서 faint 로 옮겼다.
+     진하기 순서는 ink > subtle > faint 로 이름만 봐도 읽힌다. */
+  --color-faint: oklch(64.7% 0 none);
   --color-subtle: oklch(55.6% 0 none);
   --color-ink: oklch(26.9% 0 none);
   --color-canvas: oklch(98.5% 0 none);
@@ -25,8 +27,8 @@
   /* 눈금에서 벗어난 값 — 13px 은 여섯 곳에 반복돼 이름을 얻었다 */
   --text-note: 0.8125rem;
 
-  /* Tailwind 가 이미 갖고 있는 토큰을 우리 값으로 덮어쓴다 */
-  --font-sans: system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  /* --font-sans 는 아래 @theme inline 으로 옮겼다.
+     여기 적어두면 뒤에 오는 선언에 덮여서 아무 일도 안 한다. */
 
   /* 카드 470 두 장 + 사이 24 + 통의 좌우 여백 32 = 996px 부터 두 열이 들어간다 */
   --breakpoint-2col: 62.25rem;
@@ -41,9 +43,9 @@
     --color-ink: oklch(97% 0 none);
 
     /* 회색 넷은 밝기를 뒤집되 서열은 그대로 둔다.
-       라이트에서 subtle 이 muted 보다 어두워 더 또렷했으므로
-       다크에서는 subtle 이 muted 보다 밝아야 한다. */
-    --color-muted: oklch(73.2% 0 none);
+       라이트에서 subtle 이 faint 보다 어두워 더 또렷했으므로
+       다크에서는 subtle 이 faint 보다 밝아야 한다. */
+    --color-faint: oklch(73.2% 0 none);
     --color-subtle: oklch(83% 0 none);
     --color-line: oklch(33.3% 0 none);
     --color-line-soft: oklch(26.9% 0 none);
@@ -186,7 +188,9 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  /* Geist 에는 한글 글리프가 없다. 프리셋이 준 줄에 우리 한글 글꼴을 도로 이어 붙인다.
+     로마자는 Geist 로, 한글은 그 뒤로 흘러 우리가 고른 글꼴로 그려진다. */
+  --font-sans: 'Geist Variable', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

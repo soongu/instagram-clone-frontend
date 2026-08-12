@@ -38,7 +38,7 @@ describe('Step 2 — 마우스를 올린 상태를 hover: 로 말한다', () => 
     const html = renderToStaticMarkup(<CommentList comments={comments} onRemove={() => {}} />);
 
     expect(html).toContain(
-      'class="cursor-pointer px-1 text-sm leading-none text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"',
+      'class="cursor-pointer px-1 text-sm leading-none text-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"',
     );
   });
 
