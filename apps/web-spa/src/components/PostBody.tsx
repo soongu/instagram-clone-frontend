@@ -1,6 +1,7 @@
 // apps/web-spa/src/components/PostBody.tsx
 import { LikeButton } from './LikeButton';
 import { Button } from './Button';
+import { PostModal } from './PostModal';
 import { useToggle } from '../hooks/useToggle';
 
 // 이 글자 수를 넘는 캡션은 접어서 보여준다
@@ -8,6 +9,8 @@ const CAPTION_LIMIT = 10;
 
 interface PostBodyProps {
   username: string;
+  profileImageUrl: string;
+  imageUrl: string;
   content: string;
   liked: boolean;
   likeCount: number;
@@ -18,6 +21,8 @@ interface PostBodyProps {
 // 사진 아래 본문 구역 — 좋아요·캡션·댓글 수가 함께 산다.
 export function PostBody({
   username,
+  profileImageUrl,
+  imageUrl,
   content,
   liked,
   likeCount,
@@ -43,7 +48,14 @@ export function PostBody({
           </Button>
         )}
       </p>
-      <p className="px-3 pt-1 pb-3 text-sm text-faint">댓글 {commentCount}개 모두 보기</p>
+      <PostModal
+        username={username}
+        profileImageUrl={profileImageUrl}
+        imageUrl={imageUrl}
+        content={content}
+        likeCount={likeCount}
+        commentCount={commentCount}
+      />
     </>
   );
 }
