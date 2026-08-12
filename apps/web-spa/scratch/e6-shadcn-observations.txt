@@ -1,0 +1,283 @@
+E-6 들여온 컴포넌트로 화면 만들기 — 관찰 (shadcn CLI 4.17.0 · @base-ui/react 1.7.0 · Chrome)
+================================================================================
+
+E-5 채증(e5-shadcn-observations.txt)의 이어짐. 단위 테스트로 못 잡는 것만 적는다.
+
+재현 (apps/web-spa 에서):
+  rm -rf dist && npm run build
+  ls -l dist/assets/*.css dist/assets/*.js
+
+시작 시점(E-5 종료 상태): CSS 18,038 B · JS 306,516 B · 63 files / 475 passed
+                        · components/ui/ 는 비어 있었다
+
+
+0. 시의성 — E-5 와 같은 날이라 버전은 그대로 (착수일 2026-08-12)
+--------------------------------------------------------------------------------
+
+  npm view shadcn version               → 4.17.0   (E-5 착수 시와 동일)
+  npm view @base-ui/react version       → 1.7.0
+  npm view class-variance-authority     → 0.7.1
+  npm view tailwind-merge version       → 3.6.0
+
+  ⚠️ 다만 커리큘럼 E-6 행이 전제한 "cva 로 variant" 는 **절반만 맞다** → 2번.
+
+
+1. ⚠️⚠️ 넷 중 cva 를 쓰는 것은 button 하나뿐이다
+--------------------------------------------------------------------------------
+
+  npx shadcn@latest add dialog avatar card   → 4 파일 (button 이 딸려온다)
+
+    파일          cva   변형을 표현하는 방식
+    -----------   ---   ------------------------------------------
+    button.tsx     ○    cva — variant 6종 · size 8종 + defaultVariants
+    card.tsx       ✗    data-size 속성 + data-[size=sm]: 선택자
+    avatar.tsx     ✗    data-size 속성 + data-[size=lg]: 선택자
+    dialog.tsx     ✗    변형 없음
+
+    grep -l "cva" src/components/ui/*.tsx    → button.tsx 만
+    grep -c "forwardRef" src/components/ui/*.tsx → 넷 다 0
+
+  => "shadcn = cva" 로 뭉뚱그리면 학생이 card.tsx 를 열었을 때 못 찾는다.
+     갈리는 기준: **바깥에서 이름으로 고르는 것(variant)** 은 cva,
+     **자기 안에서 크기만 갈리는 것** 은 data-속성.
+
+  ⚠️ `add dialog` 하나만 불러도 button.tsx 가 함께 온다(딸린 것).
+     --dry-run 으로 미리 볼 수 있다. `add card` 는 1파일.
+
+  ⚠️ package.json 은 **한 줄도 안 바뀐다**. E-5 의 init 이 이미 8개를 깔았기 때문.
+     "복사해 소유한다" 의 소스 쪽 이야기가 여기서 눈에 보인다.
+
+  ⚠️ 가져온 파일은 우리 코딩 규약과 다르다(쌍따옴표·세미콜론 없음).
+     그런데도 eslint . → 0. 우리 설정이 스타일을 강제하지 않기 때문.
+     dialog.tsx 첫 줄의 "use client" 는 Next.js 용 표시라 우리 SPA 에선 아무 일도 안 한다.
+
+
+2. cn 실측 — "뒤엣것이 이긴다" 가 아니라 "덮을 수 있으면 앞엣것을 지운다"
+--------------------------------------------------------------------------------
+
+  그냥 이어붙이기            ['px-2.5','px-6'].join(' ')  → "px-2.5 px-6"  (둘 다 남음)
+  cn                        cn('px-2.5','px-6')          → "px-6"
+  clsx 만                   clsx('px-2.5','px-6')        → "px-2.5 px-6"  (안 지움)
+  twMerge 만                twMerge('px-2.5','px-6')     → "px-6"
+
+  안 겹치는 것은 산다        cn('px-2.5 py-1 text-sm','px-6') → "py-1 text-sm px-6"
+
+  ⚠️⚠️ 방향이 있다:
+     cn('px-6','p-4')  → "p-4"          p-4 가 px-6 을 통째로 덮으므로 앞엣것 삭제
+     cn('p-4','px-6')  → "p-4 px-6"     px-6 은 p-4 의 일부만 덮으므로 둘 다 남음
+
+  갈래가 다르면 못 민다:
+     cn('ring-1 ring-foreground/10','border border-line')
+       → "ring-1 ring-foreground/10 border border-line"   ← 테두리가 두 겹이 된다
+     cn('ring-1 ring-foreground/10','ring-0') → "ring-foreground/10 ring-0"
+
+  우리 토큰 ↔ shadcn 토큰(같은 갈래면 우리가 이긴다):
+     cn('bg-card','bg-surface')            → "bg-surface"
+     cn('text-card-foreground','text-ink') → "text-ink"
+     cn('rounded-xl','rounded-lg')         → "rounded-lg"
+
+  진짜 자리 — Button 에 px-6 을 넘기면:
+     buttonVariants({className:'px-6'})      38개 · px-2.5 와 px-6 이 **둘 다** 있음
+     cn(buttonVariants({className:'px-6'}))  37개 · px-2.5 만 사라짐
+
+  clsx 쪽:  cn('base', false && 'never', {on:true, off:false}, ['arr']) → "base on arr"
+
+
+3. ⚠️⚠️ 들여온 Card 는 <div> 다 — 화면은 거의 같은데 문서 구조가 바뀐다
+--------------------------------------------------------------------------------
+
+  우리가 B-3 에서 짠 Card 는 <article> 이었다. 들여온 Card 는 <div> 다.
+  색·모서리는 눈으로 구별하기 어려운데 낭독기에게 "여기부터 하나의 글" 이라고
+  알려주던 표시가 사라진다.
+
+  파일이 우리 것이므로 열어서 고쳤다:
+    - }: React.ComponentProps<"div">  →  }: React.ComponentProps<"article">
+    - <div data-slot="card"           →  <article data-slot="card"
+
+  ⚠️ 이 수정은 `add card` 를 다시 하면 날아간다. 단 CLI 가 먼저 알려준다:
+       npx shadcn@latest add card --dry-run  → "⚠ 1 file will be overwritten."
+       npx shadcn@latest add card --diff     → 우리가 지운 줄까지 그대로 보여준다
+     조용히 사라지는 것이 아니라 **물어본다.** 복사 방식의 비용은 여기서 낸다.
+
+  같은 이유로 고친 두 번째 자리 — dialog.tsx 의 닫기 버튼:
+    <span className="sr-only">Close</span>  →  <span className="sr-only">닫기</span>
+    (DialogFooter 의 "Close" 도 "닫기" 로)
+    한국어 화면인데 낭독기만 영어로 읽고 있었다.
+
+
+4. ⚠️ 들여온 Avatar 는 사진이 오기 전에 <img> 를 아예 안 그린다
+--------------------------------------------------------------------------------
+
+  renderToStaticMarkup(<Avatar><AvatarImage src=…/><AvatarFallback>J</AvatarFallback></Avatar>)
+    → <span data-slot="avatar" …><span data-slot="avatar-fallback" …>J</span></span>
+      img 태그 **0개**
+
+  jsdom 도 같다(이미지를 실제로 안 받아오므로 영영 loaded 가 안 된다).
+  브라우저에서는 정상적으로 <img data-slot="avatar-image"> 로 바뀐다.
+
+  Base UI 의 판단 지점(avatar/image/useImageLoadingStatus.js):
+      const image = new window.Image();
+      image.onload = …;  image.src = src;
+      if (image.complete) setLoadingStatus(image.naturalWidth > 0 ? 'loaded' : 'error');
+                          ^^^^^^^^^^^^^^ 이 fast-path 가 동기다
+
+  => test-setup.ts 에 "이미 받아둔 이미지" 로 답하게 깔면 jsdom 에서도 <img> 가 나온다.
+     (E-5 의 matchMedia stub 과 같은 성격 — jsdom 에 없는 것을 메우는 것)
+       HTMLImageElement.prototype.complete     → true
+       HTMLImageElement.prototype.naturalWidth → 1
+     이 한 줄로 20건 넘게 살아났고, 서버에서 그리는(SSR) 비교만 따로 손봤다.
+
+  ⚠️ SSR 은 layout effect 를 안 돌리므로 stub 과 무관하게 대체 글자만 나온다.
+     이것은 버그가 아니라 실제 동작이다(서버는 사진이 뜨는지 알 수 없다).
+
+
+5. ⚠️⚠️⚠️ 백그라운드 탭에서 잰 포커스 측정은 전부 거짓이었다 (가장 중요)
+--------------------------------------------------------------------------------
+
+  처음 브라우저에서 잰 결과:
+    · 모달을 열어도 포커스가 트리거에 그대로 있다
+    · Tab 을 누르면 팝업 **밖으로 나간다** (aria-hidden 걸린 영역의 input 으로)
+    · Esc 로 닫아도 팝업이 DOM 에 남아 있다
+
+  => "Base UI 는 포커스를 안 가둔다" 로 결론 낼 뻔했다. **틀렸다.**
+
+  소스를 읽고 원인이 나왔다
+  (floating-ui-react/components/FloatingFocusManager.js + utils/enqueueFocus.js):
+
+      onFocus: () => { if (modal) void enqueueFocus(getTabbableContent()[0]); }
+      function enqueueFocus(el, …) { … requestAnimationFrame(exec) … }
+                                         ^^^^^^^^^^^^^^^^^^^^^^^
+
+  포커스를 되돌리는 일이 **rAF 안에서** 일어난다. 그런데 백그라운드 탭에서는
+  rAF 가 아예 안 돈다. 그래서 가두는 손이 멈춰 있었던 것이다.
+  (팝업이 안 사라진 것도 같은 이유 — 나가는 애니메이션이 안 끝난다.)
+
+  확인: document.visibilityState → "hidden" (탭이 앞에 없음)
+
+  rAF 를 타이머로 대신 채우고 다시 재니 전부 정상:
+      window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
+
+    · 열면 포커스가 팝업 안으로 들어간다                    ✅
+    · Tab 을 6번 눌러도 팝업 안(닫기 버튼)에 머문다          ✅
+
+  ⚠️ 교훈: 브라우저에서 잰 값이라고 참이 아니다. **탭이 앞에 있는지**부터 본다.
+     시간·프레임에 기대는 동작(포커스 이동·애니메이션·전환)은 특히 그렇다.
+  ⚠️ 백그라운드 탭은 setTimeout 도 조인다. 250ms × 12 회 루프를 돌렸다가
+     렌더러가 45초 동안 응답을 안 해 CDP 가 끊겼다. 긴 폴링을 걸지 말 것.
+
+
+6. 접근성 6줄 — E-5 Step 1 의 목록을 하나씩 대조
+--------------------------------------------------------------------------------
+
+  브라우저(rAF 채운 상태) + jsdom(user-event) 양쪽에서 같은 결과를 얻은 것만 적는다.
+
+  목록                          결과   무엇으로 확인했나
+  ----------------------------  ----   ------------------------------------------
+  포커스를 상자 안에 가둔다       딸려옴  열면 포커스가 팝업 안으로 · Tab 6번에도 안 나감
+  Esc 를 누르면 닫는다            딸려옴  aria-expanded true→false · 잠금 해제
+  닫으면 원래 자리로 포커스 복귀   딸려옴  document.activeElement === 트리거
+  뒤쪽 배경 스크롤 잠금           딸려옴  body { overflow: hidden } → 닫으면 visible
+  낭독기에 대화 상자라고 알린다    딸려옴  role="dialog" + aria-labelledby + aria-describedby
+  상자 바깥은 낭독기에서 숨긴다    딸려옴  #root 에 aria-hidden="true" → 닫으면 제거
+
+  ⚠️⚠️ E-5 Step 1 의 목록에 `aria-modal` 이라고 적었는데 **그 속성은 없다.**
+     Base UI 는 바깥에 aria-hidden 을 거는 쪽을 택한다(위 마지막 줄).
+     목표는 같고 방법이 다르다. 교안에서 이 어긋남을 그냥 넘기면 학생이
+     자기 개발자 도구에서 aria-modal 을 찾다가 못 찾는다.
+
+  ⚠️ 딸려오지 **않는** 것 — 제목:
+     <DialogTitle> 을 안 넣으면 aria-labelledby 가 아예 안 생긴다.
+     경고도 안 뜬다. 이름 없는 대화 상자가 조용히 만들어진다.
+       제목 없을 때 aria-labelledby → 없음 / aria-describedby → 없음
+
+  트리거 쪽도 딸려온다: aria-haspopup="dialog" · aria-expanded 가 열림 상태를 따라간다
+
+
+7. 두 토큰 체계 — 밝은 화면에선 똑같고 어두운 화면에서만 갈린다
+--------------------------------------------------------------------------------
+
+  들여온 Card 를 그대로 쓰면 카드 배경이 shadcn 의 --card 를 쓴다.
+  우리 회원가입 판은 우리 --color-surface 를 쓴다.
+
+    밝은 화면   회원가입 판 oklch(1 0 0)      카드 oklch(1 0 0)       **같다**
+    어두운 화면 회원가입 판 oklch(0.182 …)    카드 oklch(0.205 …)     **다르다**
+
+  => 밝은 데서 보면 아무 문제가 없다. 어두운 데서만 두 판의 회색이 갈린다.
+     E-5 의 "테스트는 초록인데 화면이 깨져 있었다" 와 같은 종류의 함정.
+
+  화해 — className 으로 매번 덮지 않고 **값을 잇는다**(globals.css):
+
+    :root {
+      --card:               var(--color-surface);
+      --card-foreground:    var(--color-ink);
+      --popover:            var(--color-surface);
+      --popover-foreground: var(--color-ink);
+      --border:             var(--color-line);
+    }
+
+  그리고 shadcn 의 .dark 블록에서 그 다섯 줄을 **지웠다.**
+  우리 토큰이 .dark 에서 이미 갈리므로 참조가 저절로 따라온다.
+  (E-2 의 "값과 조건을 갈라 둔다" 가 여기서 한 번 더 쓰인다.)
+
+  화해 후 재측정 (어두운 화면):
+    회원가입 판 oklch(0.182 0 none) · 카드 oklch(0.182 0 none) → **같다**
+    카드 글자색 oklch(0.97 …) = 우리 --color-ink
+    푸터 윗선  oklch(0.333 …) = 우리 --color-line
+
+  ⚠️ className 으로 덮는 길도 된다(cn 이 밀어내므로). 다만 카드마다·상자마다
+     매번 적어야 하고, ring 처럼 갈래가 다른 것은 안 밀리므로 ring-0 을 따로 붙여야 한다.
+     값을 잇는 쪽이 한 곳에서 끝난다.
+
+
+8. 크기 — CSS 는 복사할 때 늘고, JS 는 쓸 때 는다
+--------------------------------------------------------------------------------
+
+                              CSS          JS
+    E-5 끝 (ui/ 비어 있음)     18,038 B    306,516 B
+    add 직후 (아무도 안 씀)    39,919 B    306,516 B    ← CSS 만 2.2배
+    다 쓰고 토큰까지 이은 뒤   39,871 B    408,090 B    ← JS 가 +101,574
+
+  ⚠️ 이 비대칭이 E-1 의 회수다. Tailwind 는 **소스 파일의 문자열을 훑어서**
+     CSS 를 만든다. 파일이 src/ 에 놓이는 순간 그 안의 클래스가 전부 후보가 된다.
+     아무 데서도 import 하지 않아도 그렇다.
+     JS 는 반대로 import 그래프를 따라가므로 실제로 써야 는다.
+
+  CSS 가 add 직후보다 48 B 줄어든 것은 7번에서 shadcn 의 .dark 다섯 줄을 지웠기 때문.
+
+
+9. 최종 게이트 (모듈 종료 시점)
+--------------------------------------------------------------------------------
+
+  npm test          63 files / 476 passed   (E-5: 63 / 475)
+  tsc --noEmit      0
+  eslint .          0
+  vite build        성공
+  CSS               18,038 → 39,871 B
+  JS                306,516 → 408,090 B
+
+  blast radius (들여온 것으로 갈아끼우면서 손댄 곳):
+    · test-setup.ts            이미지 로딩 stub (4번)
+    · e2-b3-class-bridge.ts    post-card 되돌림 문자열 교체 + withSameAvatar/toVisibleText 추가
+    · b3-snapshots.test.tsx    아바타 자리만 맞추고 나머지는 글자 비교 유지(2건) / 내용 비교(1건)
+    · b3-composition.test.tsx  data-starting-style 걷어내기
+    · b3-use-like-toggle.test  App 전체 비교를 내용 비교로
+    · b1-render.test.tsx       카드 세는 기준을 data-slot="card" 로
+    · e4-dark-mode.test.tsx    "dark: 0개" → "dark: 는 data-slot 붙은 곳에만"
+    · PostBody                 profileImageUrl · imageUrl 두 개를 더 받는다 (모달에 넘기려고)
+
+  ⚠️ 가드는 전부 일부러 깨서 확인했다:
+     · Section 에 dark:text-red-500 을 넣으니 e4 의 새 단언이 잡았다
+     · Card 를 <div> 로 되돌리니 "하나의 글로 읽힌다" 가 깨졌다
+     · 닫기를 "Close" 로 되돌리니 우리말 단언이 깨졌다
+
+
+10. 모달을 여는 자리 — 사진이 아니라 "댓글 모두 보기"
+--------------------------------------------------------------------------------
+
+  E-5 Step 1 은 "사진을 누르면 크게 뜨는 그거" 로 모달을 소개했다.
+  그런데 사진에는 A-4 부터 **두 번 누르면 좋아요** 가 붙어 있다.
+  한 번 누르기로 모달을 열면 두 번 누를 때 모달이 먼저 열린다(두 번 누르기는
+  한 번 누르기를 두 번 발생시킨다 — 명세).
+
+  그래서 여는 자리를 "댓글 N개 모두 보기" 로 옮겼다. 실제 인스타그램도
+  피드에서 사진을 누르면 아무 일도 안 하고, 댓글 줄을 눌러야 게시물이 열린다.
