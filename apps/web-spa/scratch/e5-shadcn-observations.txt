@@ -118,9 +118,14 @@ E-4 채증(e4-dark-observations.txt)의 이어짐. 단위 테스트로 못 잡�
       우리 것   system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif
       덮인 것   'Geist Variable', sans-serif
 
-    Geist 에는 한글 글리프가 없다. 화면이 깨지진 않고 sans-serif 로 떨어진다.
-    => "한글이 깨진다" 고 쓰면 **거짓**. 정확히는 우리가 고른 글꼴이 아니게 된다.
-    프리셋이 woff2 5개(약 76 KB)를 함께 들고 온다.
+    Geist 에는 한글 글리프가 없다. 화면이 깨지진 않고 뒤로 흘러간다.
+    ⚠️⚠️ **아래 초안 결론은 나중에 측정으로 뒤집혔다 → 11·12번 참조.**
+       초안: "우리가 고른 글꼴이 아니게 된다"
+       실측: 한글은 **한 번도 안 바뀌었다**(179.92 고정 · Apple SD Gothic Neo).
+             덮이기 전 목록도 system-ui 로 시작해 어차피 흘러가고 있었기 때문.
+             실제로 바뀐 것은 로마자(160.58→163.22)와 공백 글리프뿐.
+       그래도 화해는 해야 한다 — 목록에 한글 글꼴 이름이 사라지면 다른 환경에서 갈린다.
+    프리셋이 woff2 5개(디스크 76,420 B)를 들고 오지만 실제로 받는 것은 1개(29,700 B · 11번).
 
   (3) --radius-* ← 아무도 안 건드렸는데 모서리가 다 바뀐다
 
@@ -134,7 +139,9 @@ E-4 채증(e4-dark-observations.txt)의 이어짐. 단위 테스트로 못 잡�
       rounded-3xl   1.5rem   (24px)       1.375rem(22)  <- 오히려 작아진다
       rounded-4xl   2rem     (32px)       1.625rem(26)  <- 오히려 작아진다
 
-    우리 앱의 rounded-* 사용: lg 7 · md 5 · full 2 (full 은 영향 없음)
+    우리 앱에서 **눈금을 거쳐 값을 받는 곳은 10군데**(Step 3 시점 프로덕션 파일 기준
+    lg 6 + md 4). full(1) 과 Toast 의 rounded-[20px](1) 은 눈금과 무관해 제외.
+    ⚠️ 초안에 lg 7 · md 5 로 적었던 것은 .test.tsx 를 포함해 센 값이다(12번 참조).
 
   ⚠️⚠️ 이 셋 전부 **테스트가 못 잡았다**. init 직후 60 files / 452 passed 그대로.
      우리 테스트는 className 문자열을 보지 색을 안 본다. 초록인데 화면이 깨져 있었다.
@@ -322,3 +329,85 @@ E-4 채증(e4-dark-observations.txt)의 이어짐. 단위 테스트로 못 잡�
      (expect(html).not.toMatch(/dark:/)). shadcn 컴포넌트는 내부에 dark: 를
      쓰므로 그것들을 App 에 넣는 순간 이 단언이 깨진다. 그때 단언 범위를
      "우리가 쓴 컴포넌트" 로 좁혀야 한다. 미리 알고 있을 것.
+
+
+11. 과제 검증 (교안·답안에 싣기 전에 전부 실행)
+--------------------------------------------------
+
+  [과제 1 — 글꼴]
+    빌드 산출 woff2 5개 합계 76,420 B (74.6 KB)
+      cyrillic-ext 7,420 / vietnamese 8,004 / cyrillic 15,084
+      / latin-ext 16,512 / latin 29,400
+    ⚠️ 실제로 받는 것은 **1개** — geist-latin (전송 29,700 B / 디코드 29,400 B).
+       나머지 4개는 @font-face 의 unicode-range 때문에 요청조차 안 간다.
+       document.fonts 상태로도 확인: 5개 중 4개 unloaded / 1개 loaded.
+    => "74.6 KB 낭비" 는 틀린 계산. 실제 비용 29.7 KB.
+
+    ⚠️⚠️ 글자 폭 측정 (canvas measureText, 16px) — 교안 초판을 뒤집은 근거
+
+      문자열                        덮이기 전   init 직후   화해 후
+      'jaehoon likes this post'      160.58     163.22     163.22
+      '인스타그램좋아요누른게시물'      179.92     179.92     179.92
+      'Apple SD Gothic Neo' 직접 재기 = 179.92
+
+      => 한글은 **한 번도 안 바뀌었다.** 덮이기 전 목록도 system-ui 로 시작해
+         한글이 없었고, 어차피 흘러가 같은 글꼴에 도착하고 있었다.
+      => 공백 1개 폭만 4.188(system-ui) → 4.0(Geist) 로 갈린다.
+         공백 3개 든 문장을 재면 192.48 vs 191.92 로 0.56 차이가 나는데,
+         이걸 "한글이 바뀌었다" 로 읽으면 오독. 공백을 빼고 재야 한다.
+      ⚠️ document.fonts.check('16px "Geist Variable"','인스타그램') 은 true 를
+         돌려준다. 글리프 커버리지를 보는 API 가 아니므로 근거로 쓰면 안 된다.
+
+  [과제 2 — storage 이벤트]
+    실제로 구현해 tsc 0 + 3케이스 통과 후 되돌림.
+      · event.key 필터 (다른 키 무시)
+      · isThemeChoice 재사용 (다른 탭 값도 안 믿는다)
+      · newValue === null (저장소 비움) → 'system' 으로 복귀
+      · 정리 함수
+    자기 탭에는 이벤트가 안 온다 = 명세. 따로 막을 필요 없음.
+
+  [과제 3 — 탐구 4종]
+    실험1  우리 @theme 을 shadcn 뒤에 두면 **이긴다**
+             --color-muted: oklch(64.7% 0 none) 가 산출됨
+             .text-muted{color:var(--color-muted)}
+    실험2  그 상태에서 bg-muted 를 쓰면
+             .bg-muted{background-color:var(--color-muted)}
+           = 우리 **글자색**(#8e8e8e 중간 회색)이 shadcn 의 **배경면**으로 쓰인다.
+           이기는 건 쉽고, 이기면 앞으로 올 컴포넌트가 전부 칙칙해진다.
+           ⚠️ 지금은 그 컴포넌트를 안 써서 **안 보인다** — 다음 강의에 드러남.
+    실험3  네 조건을 나눠 재야 정확하다:
+             inline 有 + bg-muted 미사용 → --color-muted 0건
+             inline 無 + bg-muted 미사용 → --color-muted 0건   ← 같아 보인다
+             inline 有 + bg-muted 사용   → 0건 / .bg-muted{...var(--muted)}
+             inline 無 + bg-muted 사용   → --color-muted:var(--muted)
+                                          / .bg-muted{...var(--color-muted)}
+           ⚠️ inline 만 지우고 보면 "차이 없음" 으로 오판한다.
+              안 쓰는 토큰은 애초에 안 나오기 때문(E-1 회수).
+    실험4  type="module" → 깜빡임 **돌아온다**(파싱 시점 표시 없음).
+           게다가 Vite 가 코드를 별도 파일로 빼내 dist/index.html 에 ig-theme 0건.
+           ⚠️ defer 는 **무시된다** — 붙여도 파싱 시점 표시가 dark 로 남아
+              깜빡임이 안 돌아온다. 인라인 스크립트에는 defer 가 적용 안 됨(명세).
+              교안 초판이 "defer 를 붙이면 미뤄진다" 고 썼다가 이 측정으로 정정.
+
+  ⚠️ 과제 지문에서 뺀 것: "ProfileImagePicker / profile-picker 규칙" 은 **E-4 과제**다.
+     초판 과제 1 이 그걸 다시 시켰다가 중복이라 글꼴 과제로 교체했다.
+
+
+12. 교안 자체 적발 3건 (독립 검수 전, 수치 대조 중)
+------------------------------------------------------
+
+  (1) 글꼴 — 위 11번. "한글이 우리 것이 아니게 됐다" 는 재보니 거짓이었다.
+      그럴듯한 인과("Geist 에 한글이 없다 → 한글이 바뀐다")를 재보지 않고 썼다.
+      실제로는 덮이기 전에도 한글은 흘러가고 있었다.
+
+  (2) defer — 위 11번 실험4. 명세를 확인 안 하고 "미뤄진다" 고 썼다.
+
+  (3) rounded-* "열두 군데" → **열 군데**.
+      .test.tsx 를 포함해 센 값이었다.
+      Step 3 시점(커밋 2e97e26) 프로덕션 파일 실측:
+        ClickCounter 1 · KeyDemo 1 · LikeButton 1 · MiniPostCard 2 · PostCard 1
+        · SignUpForm 2 · StaticPostCard 1 · TextField 1  = 10
+      rounded-full(1) 과 Toast 의 rounded-[20px](1) 은 눈금과 무관해 제외.
+      ⚠️⚠️ **E-4 의 독립검수 F2 와 완전히 같은 실수**(bg-surface "열 곳"→여덟 곳,
+         원인도 똑같이 .test.tsx 포함). 같은 실수를 두 모듈 연속으로 반복했다.
+         => 개수를 셀 때는 **처음부터 테스트 파일을 제외한 명령으로** 셀 것.
