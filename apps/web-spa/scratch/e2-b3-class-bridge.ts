@@ -17,13 +17,19 @@
 const RING =
   ' focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
 
+// E-6 에서 들여온 Card 가 카드 몸통에 얹는 클래스 한 뭉치.
+// 한 글자라도 어긋나면 되돌리기가 조용히 안 걸리므로 상수로 둔다.
+const CARD_UTILITIES =
+  'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[&gt;img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl mb-6 2col:mb-0';
+
 // [E-2·E-3 유틸리티 문자열, B-3 시점 이름]
 // liked 쪽을 먼저 둔다 — 두 좋아요 버튼 문자열은 뒷부분만 다르다.
 const BRIDGE: Array<[string, string]> = [
   ['class="mx-auto max-w-[470px] py-4 sm:px-4 2col:max-w-[996px]"', 'class="feed"'],
   ['class="mb-4 flex items-baseline justify-between"', 'class="feed-header"'],
   ['class="mb-4 text-2xl font-bold"', 'class="feed-title"'],
-  ['class="mb-6 overflow-hidden rounded-lg border border-line bg-surface 2col:mb-0"', 'class="post-card"'],
+  // E-6 에서 카드 몸통이 들여온 Card 로 바뀌었다. 되돌릴 대상 문자열도 함께 옮긴다.
+  [`class="${CARD_UTILITIES}"`, 'class="post-card"'],
   ['class="flex items-center justify-between"', 'class="post-header"'],
   [`class="cursor-pointer p-3 text-lg leading-none${RING}"`, 'class="post-more"'],
   ['class="w-full cursor-pointer"', 'class="post-image"'],
@@ -93,4 +99,23 @@ export function b3BridgeHits(html: string): string[] {
     // 'class="post-card"' -> 'post-card' / '<ul class="feed-list" ...' -> 'feed-list'
     (legacy.match(/class="([^"]+)"/) as RegExpMatchArray)[1],
   );
+}
+
+// E-6 에서 프로필 자리가 들여온 Avatar 로 바뀌었다. 서버에서 그린 결과에는 <img> 가 없고
+// 대체 글자만 있다. 달라진 그 자리를 같은 표시로 맞춰 두고 나머지를 견주기 위한 것.
+export function withSameAvatar(html: string): string {
+  return html
+    .replace(/<link rel="preload"[^>]*\/>/g, '')
+    .replace(/<img class="size-8 rounded-full object-cover"[^>]*\/>/g, '[프로필자리]')
+    .replace(/<span data-slot="avatar"[\s\S]*?<\/span><\/span>/g, '[프로필자리]')
+    .replace('class="flex items-center gap-2.5 p-3"', 'class="flex items-center gap-2.5"');
+}
+
+/** 카드 몸통이 들여온 것으로 바뀌어 감싸는 칸이 늘었다. 학생이 보는 글자만 남겨 견준다. */
+export function toVisibleText(html: string): string {
+  return withSameAvatar(html)
+    .replace(/<[^>]+>/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .join('|');
 }

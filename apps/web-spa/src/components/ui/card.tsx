@@ -2,13 +2,15 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// 우리가 고친 곳: div → article.
+// 이 프로젝트에서 카드는 전부 "게시물 한 장" 이라 문서 구조상 하나의 글이다.
 function Card({
   className,
   size = "default",
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"article"> & { size?: "default" | "sm" }) {
   return (
-    <div
+    <article
       data-slot="card"
       data-size={size}
       className={cn(

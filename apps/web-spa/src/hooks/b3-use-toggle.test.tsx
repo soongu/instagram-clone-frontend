@@ -46,6 +46,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
     render(
       <PostBody
         username="jaehoon"
+        profileImageUrl="/jaehoon.jpg"
+        imageUrl="/post-1.jpg"
         content="오늘 한강 노을이 미쳤다"
         liked={false}
         likeCount={1240}
@@ -64,6 +66,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
     render(
       <PostBody
         username="jaehoon"
+        profileImageUrl="/jaehoon.jpg"
+        imageUrl="/post-1.jpg"
         content="오늘 한강 노을이 미쳤다"
         liked={false}
         likeCount={1240}
@@ -86,6 +90,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
     render(
       <PostBody
         username="jaehoon"
+        profileImageUrl="/jaehoon.jpg"
+        imageUrl="/post-1.jpg"
         content="노을"
         liked={false}
         likeCount={1240}
@@ -103,6 +109,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
     render(
       <PostBody
         username="jaehoon"
+        profileImageUrl="/jaehoon.jpg"
+        imageUrl="/post-1.jpg"
         content="오늘 한강 노을이 미쳤다"
         liked={false}
         likeCount={1240}

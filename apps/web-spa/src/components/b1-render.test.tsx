@@ -44,11 +44,10 @@ describe('PostCard', () => {
   it('Avatar 를 안에 품고 함께 그린다', () => {
     const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
 
-    // Avatar 만 내는 출력(대체 텍스트)으로 확인한다 — 클래스 이름은 E-1·E-2 에서 바뀐다
-    expect(html).toContain('alt="jaehoon 프로필 사진"');
-    expect(html).toContain(
-      '<article class="mb-6 overflow-hidden rounded-lg border border-line bg-surface 2col:mb-0">',
-    );
+    // E-6 에서 프로필 자리가 들여온 Avatar 로 바뀌었다. 그쪽은 사진을 받아오기 전에는
+    // 대체 글자만 그리므로, 여기서는 "카드가 프로필 자리를 품는다" 만 확인한다.
+    expect(html).toContain('data-slot="avatar"');
+    expect(html).toContain('<article data-slot="card"');
   });
 
   it('같은 컴포넌트가 다른 props 로 다른 화면을 낸다', () => {
@@ -68,6 +67,6 @@ describe('App', () => {
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('minji');
-    expect(html.match(/<article class="mb-6 /g)).toHaveLength(2);
+    expect(html.match(/<article data-slot="card"/g)).toHaveLength(2);
   });
 });

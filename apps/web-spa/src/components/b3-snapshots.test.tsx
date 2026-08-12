@@ -30,6 +30,28 @@ function withoutPreloadLinks(html: string) {
   return html.replace(/<link rel="preload"[^>]*\/>/g, '');
 }
 
+// E-6 에서 프로필 자리가 들여온 Avatar 로 바뀌었다. 그쪽은 사진을 받아오기 전에는
+// 대체 글자를 그리고, 서버에서 그린 결과에는 <img> 가 아예 없다.
+// 달라진 곳은 그 자리뿐이므로 양쪽을 같은 표시로 바꿔 두고 나머지는 그대로 견준다.
+// (B-5 의 withoutSignUpSection · E-5 의 withoutThemeToggle 과 같은 방식이다.)
+function withSameAvatar(html: string) {
+  return withoutPreloadLinks(html)
+    .replace(/<img class="size-8 rounded-full object-cover"[^>]*\/>/g, '[프로필자리]')
+    .replace(/<span data-slot="avatar"[\s\S]*?<\/span><\/span>/g, '[프로필자리]')
+    .replace('class="flex items-center gap-2.5 p-3"', 'class="flex items-center gap-2.5"');
+}
+
+// 카드 몸통은 E-6 에서 들여온 Card 로 통째로 바뀌었다. 감싸는 칸이 늘었으므로
+// "글자 하나 안 다르다" 는 더 못 지킨다. B-3 이 주장하던 것은 조립을 바꿔도
+// 학생이 보는 내용이 같다는 쪽이었으므로 그 내용만 남겨 견준다.
+function toVisibleText(html: string) {
+  return withSameAvatar(html)
+    .replace(/<[^>]+>/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .join('|');
+}
+
 describe('Step 1 — 세 구역으로 나눠도 화면은 글자 하나 안 바뀐다', () => {
   it('분해 전과 분해 직후의 HTML 이 완전히 같다', () => {
     const before = renderToStaticMarkup(
@@ -136,8 +158,8 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
     );
 
     expect(b3BridgeHits(after)).toContain('post-header');
-    expect(toB3Classes(after)).toBe(
-      before.replace('class="post-more"', 'class="post-more" type="button"'),
+    expect(withSameAvatar(toB3Classes(after))).toBe(
+      withSameAvatar(before.replace('class="post-more"', 'class="post-more" type="button"')),
     );
   });
 
@@ -188,8 +210,10 @@ describe('Step 4 — Card 로 조립해도 안쪽 구조는 그대로다', () =>
     // PostCardStep4 의 post-card 는 스냅샷이 직접 적은 옛 이름이라 되돌림 대상이 아니다.
     // 되돌려지는 것은 임포트한 살아 있는 PostHeader 쪽이다.
     expect(b3BridgeHits(step4)).toContain('post-header');
-    expect(toB3Classes(step4)).toBe(
-      toB3Classes(step1).replace('class="post-more"', 'class="post-more" type="button"'),
+    expect(withSameAvatar(toB3Classes(step4))).toBe(
+      withSameAvatar(
+        toB3Classes(step1).replace('class="post-more"', 'class="post-more" type="button"'),
+      ),
     );
   });
 
@@ -227,10 +251,9 @@ describe('Step 7 — 캡션 접기가 들어와서 달라지는 것', () => {
     );
 
     expect(b3BridgeHits(current)).toContain('caption-toggle');
-    expect(toB3Classes(current)).toBe(
-      toB3Classes(step4).replace(
-        '오늘 한강 노을이 미쳤다</p>',
-        '오늘 한강 노을이...<button class="caption-toggle" type="button">더 보기</button></p>',
+    expect(toVisibleText(current)).toBe(
+      toVisibleText(
+        step4.replace('오늘 한강 노을이 미쳤다</p>', '오늘 한강 노을이...<button>더 보기</button></p>'),
       ),
     );
   });

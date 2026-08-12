@@ -128,6 +128,8 @@ export function PostCardWithSave({
       />
       <PostBody
         username={username}
+        profileImageUrl={profileImageUrl}
+        imageUrl={imageUrl}
         content={content}
         liked={liked}
         likeCount={likeCount}
@@ -240,6 +242,8 @@ function WrongPostCard({
       />
       <PostBody
         username={username}
+        profileImageUrl={profileImageUrl}
+        imageUrl={imageUrl}
         content={content}
         liked={liked}
         likeCount={likeCount}

@@ -34,13 +34,18 @@ describe('PostHeader — 카드의 머리 구역', () => {
   it('더보기 버튼은 아직 아무 일도 하지 않는다 — 눌러도 화면이 그대로다', async () => {
     const user = userEvent.setup();
     render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
-    const before = screen.getByRole('button', { name: '게시물 메뉴' }).closest('div')?.outerHTML;
+    // 들여온 Avatar 는 처음 나타날 때 data-starting-style 표시를 잠깐 달았다 뗀다.
+    // 더보기 버튼과 무관한 표시라 견주기 전에 걷어낸다.
+    const 머리구역 = () =>
+      screen
+        .getByRole('button', { name: '게시물 메뉴' })
+        .closest('div')
+        ?.outerHTML.replace(/ data-starting-style=""/g, '');
+    const before = 머리구역();
 
     await user.click(screen.getByRole('button', { name: '게시물 메뉴' }));
 
-    expect(screen.getByRole('button', { name: '게시물 메뉴' }).closest('div')?.outerHTML).toBe(
-      before,
-    );
+    expect(머리구역()).toBe(before);
   });
 });
 
@@ -73,6 +78,8 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
     render(
       <PostBody
         username="jaehoon"
+        profileImageUrl="/jaehoon.jpg"
+        imageUrl="/post-1.jpg"
         content="오늘 한강 노을이 미쳤다"
         liked={false}
         likeCount={1240}
@@ -90,6 +97,8 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
     render(
       <PostBody
         username="jaehoon"
+        profileImageUrl="/jaehoon.jpg"
+        imageUrl="/post-1.jpg"
         content="오늘 한강 노을이 미쳤다"
         liked
         likeCount={1241}

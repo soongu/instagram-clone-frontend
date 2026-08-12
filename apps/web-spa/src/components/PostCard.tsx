@@ -2,7 +2,7 @@
 import { useReducer } from 'react';
 import type { PostCardProps } from '../types/derived';
 import { commentReducer, initialCommentState } from '../lib/comments';
-import { Card } from './Card';
+import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
 import { PostHeader } from './PostHeader';
 import { PostImage } from './PostImage';
 import { PostBody } from './PostBody';
@@ -28,28 +28,34 @@ export function PostCard({
   const [comments, dispatch] = useReducer(commentReducer, initialCommentState);
 
   return (
-    <Card
-      className="mb-6 overflow-hidden rounded-lg border border-line bg-surface 2col:mb-0"
-      header={<PostHeader username={username} profileImageUrl={profileImageUrl} />}
-      footer={<CommentForm onSubmit={(text) => dispatch({ type: 'add', content: text })} />}
-    >
+    <Card className="mb-6 2col:mb-0">
+      <CardHeader>
+        <PostHeader username={username} profileImageUrl={profileImageUrl} />
+      </CardHeader>
       <PostImage
         imageUrl={imageUrl}
         username={username}
         onLike={() => onToggleLike(id)}
       />
-      <PostBody
-        username={username}
-        content={content}
-        liked={liked}
-        likeCount={likeCount}
-        commentCount={commentCount + comments.items.length}
-        onToggle={() => onToggleLike(id)}
-      />
-      <CommentList
-        comments={comments.items}
-        onRemove={(commentId) => dispatch({ type: 'remove', id: commentId })}
-      />
+      <CardContent>
+        <PostBody
+          username={username}
+          profileImageUrl={profileImageUrl}
+          imageUrl={imageUrl}
+          content={content}
+          liked={liked}
+          likeCount={likeCount}
+          commentCount={commentCount + comments.items.length}
+          onToggle={() => onToggleLike(id)}
+        />
+        <CommentList
+          comments={comments.items}
+          onRemove={(commentId) => dispatch({ type: 'remove', id: commentId })}
+        />
+      </CardContent>
+      <CardFooter>
+        <CommentForm onSubmit={(text) => dispatch({ type: 'add', content: text })} />
+      </CardFooter>
     </Card>
   );
 }

@@ -1,5 +1,5 @@
 // apps/web-spa/src/components/PostHeader.tsx
-import { Avatar } from './Avatar';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { IconButton } from './IconButton';
 
 interface PostHeaderProps {
@@ -12,7 +12,14 @@ interface PostHeaderProps {
 export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
   return (
     <div className="flex items-center justify-between">
-      <Avatar username={username} profileImageUrl={profileImageUrl} />
+      <div className="flex items-center gap-2.5">
+        <Avatar>
+          <AvatarImage src={profileImageUrl} alt={`${username} 프로필 사진`} />
+          {/* 사진이 아직 안 왔거나 실패했을 때 이 자리에 남는 것 */}
+          <AvatarFallback>{username.slice(0, 1).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <span className="text-sm font-semibold">{username}</span>
+      </div>
       <IconButton
         className="cursor-pointer p-3 text-lg leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         aria-label="게시물 메뉴"

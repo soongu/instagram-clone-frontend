@@ -3,7 +3,7 @@
 import { render, screen, renderHook, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { toB3Classes, b3BridgeHits } from '../../scratch/e2-b3-class-bridge';
+import { toB3Classes, b3BridgeHits, toVisibleText } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect } from 'vitest';
 import { App } from '../App';
 import { AppBeforeHook } from '../../scratch/b3-lecture-snapshots';
@@ -86,7 +86,10 @@ describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', 
     expect(b3BridgeHits(rendered)).toContain('feed');
     expect(b3BridgeHits(rendered)).toContain('post-card');
     expect(after).not.toContain('font-bold');
-    expect(after).toBe(toB3Classes(before));
+    // E-6 에서 카드 몸통이 들여온 Card 로 바뀌어 감싸는 칸이 늘었다.
+    // "글자 하나 안 다르다" 는 더 못 지키므로, B-3 이 주장하던 것 —
+    // 훅으로 옮겨도 학생이 보는 내용이 같다는 쪽만 남겨 견준다.
+    expect(toVisibleText(after)).toBe(toVisibleText(toB3Classes(before)));
   });
 
   it('좋아요를 누르면 머리말 숫자가 함께 올라간다', async () => {
