@@ -34,22 +34,21 @@
   --breakpoint-2col: 62.25rem;
 }
 
-/* 화면이 어두우면 같은 이름에 다른 값을 담는다.
-   유틸리티는 var(--color-*) 를 보고 있으므로 className 은 하나도 안 고친다. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-canvas: oklch(0% 0 none);
-    --color-surface: oklch(18.2% 0 none);
-    --color-ink: oklch(97% 0 none);
+/* 어두운 화면일 때 같은 이름에 다른 값을 담는다.
+   값은 한 개도 안 바뀌었다. 조건만 운영체제에서 표시(.dark)로 옮겨왔다.
+   누가 이 표시를 붙일지는 이제 화면 쪽에서 정한다. */
+.dark {
+  --color-canvas: oklch(0% 0 none);
+  --color-surface: oklch(18.2% 0 none);
+  --color-ink: oklch(97% 0 none);
 
-    /* 회색 넷은 밝기를 뒤집되 서열은 그대로 둔다.
-       라이트에서 subtle 이 faint 보다 어두워 더 또렷했으므로
-       다크에서는 subtle 이 faint 보다 밝아야 한다. */
-    --color-faint: oklch(73.2% 0 none);
-    --color-subtle: oklch(83% 0 none);
-    --color-line: oklch(33.3% 0 none);
-    --color-line-soft: oklch(26.9% 0 none);
-  }
+  /* 회색 넷은 밝기를 뒤집되 서열은 그대로 둔다.
+     라이트에서 subtle 이 faint 보다 어두워 더 또렷했으므로
+     다크에서는 subtle 이 faint 보다 밝아야 한다. */
+  --color-faint: oklch(73.2% 0 none);
+  --color-subtle: oklch(83% 0 none);
+  --color-line: oklch(33.3% 0 none);
+  --color-line-soft: oklch(26.9% 0 none);
   /* brand·danger 는 안 바꾼다 — 브랜드색은 양쪽 화면에서 같아야 한다 */
 }
 
