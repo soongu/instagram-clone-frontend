@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>인스타그램 클론</title>
+    <script>
+      // 저장해 둔 선택을 화면이 그려지기 전에 읽어 표시를 붙인다.
+      // React 가 붙이면 이미 늦다 — 그 사이에 밝은 화면이 한 번 그려진다.
+      // 여기서는 모듈을 못 부른다(기다리는 순간 늦어진다). 그래서 lib/theme.ts 의
+      // 이름과 규칙을 이 몇 줄이 그대로 베껴 쓴다. 한쪽을 고치면 다른 쪽도 고쳐야 한다.
+      try {
+        var stored = localStorage.getItem('ig-theme');
+        var choice = stored === 'light' || stored === 'dark' ? stored : 'system';
+        if (choice === 'dark' || (choice === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {
+        // 저장소를 못 읽는 곳에서는 그냥 밝게 시작한다
+      }
+    </script>
   </head>
   <body class="bg-canvas text-ink">
     <div id="root"></div>
