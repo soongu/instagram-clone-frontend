@@ -20,7 +20,7 @@ const RING =
 // E-6 에서 들여온 Card 가 카드 몸통에 얹는 클래스 한 뭉치.
 // 한 글자라도 어긋나면 되돌리기가 조용히 안 걸리므로 상수로 둔다.
 const CARD_UTILITIES =
-  'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[&gt;img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl mb-6 @2col:mb-0';
+  'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[&gt;img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl @container mx-auto mb-6 max-w-[470px] @2col:mb-0';
 
 // [E-2·E-3 유틸리티 문자열, B-3 시점 이름]
 // liked 쪽을 먼저 둔다 — 두 좋아요 버튼 문자열은 뒷부분만 다르다.
@@ -66,7 +66,7 @@ const BRIDGE: Array<[string, string]> = [
     'class="toast"',
   ],
   [
-    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 @2col:max-w-[470px]"',
+    'class="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 max-w-[470px]"',
     'class="signup-form"',
   ],
   ['class="flex flex-col gap-1"', 'class="signup-field"'],
@@ -108,7 +108,12 @@ export function withSameAvatar(html: string): string {
     .replace(/<link rel="preload"[^>]*\/>/g, '')
     .replace(/<img class="size-8 rounded-full object-cover"[^>]*\/>/g, '[프로필자리]')
     .replace(/<span data-slot="avatar"[\s\S]*?<\/span><\/span>/g, '[프로필자리]')
-    .replace('class="flex items-center gap-2.5 p-3"', 'class="flex items-center gap-2.5"');
+    .replace('class="flex items-center gap-2.5 p-3"', 'class="flex items-center gap-2.5"')
+    // E-7 에서 머리 구역이 담긴 통의 폭을 보게 됐다. 좁은 통에서는 이 글자들이
+    // 아무 일도 안 하므로, B-3 시점과 견줄 때는 걷어내고 본다.
+    // 카드가 여러 장이라 전부 바꾼다 — 첫 장만 바꾸면 나머지가 남는다.
+    .replace(/ @lg:gap-4"/g, '"')
+    .replace(/ @lg:text-base"/g, '"');
 }
 
 /** 카드 몸통이 들여온 것으로 바뀌어 감싸는 칸이 늘었다. 학생이 보는 글자만 남겨 견준다. */

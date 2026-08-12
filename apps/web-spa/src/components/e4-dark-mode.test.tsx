@@ -40,13 +40,15 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
   it('회원가입 폼은 통이 넓어져도 따라 늘어나지 않는다', () => {
     const html = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
 
-    expect(html).toContain('p-4 @2col:max-w-[470px]');
+    expect(html).toContain('p-4 max-w-[470px]');
   });
 
   it('Tailwind 가 준 lg 는 더 이상 쓰지 않는다 — 우리 숫자로 갈린다', () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html).not.toMatch(/\blg:/);
+    // E-7 에서 통을 보는 @lg: 가 들어왔다. 이름은 같지만 다른 눈금이다
+    // (창 lg: 는 64rem, 통 @lg: 는 32rem). 여기서 막으려던 것은 창 쪽이다.
+    expect(html).not.toMatch(/(?<!@)\blg:/);
   });
 });
 

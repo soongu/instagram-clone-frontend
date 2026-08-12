@@ -12,13 +12,15 @@ interface PostHeaderProps {
 export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2.5">
-        <Avatar>
+      {/* 담긴 통이 넓어지면 프로필이 커지고 사이가 벌어진다.
+          이 글자는 카드 안에서도 모달 안에서도 똑같다 — 갈리는 것은 통의 폭뿐이다. */}
+      <div className="flex items-center gap-2.5 @lg:gap-4">
+        <Avatar className="@lg:size-11">
           <AvatarImage src={profileImageUrl} alt={`${username} 프로필 사진`} />
           {/* 사진이 아직 안 왔거나 실패했을 때 이 자리에 남는 것 */}
           <AvatarFallback>{username.slice(0, 1).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <span className="text-sm font-semibold">{username}</span>
+        <span className="text-sm font-semibold @lg:text-base">{username}</span>
       </div>
       <IconButton
         className="cursor-pointer p-3 text-lg leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"

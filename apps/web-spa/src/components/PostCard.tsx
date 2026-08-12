@@ -27,8 +27,10 @@ export function PostCard({
   // 이 댓글은 이 카드만 쓰니까 카드 안에 둔다
   const [comments, dispatch] = useReducer(commentReducer, initialCommentState);
 
+  // 카드가 스스로 통이 된다고 알린다.
+  // 이 줄이 없으면 카드 안쪽이 바깥 main 을 보고 갈려 버린다.
   return (
-    <Card className="mb-6 @2col:mb-0">
+    <Card className="@container mx-auto mb-6 max-w-[470px] @2col:mb-0">
       <CardHeader>
         <PostHeader username={username} profileImageUrl={profileImageUrl} />
       </CardHeader>

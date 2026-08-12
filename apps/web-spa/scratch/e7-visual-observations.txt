@@ -1,0 +1,118 @@
+E-7 비주얼 완성 패스 — 관찰 (Tailwind 4.3.3 · lucide-react 1.31.0 · tw-animate-css 1.4.0)
+================================================================================
+
+E-6 채증(e6-shadcn-observations.txt)의 이어짐. 단위 테스트로 못 잡는 것만 적는다.
+
+재현 (apps/web-spa 에서):
+  rm -rf dist && npm run build
+  wc -c < dist/assets/*.css ; wc -c < dist/assets/*.js
+
+시작 시점(E-6 종료 상태): CSS 39,870 B · JS 408,093 B · 65 files / 492 passed
+  ⚠️ E-6 교안이 39,871 / 408,090 으로 적고 있었다. 독립 검수가 커밋별 재빌드로
+     잡았고 교안·채증·과목 canon 세 곳을 정정했다(커밋 a93c82f).
+     앞 두 행(18,038 · 39,919)은 바이트 단위로 맞아서 환경 차이가 아니었다.
+
+
+0. 시의성 (착수일 2026-08-12)
+--------------------------------------------------------------------------------
+
+  npm view lucide-react version      → 1.31.0   (설치 ^1.31.0 — 최신)
+  npm view tw-animate-css version    → 1.4.0    (설치 ^1.4.0 — E-5 가 이미 import)
+  npm view tailwindcss version       → 4.3.3    (설치 4.3.3)
+
+  ⚠️ lucide 아이콘 이름 — MoreHorizontal 은 정식 이름이 아니다.
+     1.x 의 정식 이름은 Ellipsis 이고, MoreHorizontal 은
+       "Ellipsis as MoreHorizontal"
+     별칭으로만 살아 있다(MoreVertical 도 EllipsisVertical 의 별칭).
+     검색해서 나오는 옛 코드가 그대로 컴파일되므로 틀린 줄 모르고 지나간다.
+     d.ts 기준 아이콘 총 1,768종.
+
+
+1. ⚠️⚠️ 컨테이너를 세우는 줄은 E-6 에서 이미 들어와 있었다 — 묻는 줄만 0건이었다
+--------------------------------------------------------------------------------
+
+  E-6 이 복사해 온 card.tsx:30 에 @container/card-header 가 있다.
+  빌드 CSS 에서:
+
+    .\@container\/card-header{container:card-header/inline-size}
+
+  그런데 @container ( ... ) 조건절은 파일 전체에 **0건** 이었다.
+    grep -o "@container[^{]*" dist/assets/*.css | sort | uniq -c
+      1 @container\/card-header      ← 통을 세우는 줄(클래스)
+                                     ← 묻는 줄은 없음
+
+  => 통은 세워져 있는데 아무도 묻지 않는 상태. E-7 의 출발점이 여기다.
+
+  우리 피드는 그때까지 창에게 물었다:
+    @media (width>=62.25rem)         ← --breakpoint-2col: 62.25rem
+
+
+2. ⚠️⚠️⚠️ E-4 회수가 두 겹이다 — 조건엔 var() 를 못 쓰는데 :root 엔 이름이 있다
+--------------------------------------------------------------------------------
+
+  E-4 의 결론: --breakpoint-* 는 빌드 CSS 의 :root 에 0건.
+              미디어 쿼리 조건은 var() 를 못 읽기 때문.
+
+  컨테이너 쪽도 똑같다. --container-2col: 60.25rem 을 선언하고 @2col: 를 쓰면:
+
+    @container (width>=60.25rem)     ← 값이 박혀서 나온다
+    grep -c "--container-2col" → 0   ← :root 에 없다
+
+  그런데 여기서 갈린다 — --container-sm 과 --container-lg 는 :root 에 **있다**.
+
+    :root  … --container-sm:24rem;--container-lg:32rem; …
+    @media (width>=40rem){ .sm\:max-w-lg{max-width:var(--container-lg)} }
+                                                       ^^^^^^^^^^^^^^^^
+
+  => --container-* 는 한 이름으로 두 가지 일을 한다.
+       조건으로 쓰일 때(@sm: · @2col:)  → 값이 박히고 :root 에 안 남는다
+       값으로 쓰일 때(max-w-sm · max-w-lg) → var() 로 읽으므로 :root 에 남는다
+
+     E-4 를 "토큰은 조건에 못 쓰니까 :root 에 안 나온다" 로 외운 학생은
+     :root 에서 --container-sm 을 보고 정확히 틀린 결론을 낸다.
+     남아 있는 이유가 조건이 아니라 **폭 값** 이기 때문이다.
+
+
+3. ⚠️⚠️ 토큰 이름을 옮기면 다른 곳의 2col: 이 경고 없이 죽는다
+--------------------------------------------------------------------------------
+
+  --breakpoint-2col 을 --container-2col 로 바꾸는 순간, @ 가 없는 2col: 은
+  전부 존재하지 않는 변형이 된다. 그런데:
+
+    · 빌드는 성공한다
+    · 경고가 하나도 안 나온다   (npm run build 2>&1 | grep -i warn → 없음)
+    · 클래스 문자열은 JSX 에도 DOM 에도 그대로 남는다
+    · 빌드 CSS 에서 규칙만 0건이 된다
+
+      2col\:mb-0            → 0건
+      2col\:max-w-\[470px\] → 0건
+
+  실제로 죽었던 두 곳:
+    PostCard    mb-6 2col:mb-0            두 열일 때 카드 아래 여백이 안 지워짐
+    SignUpForm  p-4 2col:max-w-[470px]    통이 넓어지면 폼이 따라 늘어남
+
+  둘 다 밝은 화면·좁은 창에서는 안 드러난다. E-5 의 "확인은 전부 초록인데
+  화면이 깨졌다" · E-6 의 "밝은 화면에선 두 판이 똑같다" 와 같은 계열.
+
+  ⚠️ 검증 중 내가 낸 실수 — grep 이스케이프를 잘못 써서
+     @2col\:max-w-\[470px\] 를 "0건" 으로 읽고 살아나지 않았다고 판단할 뻔했다.
+     실제로는 5개 규칙이 전부 있었다. 셸 인용부호를 거치는 패턴은
+     결과가 0 일 때 한 번 더 다른 방법으로 확인할 것.
+
+  가드: e7-visual-polish.test.tsx 의
+        "창을 보던 2col: 이 화면 어디에도 안 남았다"
+        → expect(html).not.toMatch(/(?<!@)2col:/)
+        SignUpForm 을 일부러 되돌려 실제로 잡히는 것 확인함.
+
+
+4. Step 2 크기
+--------------------------------------------------------------------------------
+
+                          CSS         JS
+    E-6 끝               39,870 B    408,093 B
+    Step 2 뒤            39,867 B    408,090 B    ← 둘 다 -3
+
+  미디어 쿼리 한 겹이 컨테이너 쿼리 한 겹으로 바뀐 것이라 CSS 는 거의 그대로다.
+  JS 는 className 문자열 길이 차이(@ 셋이 늘고 max-w-[470px] 한 벌이 줄었다).
+
+  게이트: 65 files / 492 passed · tsc 0 · eslint 0 · build 성공

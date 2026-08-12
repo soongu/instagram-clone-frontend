@@ -38,7 +38,11 @@ function withSameAvatar(html: string) {
   return withoutPreloadLinks(html)
     .replace(/<img class="size-8 rounded-full object-cover"[^>]*\/>/g, '[프로필자리]')
     .replace(/<span data-slot="avatar"[\s\S]*?<\/span><\/span>/g, '[프로필자리]')
-    .replace('class="flex items-center gap-2.5 p-3"', 'class="flex items-center gap-2.5"');
+    .replace('class="flex items-center gap-2.5 p-3"', 'class="flex items-center gap-2.5"')
+    // E-7 에서 머리 구역이 담긴 통의 폭을 보게 됐다. 좁은 통에서는 이 글자들이
+    // 아무 일도 안 하므로, B-3 시점과 견줄 때는 걷어내고 본다.
+    .replace(/ @lg:gap-4"/g, '"')
+    .replace(/ @lg:text-base"/g, '"');
 }
 
 // 카드 몸통은 E-6 에서 들여온 Card 로 통째로 바뀌었다. 감싸는 칸이 늘었으므로
