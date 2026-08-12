@@ -28,7 +28,10 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
   it('카드 아래 여백은 두 열이 되는 순간 gap 에게 넘긴다', () => {
     const html = renderToStaticMarkup(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />);
 
-    expect(html).toContain('bg-surface 2col:mb-0');
+    // E-6 에서 카드 몸통이 들여온 것으로 바뀌었다.
+    // 여기서 지키려던 것은 "두 열이 되면 아래 여백을 gap 에게 넘긴다" 쪽이라 그것만 본다.
+    expect(html).toContain('mb-6');
+    expect(html).toContain('2col:mb-0');
   });
 
   it('회원가입 폼은 통이 넓어져도 따라 늘어나지 않는다', () => {
@@ -47,17 +50,32 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
 describe('Step 5·6 — 다크 값은 토큰 한 곳에서 갈린다', () => {
   // 값이 갈리는 것 자체는 globals.css 안이라 여기서 못 본다.
   // 여기서 지키는 것은 "그 대신 className 이 하나도 안 늘었다" 는 쪽이다.
-  it('색을 쓰는 곳 어디에도 dark: 짝이 붙지 않았다', () => {
+  // E-6 에서 들여온 컴포넌트가 자기 dark: 를 달고 들어왔다.
+  // 그래서 "App 전체에 0개" 는 더 못 지킨다. 대신 지킬 것을 좁힌다 —
+  // dark: 가 붙은 곳은 전부 들여온 것(data-slot 을 단 요소)이어야 한다.
+  it('dark: 는 들여온 컴포넌트에만 있고 우리가 쓴 곳에는 없다', () => {
     const html = renderToStaticMarkup(<App />);
+    const 태그들 = html.match(/<[^>]*dark:[^>]*>/g) ?? [];
 
-    expect(html).not.toMatch(/dark:/);
+    expect(태그들.length).toBeGreaterThan(0);
+    for (const 태그 of 태그들) {
+      expect(태그).toContain('data-slot=');
+    }
+  });
+
+  it('우리가 손으로 쓴 화면에는 여전히 dark: 가 하나도 없다', () => {
+    const form = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
+
+    expect(form).not.toMatch(/dark:/);
   });
 
   it('카드는 다크모드 전과 똑같은 이름을 쓴다 — 값만 갈린다', () => {
     const html = renderToStaticMarkup(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />);
 
-    expect(html).toContain('border border-line bg-surface');
+    // 이름은 한 개다. 밝을 때와 어두울 때가 이 이름 뒤에서 갈린다.
+    expect(html).toContain('bg-card');
     expect(html).not.toContain('surface-dark');
+    expect(html).not.toContain('card-dark');
   });
 
   it('보조 문구와 폼 라벨도 이름 그대로다', () => {
