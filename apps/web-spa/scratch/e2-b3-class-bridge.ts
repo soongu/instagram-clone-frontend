@@ -45,15 +45,15 @@ const BRIDGE: Array<[string, string]> = [
   ['class="cursor-pointer px-3 py-1 text-note text-faint"', 'class="hide-button"'],
   // ── 댓글·폼·토스트 (Step 6) ────────────────────────────────
   ['class="flex gap-2 border-t border-line-soft p-3"', 'class="comment-form"'],
-  [`class="flex-1 text-sm${RING}"`, 'class="comment-input"'],
+  [`class="flex-1 py-1 text-sm${RING}"`, 'class="comment-input"'],
   // E-3 이 :disabled·:hover 규칙을 변형으로 옮기면서 손 이름 두 개가 마저 떨어졌다
   [
-    `class="cursor-pointer text-sm font-semibold text-brand disabled:cursor-default disabled:text-brand/30${RING}"`,
+    `class="cursor-pointer py-1 text-sm font-semibold text-brand disabled:cursor-default disabled:text-brand/30${RING}"`,
     'class="comment-submit"',
   ],
   ['class="px-3 pb-3 text-sm"', 'class="comment-list"'],
   [
-    `class="cursor-pointer px-1 text-sm leading-none text-faint hover:text-ink${RING}"`,
+    `class="cursor-pointer p-1 text-sm leading-none text-faint hover:text-ink${RING}"`,
     'class="comment-remove"',
   ],
   [
@@ -67,7 +67,7 @@ const BRIDGE: Array<[string, string]> = [
   ['class="flex flex-col gap-1"', 'class="signup-field"'],
   ['class="text-xs text-subtle"', 'class="signup-label"'],
   [`class="rounded-md border border-line p-2 text-sm${RING}"`, 'class="signup-input"'],
-  ['class="text-xs text-danger"', 'class="signup-error"'],
+  ['class="text-xs text-danger-strong"', 'class="signup-error"'],
   [
     `class="cursor-pointer rounded-lg bg-brand p-2 text-sm font-semibold text-white${RING}"`,
     'class="signup-submit"',

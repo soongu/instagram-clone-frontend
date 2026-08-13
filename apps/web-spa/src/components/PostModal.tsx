@@ -38,7 +38,8 @@ export function PostModal({
         <DialogTitle className="sr-only">{username} 의 게시물</DialogTitle>
         <div className="grid gap-3 @3xl:grid-cols-2 @3xl:items-start @3xl:gap-5">
           <img className="w-full rounded-lg" src={imageUrl} alt={`${username} 의 게시물`} />
-          <div className="flex flex-col gap-2">
+          {/* 두 칸일 때 이 칸의 오른쪽 끝은 상자 오른쪽 위 닫기 버튼과 자리를 다툰다 */}
+          <div className="flex flex-col gap-2 @3xl:pr-8">
             <PostHeader username={username} profileImageUrl={profileImageUrl} />
             <DialogDescription>{content}</DialogDescription>
             <p className="text-sm text-faint">

@@ -20,7 +20,7 @@ export function TextField({ id, label, error, ...inputProps }: TextFieldProps) {
         id={id}
         {...inputProps}
       />
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-xs text-danger-strong">{error}</p>}
     </div>
   );
 }

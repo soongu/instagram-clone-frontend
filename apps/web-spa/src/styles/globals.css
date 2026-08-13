@@ -14,6 +14,9 @@
   /* 우리 색 — 반복 횟수를 세어 이름을 준 값들 (괄호 안은 원래 적혀 있던 값) */
   --color-brand: oklch(65.46% 0.177 248.2);
   --color-danger: oklch(64.1% 0.2 20.5);
+  /* 위 빨강은 하트 같은 그림용이다(밝은 화면 대비 3.69). 글자에는 4.5 가 필요해서
+     글자용을 따로 둔다 — 한 값으로는 두 화면을 다 만족시킬 수 없다. */
+  --color-danger-strong: oklch(58% 0.2 20.5);
   --color-line: oklch(89.1% 0 none);
   --color-line-soft: oklch(95.2% 0 none);
   /* muted 는 shadcn 이 자기 이름으로 쓰고 있어서 faint 로 옮겼다.
@@ -49,7 +52,10 @@
   --color-subtle: oklch(83% 0 none);
   --color-line: oklch(33.3% 0 none);
   --color-line-soft: oklch(26.9% 0 none);
-  /* brand·danger 는 안 바꾼다 — 브랜드색은 양쪽 화면에서 같아야 한다 */
+  /* brand·danger 는 안 바꾼다 — 브랜드색은 양쪽 화면에서 같아야 한다.
+     글자용 빨강만 되돌린다. 어두운 판에서는 원래 값이 5.07 로 이미 넉넉하고,
+     밝은 판용으로 어둡게 만든 값을 그대로 쓰면 3.95 로 오히려 모자란다. */
+  --color-danger-strong: oklch(64.1% 0.2 20.5);
 }
 
 .key-demo {

@@ -15,6 +15,8 @@ import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
 import { PostModal } from './PostModal';
 import { CommentList } from './CommentList';
+import { CommentForm } from './CommentForm';
+import { TextField } from './TextField';
 import { LikeButton } from './LikeButton';
 import { SignUpForm } from './SignUpForm';
 import { feedPosts } from '../data/feed';
@@ -297,5 +299,71 @@ describe('Step 6 — 누르면 반응하게', () => {
   // 우리가 처음 직접 부르는 자리다.
   it('나타나는 움직임은 들여온 꾸러미의 글자를 쓴다', () => {
     expect(하트버튼(true).querySelector('svg')?.getAttribute('class')).toContain('animate-in');
+  });
+});
+
+// 낭독기가 읽어줄 이름을 우리가 직접 계산해 본다.
+// 규칙은 aria-label → aria-labelledby → label[for] → 안에 든 글자 순이다.
+function 읽어줄이름(el: Element): string {
+  const label = el.getAttribute('aria-label');
+  if (label) return label.trim();
+  const labelledby = el.getAttribute('aria-labelledby');
+  if (labelledby) {
+    return (labelledby.split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? '')).join(' ').trim();
+  }
+  if (el.id) {
+    const forLabel = document.querySelector(`label[for="${el.id}"]`);
+    if (forLabel?.textContent) return forLabel.textContent.trim();
+  }
+  if (el.tagName === 'IMG') return (el.getAttribute('alt') ?? '').trim();
+  return (el.textContent ?? '').trim();
+}
+
+describe('Step 8 — 화면 전체를 훑는다', () => {
+  it('조작할 수 있는 것에는 하나도 빠짐없이 읽어줄 이름이 있다', () => {
+    render(<App />);
+
+    const 이름없는것 = [...document.querySelectorAll('button, a, input, select, textarea, img')]
+      .filter((el) => 읽어줄이름(el) === '')
+      .map((el) => el.outerHTML.slice(0, 80));
+
+    expect(이름없는것).toEqual([]);
+  });
+
+  // 하트(그림)는 3:1 이면 되지만 오류 글자는 4.5:1 이 필요하다.
+  // 우리 빨강 하나로는 두 화면을 다 만족시킬 수 없어서 글자용을 따로 뒀다.
+  it('오류 글자는 그림용 빨강이 아니라 글자용 빨강을 쓴다', () => {
+    render(<TextField id="email" label="이메일" name="email" error="이메일 형식이 아니에요" />);
+
+    expect(screen.getByText('이메일 형식이 아니에요').className).toContain('text-danger-strong');
+  });
+
+  it('하트는 그대로 그림용 빨강이다', () => {
+    render(<LikeButton liked likeCount={1} onToggle={() => {}} />);
+
+    const heart = screen.getByRole('button', { name: '좋아요' }).querySelector('svg');
+    expect(heart?.getAttribute('class')).toContain('text-danger');
+    expect(heart?.getAttribute('class')).not.toContain('text-danger-strong');
+  });
+
+  it('누를 자리가 24px 에 못 미치던 셋을 넓혔다', () => {
+    render(<CommentList comments={[{ id: 1, content: '노을 최고' }]} onRemove={() => {}} />);
+    expect(screen.getByRole('button', { name: '댓글 삭제' }).className).toContain('p-1');
+
+    render(<CommentForm onSubmit={() => {}} />);
+    expect(screen.getByRole('button', { name: '게시' }).className).toContain('py-1');
+    expect(screen.getByLabelText('댓글 입력').className).toContain('py-1');
+  });
+
+  // 넓은 통에서 모달이 두 칸으로 갈리면 오른쪽 칸의 더보기가
+  // 상자 오른쪽 위 닫기 버튼과 자리를 다툰다. 그 칸만 오른쪽을 비워둔다.
+  it('모달이 두 칸일 때 오른쪽 칸은 닫기 버튼 자리를 비워둔다', async () => {
+    const user = userEvent.setup();
+    render(<PostModal {...modalProps} />);
+
+    await user.click(screen.getByRole('button', { name: /모두 보기/ }));
+    const 상자 = await screen.findByRole('dialog');
+
+    expect(상자.innerHTML).toContain('@3xl:pr-8');
   });
 });
