@@ -66,6 +66,11 @@ function withoutThemeToggle(html: string) {
   return html.replace(/<div class="[^"]*" role="group" aria-label="화면 밝기">.*?<\/div>/, '');
 }
 
+// C-1 은 같은 머리말에 주소를 오가는 메뉴를 덧붙였다. 같은 이유로 걷어낸다.
+function withoutSiteNav(html: string) {
+  return html.replace(/<nav aria-label="주요 메뉴"[^>]*>.*?<\/nav>/, '');
+}
+
 // E-1 은 제목에 font-bold 를, E-2 는 나머지를 토큰 유틸리티로 옮겼다.
 // 둘 다 B-3 이후에 덧붙은 변화이므로 견주기 전에 옛 이름으로 되돌린다.
 
@@ -74,11 +79,12 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
     const before = renderToStaticMarkup(<AppBeforeHook />);
     // C-1 에서 main·머리말이 Layout 으로 옮겨갔다. 견주려면 껍데기까지 함께 그려야 한다.
     const rendered = pageMarkup('/');
-    const after = withoutThemeToggle(toB3Classes(rendered));
+    const after = withoutSiteNav(withoutThemeToggle(toB3Classes(rendered)));
 
     // 잘라낸 뒤에도 비교할 알맹이가 남아 있어야 한다
     expect(after).toContain('aria-label="피드"');
     expect(after).not.toContain('aria-label="화면 밝기"');
+    expect(after).not.toContain('aria-label="주요 메뉴"');
     // 되돌리기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
     expect(b3BridgeHits(rendered)).toContain('feed');
     expect(b3BridgeHits(rendered)).toContain('post-card');
