@@ -1,0 +1,16 @@
+C-2 Step 6 채증 — useRouteError 가 주는 것은 unknown
+
+설치본 시그니처 (lib/hooks.d.ts)
+  declare function useRouteError(): unknown;
+
+tsc --strict 결과:
+scratch/c2-routeerror-unknown-probe.tsx(7,14): error TS18046: 'error' is of type 'unknown'.
+
+→ 7행(좁히기 없이 error.message) 에서 TS18046 으로 막힌다.
+→ 좁힌 쪽(isRouteErrorResponse → instanceof Error → else)은 통과.
+
+Step 5 와 나란히 놓으면 정반대다:
+  useLoaderData<T = any>()  기본이 any     → 틀려도 통과시킨다  (조용히 잘못됨)
+  useRouteError(): unknown 기본이 unknown  → 좁히기 전엔 막는다 (시끄럽게 잘못됨)
+  같은 라이브러리 같은 버전인데 두 훅의 기본값이 갈린다.
+  TypeScript 6.0.3 / react-router 8.3.0 / 2026-08-13

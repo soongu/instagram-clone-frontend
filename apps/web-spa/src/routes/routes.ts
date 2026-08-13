@@ -6,6 +6,7 @@ import { SignUpPage } from './SignUpPage';
 import { PostDetailPage } from './PostDetailPage';
 import { ExplorePage } from './ExplorePage';
 import { postLoader } from './postLoader';
+import { RootErrorBoundary } from './RootErrorBoundary';
 
 // 부모가 껍데기(Layout)를 맡고, 자식이 Outlet 자리에 들어간다.
 // 자식 주소는 앞에 빗금을 안 붙인다 — 부모 주소에 이어 붙기 때문이다.
@@ -13,6 +14,8 @@ export const routes: RouteObject[] = [
   {
     path: '/',
     Component: Layout,
+    // Component 와 짝을 이룬다. 아래에서 무엇이 던져지든 여기로 올라온다.
+    ErrorBoundary: RootErrorBoundary,
     children: [
       { index: true, Component: HomePage },
       { path: 'signup', Component: SignUpPage },
