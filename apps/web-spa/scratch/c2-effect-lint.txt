@@ -1,0 +1,26 @@
+
+/Users/superstar/my-claude-project/backend-lecture-project/lectures/web-frontend-framework/instagram-clone-frontend/apps/web-spa/src/routes/PostDetailPage.tsx
+  24:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/superstar/my-claude-project/backend-lecture-project/lectures/web-frontend-framework/instagram-clone-frontend/apps/web-spa/src/routes/PostDetailPage.tsx:24:5
+  22 |     // 늦게 온 응답이 이미 떠난 화면을 덮어쓰지 않게 표시를 남긴다
+  23 |     let cancelled = false;
+> 24 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  25 |
+  26 |     fetchPost(Number(postId)).then((found) => {
+  27 |       if (cancelled) {  react-hooks/set-state-in-effect
+
+✖ 1 problem (1 error, 0 warnings)
+
+
+── 확인 조건
+eslint-plugin-react-hooks 7.1.1
+규칙: react-hooks/set-state-in-effect
+코드: useEffect 본문에서 setLoading(true) 를 곧바로 부른 판

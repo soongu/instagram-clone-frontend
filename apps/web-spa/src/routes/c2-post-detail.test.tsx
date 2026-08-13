@@ -12,28 +12,30 @@ function renderAt(path: string) {
 }
 
 describe('C-2 Step 1 — 주소의 일부를 값으로 받는다', () => {
-  it('/p/1 은 1번 게시물을 그린다', () => {
+  it('/p/1 은 1번 게시물을 그린다', async () => {
     renderAt('/p/1');
 
-    expect(screen.getByText('오늘 한강 노을이 미쳤다')).toBeInTheDocument();
+    // Step 4 부터 데이터가 늦게 온다 — 그려지자마자 찾으면 아직 없다
+    expect(await screen.findByText('오늘 한강 노을이 미쳤다')).toBeInTheDocument();
     expect(screen.getByText('jaehoon')).toBeInTheDocument();
   });
 
-  it('/p/2 는 2번 게시물을 그린다 — 표는 한 줄인데 화면이 갈린다', () => {
+  it('/p/2 는 2번 게시물을 그린다 — 표는 한 줄인데 화면이 갈린다', async () => {
     renderAt('/p/2');
 
-    expect(screen.getByText('제주도 3박 4일 기록')).toBeInTheDocument();
+    expect(await screen.findByText('제주도 3박 4일 기록')).toBeInTheDocument();
     expect(screen.queryByText('오늘 한강 노을이 미쳤다')).not.toBeInTheDocument();
   });
 
-  it('/p/999 처럼 없는 번호면 못 찾았다고 알린다', () => {
+  it('/p/999 처럼 없는 번호면 못 찾았다고 알린다', async () => {
     renderAt('/p/999');
 
-    expect(screen.getByText(/찾을 수 없/)).toBeInTheDocument();
+    expect(await screen.findByText(/찾을 수 없/)).toBeInTheDocument();
   });
 
-  it('상세는 피드가 아니다 — 목록은 안 그린다', () => {
+  it('상세는 피드가 아니다 — 목록은 안 그린다', async () => {
     renderAt('/p/1');
+    await screen.findByText('오늘 한강 노을이 미쳤다');
 
     expect(screen.queryByRole('list', { name: '피드 목록' })).not.toBeInTheDocument();
   });
