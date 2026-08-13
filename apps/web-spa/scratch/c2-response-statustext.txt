@@ -1,0 +1,14 @@
+C-2 Step 7 채증 — Response 의 statusText 에는 한글을 못 넣는다
+
+node -e 로 직접 만들어본 결과:
+
+  new Response(null, { status: 404, statusText: 한글 })
+  → TypeError: Cannot convert argument to a ByteString because the character at index 0 has a value of 44172 which is greater than 255.
+
+  new Response(한글본문, { status: 404, statusText: "Not Found" })
+  → OK. statusText = "Not Found"
+
+→ statusText 는 HTTP reason phrase 라 Latin-1(ByteString) 만 받는다.
+  한글은 코드 포인트가 255 를 넘어 만드는 순간 터진다.
+→ 그래서 사람이 읽을 말은 본문에 담고, 라우터 쪽에서는 error.data 로 꺼낸다.
+  Node v23.6.0 / react-router 8.3.0 / 2026-08-13

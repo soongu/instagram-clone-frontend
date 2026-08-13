@@ -6,11 +6,14 @@ export function RootErrorBoundary() {
   // unknown 은 좁히기 전에는 아무것도 못 꺼낸다 — 점 하나도 못 찍는다.
   const error = useRouteError();
 
+  let title = '문제가 생겼어요';
   let detail: string;
 
   if (isRouteErrorResponse(error)) {
-    // 우리가 Response 를 던진 경우. 상태 번호가 함께 온다.
-    detail = `${error.status} ${error.statusText}`;
+    // 우리가 Response 를 던진 경우. 번호가 함께 오니 갈래를 더 나눌 수 있다.
+    // 사람이 읽을 말은 statusText 가 아니라 본문(data)에 담겨 온다.
+    title = error.status === 404 ? '없는 페이지예요' : '문제가 생겼어요';
+    detail = `${error.status} ${error.data}`;
   } else if (error instanceof Error) {
     // 코드가 터지거나 우리가 Error 를 던진 경우
     detail = error.message;
@@ -22,7 +25,7 @@ export function RootErrorBoundary() {
   // 이 화면은 Layout 을 대신한다. 껍데기가 통째로 갈리므로 머리말이 없다.
   return (
     <main className="mx-auto max-w-[996px] p-4">
-      <h1 className="mb-2 text-2xl font-bold">문제가 생겼어요</h1>
+      <h1 className="mb-2 text-2xl font-bold">{title}</h1>
       <p className="mb-4 text-sm text-faint">{detail}</p>
       <Link className="text-sm underline underline-offset-4" to="/">
         홈으로

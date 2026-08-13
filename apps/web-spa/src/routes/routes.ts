@@ -7,6 +7,7 @@ import { PostDetailPage } from './PostDetailPage';
 import { ExplorePage } from './ExplorePage';
 import { postLoader } from './postLoader';
 import { RootErrorBoundary } from './RootErrorBoundary';
+import { NotFoundPage } from './NotFoundPage';
 
 // 부모가 껍데기(Layout)를 맡고, 자식이 Outlet 자리에 들어간다.
 // 자식 주소는 앞에 빗금을 안 붙인다 — 부모 주소에 이어 붙기 때문이다.
@@ -25,6 +26,8 @@ export const routes: RouteObject[] = [
       // loader 는 Component 와 나란히 선다. 라우터가 loader 를 먼저 부르고,
       // 그것이 끝난 뒤에야 Component 를 그린다.
       { path: 'p/:postId', loader: postLoader, Component: PostDetailPage },
+      // 별표는 아무도 안 맡은 주소를 받는다. 맨 끝에 둬야 위의 주소들을 안 가로챈다.
+      { path: '*', Component: NotFoundPage },
     ],
   },
 ];
