@@ -2,7 +2,6 @@
 import { useEffect } from 'react';
 import { Feed } from '../components/Feed';
 import { Section } from '../components/Section';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { Toast } from '../components/Toast';
 import { feedPosts } from '../data/feed';
 import { useFeed } from '../hooks/useFeed';
@@ -33,17 +32,14 @@ export function HomePage() {
     return () => clearTimeout(timerId);
   }, [toast, dismissToast]);
 
+  // 껍데기(main·머리말)는 Layout 이 들고 있다. 여기는 홈에만 있는 것만 그린다.
   return (
-    <main className="@container mx-auto max-w-[996px] py-4 sm:px-4">
-      <header className="mb-4 flex items-baseline justify-between">
-        <h1 className="mb-4 text-2xl font-bold">인스타그램</h1>
-        <span className="text-sm text-faint">좋아요 누른 게시물 {likedCount}개</span>
-        <ThemeToggle />
-      </header>
+    <>
+      <p className="mb-4 text-sm text-faint">좋아요 누른 게시물 {likedCount}개</p>
       <Section title="피드">
         <Feed posts={posts} onToggleLike={toggleLike} />
       </Section>
       {toast !== null && <Toast message={toast.message} />}
-    </main>
+    </>
   );
 }

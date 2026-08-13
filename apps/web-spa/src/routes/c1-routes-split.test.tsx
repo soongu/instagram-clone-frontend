@@ -40,30 +40,8 @@ describe('C-1 Step 4 — 주소로 화면을 가른다', () => {
   });
 });
 
-describe('C-1 Step 4 — 아직 머리가 두 번 적혀 있다', () => {
-  // Step 6 에서 Layout 으로 뽑아낼 중복. 지금은 두 페이지가 각자 들고 있다.
-  it('/ 가 제목과 밝기 버튼을 직접 그린다', () => {
-    renderAt('/');
-
-    expect(screen.getByRole('heading', { name: '인스타그램', level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: '화면 밝기' })).toBeInTheDocument();
-  });
-
-  it('/signup 도 같은 제목과 밝기 버튼을 자기가 또 그린다', () => {
-    renderAt('/signup');
-
-    expect(screen.getByRole('heading', { name: '인스타그램', level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: '화면 밝기' })).toBeInTheDocument();
-  });
-
-  it('두 페이지 파일이 각자 ThemeToggle 을 가져온다 — 중복의 실물', async () => {
-    const home = await import('./HomePage.tsx?raw');
-    const signUp = await import('./SignUpPage.tsx?raw');
-
-    expect(home.default).toMatch(/import \{ ThemeToggle \}/);
-    expect(signUp.default).toMatch(/import \{ ThemeToggle \}/);
-  });
-});
+// Step 4 는 두 페이지가 머리를 각자 들고 있었다. 그 중복은 Step 5 가 Layout 으로 걷어냈고,
+// 머리가 한 번만 그려지는지는 c1-layout 이 본다. 여기서는 주소가 갈리는 것만 지킨다.
 
 describe('C-1 Step 4 — 라우트 표를 따로 뺐다', () => {
   it('main.tsx 는 라우트 배열을 직접 들고 있지 않다', () => {
@@ -71,10 +49,13 @@ describe('C-1 Step 4 — 라우트 표를 따로 뺐다', () => {
     expect(mainSource).toMatch(/createBrowserRouter\(routes\)/);
   });
 
-  it('두 주소가 표에 있다', () => {
-    const paths = routes.map((route) => route.path);
+  it('두 주소로 갈 수 있다', () => {
+    const home = createMemoryRouter(routes, { initialEntries: ['/'] });
+    const signUp = createMemoryRouter(routes, { initialEntries: ['/signup'] });
 
-    expect(paths).toContain('/');
-    expect(paths).toContain('/signup');
+    expect(home.state.location.pathname).toBe('/');
+    expect(signUp.state.location.pathname).toBe('/signup');
+    // 중첩이라 /signup 은 Layout 과 SignUpPage 둘에 걸린다
+    expect(signUp.state.matches).toHaveLength(2);
   });
 });

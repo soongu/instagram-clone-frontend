@@ -7,6 +7,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect } from 'vitest';
 import { HomePage } from '../routes/HomePage';
+import { pageMarkup } from '../../scratch/c1-router-harness';
 import { Feed } from './Feed';
 import { PostCard } from './PostCard';
 import { SignUpForm } from './SignUpForm';
@@ -17,7 +18,8 @@ import { feedPosts } from '../data/feed';
 // 이름 앞의 @ 만 따라가고 지키는 내용은 그대로 둔다.
 describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', () => {
   it('바깥 통은 스스로 통이 되고 폭 상한을 하나만 갖는다', () => {
-    const html = renderToStaticMarkup(<HomePage />);
+    // C-1 에서 이 껍데기가 Layout 으로 옮겨갔다. 라우터를 통해 그려야 함께 나온다.
+    const html = pageMarkup('/');
 
     expect(html).toContain('class="@container mx-auto max-w-[996px] py-4 sm:px-4"');
   });

@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { Ellipsis, MoreHorizontal } from 'lucide-react';
 import { HomePage } from '../routes/HomePage';
+import { pageMarkup } from '../../scratch/c1-router-harness';
 import { Feed } from './Feed';
 import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
@@ -44,7 +45,8 @@ describe('Step 2 — 갈리는 조건을 창에서 통으로 옮긴다', () => {
   });
 
   it('폭 상한이 하나로 줄었다 — 좁을 때는 통이 알아서 좁아진다', () => {
-    const html = renderToStaticMarkup(<HomePage />);
+    // C-1 에서 이 껍데기가 Layout 으로 옮겨갔다. 라우터를 통해 그려야 함께 나온다.
+    const html = pageMarkup('/');
 
     expect(html).toContain('max-w-[996px]');
     expect(html).not.toContain('max-w-[470px] py-4');
