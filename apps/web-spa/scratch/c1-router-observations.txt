@@ -1,0 +1,103 @@
+C-1 (React Router 8 — 주소로 화면을 나눈다) 관찰 채증
+측정일 2026-08-13 · react-router 8.3.0 · Vite 8.1.5 · React 19.2.8
+
+## 버전 시의성 (npm registry 실측)
+latest        8.3.0   (2026-07-22)
+8.0.0                 (2026-06-17)
+version-7     7.18.2
+peerDeps      react >=19.2.7, react-dom >=19.2.7   (코드베이스 19.2.8 OK)
+커리큘럼 확정값이던 7.17.0 은 두 메이저 뒤. 8.3.0 으로 갱신함.
+
+## import 갈래 (exports map)
+'.'      → createBrowserRouter · Outlet · Link · NavLink · useNavigate ·
+           useParams · useSearchParams · useLoaderData · useRouteError ·
+           isRouteErrorResponse ...
+'./dom'  → RouterProvider · HydratedRouter (이 둘뿐)
+
+dom 쪽 RouterProvider 실물 (dist/development/lib/dom-export/dom-router-provider.js):
+    function RouterProvider$1(props) {
+        return React$1.createElement(RouterProvider, {
+            flushSync: ReactDOM.flushSync,
+            ...props
+        });
+    }
+= react-router 쪽 RouterProvider 에 flushSync 만 얹은 껍데기.
+
+## 잘못된 import 로 바꿔도 조용함 (직접 재현)
+tsc --noEmit    exit 0
+화면            정상 렌더
+콘솔 경고       0건
+경고문은 lib/components.js:140 warnOnce 에 있으나 flushSync 옵션을
+실제로 쓸 때만 발동 → C-1 범위에서는 도달 불가.
+가드로 못 박음: src/components/c1-router-setup.test.tsx (소스 단언)
+
+## NavLink 켜짐 판정 (lib/dom/lib.js:388)
+  isActive = locationPathname === toPathname
+          || (!end && locationPathname.startsWith(toPathname)
+                   && locationPathname.charAt(endSlashPosition) === '/')
+  endSlashPosition = toPathname !== '/' && toPathname.endsWith('/')
+                   ? toPathname.length - 1 : toPathname.length
+
+end 실측표 (scratch/c1-navlink-end-probe.tsx)
+  주소            to="/"   to="/"+end   to="/signup"   to="/signup"+end
+  /               ON       ON           off            off
+  /signup         off      off          ON             ON
+  /signup/done    off      off          ON             off
+
+→ end 는 to="/" 에서 결과를 한 칸도 안 바꾼다.
+   to="/" 는 endSlashPosition=1 이고 '/signup'.charAt(1)==='s' 라
+   두 번째 갈래가 애초에 안 걸린다.
+   "루트 링크에 end 를 붙여라" 는 통설은 8.3.0 에서 근거 없음.
+   end 가 갈리는 곳은 자식을 거느린 주소의 자식 페이지뿐.
+
+## Link vs 순수 <a> (dev 서버 · Chrome · localhost:5173)
+                        <Link>        순수 <a>
+ 네트워크 요청           0건           74~79건 (잴 때마다 다름)
+ window 전역 표식        살아남음      undefined
+ 주입한 DOM 노드         —             사라짐
+ navigation 항목          1 그대로      새 navigate
+ JS 컨텍스트             유지          무너짐 (CDP "target navigated" 로 끊김)
+
+⚠️ 76 은 확장 프로그램 요청 1건을 포함한 값이었다. 개발 서버는 모듈을
+   낱개로 내주므로 숫자가 널뛴다. 교안은 "70여 건" + 조건 명시로 감.
+   불변인 것은 <Link> 가 정확히 0 이라는 것.
+
+## 바깥 주소를 Link 에 넘기면 (lib/dom/lib.js:316)
+  let isSpaLink = !(parsed.isExternal || reloadDocument);
+  href:    (isSpaLink ? maskedHref : void 0) || parsed.absoluteURL || href
+  onClick: isSpaLink ? handleClick : onClick
+→ 바깥 주소면 클릭 가로채기를 안 붙이고 평범한 앵커를 그린다. 터지지 않는다.
+   (초고에 "실패한다" 로 적었다가 소스 확인 후 정정)
+
+## 렌더된 링크 실물 DOM
+ <a class="text-faint" href="/" data-discover="true">홈</a>
+ <a aria-current="page" class="font-semibold text-ink" href="/signup"
+    data-discover="true">회원가입</a>
+data-discover 는 lib/dom/lib.js:324 — !isAbsolute && discover==='render' 일 때.
+aria-current 는 NavLink 가 자동으로 붙임(ariaCurrentProp 기본값 'page').
+
+## 라우트 표 규칙 (createMemoryRouter 로 재현)
+- 자식 절대 경로: 부모들의 합친 주소로 시작해야 함. 아니면
+    Absolute route path "/other" nested under path "/app" is not valid.
+    An absolute child route path must start with the combined path of all its parent routes.
+  부모가 '/' 면 모든 절대 경로가 통과 → 우리 앱에선 'signup' 과 '/signup' 이 동일.
+  (초고에 "중첩이 깨진다" 로 적었다가 실측 후 정정)
+- index: true 와 path: '' 는 렌더 결과 동일.
+  차이는 index 가 자식을 못 가진다는 것 →
+    Cannot specify children on an index route
+
+## 빌드 크기 (프로덕션 빌드 실측)
+                       CSS        JS
+ E-7 끝 83ad5c8      42,114    408,739
+ Step 3 b6b9494      42,114    501,218   (+92,479 · 500kB 경고 첫 등장)
+ Step 4 223a28b      42,114    501,633
+ Step 5 a376b99      42,114    501,451
+ Step 6 c2e3488      42,114    501,706
+ Step 7 90afba3      42,114    501,794
+CSS 가 다섯 Step 내내 불변 — 라우터는 클래스 이름을 안 내놓는다.
+빌드 경고 원문: (!) Some chunks are larger than 500 kB after minification. Consider:
+
+## 게이트
+70 files / 553 passed · tsc 0 · eslint 0 · build 성공
+⚠️ npm test 는 리포지토리 루트에서 실행할 것. --root 로 돌리면
+   e5-first-paint 가 process.cwd() 로 index.html 을 못 찾아 실패한다.
