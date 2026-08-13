@@ -27,7 +27,9 @@ describe('PostHeader — 카드의 머리 구역', () => {
     render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
 
     const more = screen.getByRole('button', { name: '게시물 메뉴' });
-    expect(more).toHaveTextContent('⋯');
+    // E-7 에서 이 자리의 문자가 그림으로 바뀌었다. B-3 이 지키려던 것은
+    // "프로필 옆에 버튼이 함께 선다" 이므로, 버튼이 있는지와 이름만 그대로 본다.
+    expect(more.querySelector('svg')).not.toBeNull();
     expect(more).toHaveAttribute('type', 'button');
   });
 

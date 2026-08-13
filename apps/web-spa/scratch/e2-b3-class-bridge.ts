@@ -113,7 +113,10 @@ export function withSameAvatar(html: string): string {
     // 아무 일도 안 하므로, B-3 시점과 견줄 때는 걷어내고 본다.
     // 카드가 여러 장이라 전부 바꾼다 — 첫 장만 바꾸면 나머지가 남는다.
     .replace(/ @lg:gap-4"/g, '"')
-    .replace(/ @lg:text-base"/g, '"');
+    .replace(/ @lg:text-base"/g, '"')
+    // E-7 에서 더보기 자리의 문자가 그림으로 바뀌었다. 아바타 자리와 같은 방식으로
+    // 그 자리만 옛 문자로 맞춰 두고 나머지를 견준다.
+    .replace(/<svg [^>]*lucide-ellipsis[^>]*>[\s\S]*?<\/svg>/g, '⋯');
 }
 
 /** 카드 몸통이 들여온 것으로 바뀌어 감싸는 칸이 늘었다. 학생이 보는 글자만 남겨 견준다. */

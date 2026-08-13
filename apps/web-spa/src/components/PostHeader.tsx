@@ -1,4 +1,5 @@
 // apps/web-spa/src/components/PostHeader.tsx
+import { Ellipsis } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { IconButton } from './IconButton';
 
@@ -26,7 +27,9 @@ export function PostHeader({ username, profileImageUrl }: PostHeaderProps) {
         className="cursor-pointer p-3 text-lg leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         aria-label="게시물 메뉴"
       >
-        ⋯
+        {/* 그림은 자기 크기를 24px 로 갖고 온다. 글자 크기로는 안 바뀌므로 따로 준다.
+            넓은 통에서 커지는 것은 옆의 프로필과 같은 조건을 쓴다. */}
+        <Ellipsis className="size-5 @lg:size-6" />
       </IconButton>
     </div>
   );

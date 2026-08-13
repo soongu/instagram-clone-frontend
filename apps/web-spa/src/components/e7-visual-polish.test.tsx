@@ -8,10 +8,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
+import { Ellipsis, MoreHorizontal } from 'lucide-react';
 import { App } from '../App';
 import { Feed } from './Feed';
 import { PostCard } from './PostCard';
+import { PostHeader } from './PostHeader';
 import { PostModal } from './PostModal';
+import { CommentList } from './CommentList';
 import { SignUpForm } from './SignUpForm';
 import { feedPosts } from '../data/feed';
 
@@ -132,5 +135,69 @@ describe('Step 3 — 같은 글자가 두 통에서 다르게 읽힌다', () => 
     expect(상자).toHaveAttribute('aria-labelledby');
     expect(상자.innerHTML).toContain('sr-only');
     expect(상자.textContent).toContain('jaehoon 의 게시물');
+  });
+});
+
+describe('Step 4 — 문자 자리에 아이콘을 놓는다', () => {
+  const 더보기 = () => {
+    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+    return screen.getByRole('button', { name: '게시물 메뉴' });
+  };
+
+  it('문자가 사라지고 그림이 들어왔다 — 버튼 이름은 그대로다', () => {
+    const more = 더보기();
+
+    expect(more.textContent).toBe('');
+    expect(more.querySelector('svg')).not.toBeNull();
+  });
+
+  // 이 단언이 이번 Step 의 핵심 하나다.
+  // 우리는 아무것도 안 적었는데 그림이 스스로 낭독기에서 빠진다.
+  // 대신 읽히는 이름은 버튼이 들고 있다 — A-6 에서 정한 그대로다.
+  it('그림은 우리가 안 적어도 낭독기에서 빠진다', () => {
+    const svg = 더보기().querySelector('svg');
+
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  // 이 단언이 이번 Step 의 핵심 둘이다.
+  // 검색하면 나오는 옛 이름으로 불러도 그대로 컴파일된다. 같은 것이기 때문이다.
+  // 그런데 화면에 남는 이름은 우리가 부른 이름이 아니라 정식 이름이다.
+  it('옛 이름으로 불러도 같은 것이 오고, 화면에 남는 것은 정식 이름이다', () => {
+    expect(MoreHorizontal).toBe(Ellipsis);
+
+    expect(더보기().querySelector('svg')?.getAttribute('class')).toContain('lucide-ellipsis');
+  });
+
+  // 버튼에는 지난 시간에 붙인 글자 크기가 그대로 남아 있다.
+  // 그런데 그림은 그 값을 안 본다 — 자기 크기를 24px 로 갖고 온다.
+  it('글자 크기로는 그림 크기가 안 바뀐다 — 크기는 따로 준다', () => {
+    const more = 더보기();
+    const svg = more.querySelector('svg');
+
+    expect(more.className).toContain('text-lg');
+    expect(svg).toHaveAttribute('width', '24');
+    expect(svg?.getAttribute('class')).toContain('size-5');
+  });
+
+  // Step 3 의 아바타와 같은 조건을 쓴다. 카드에서는 20px, 모달에서는 24px.
+  it('통이 넓어지면 그림도 커진다 — 아바타와 같은 조건', () => {
+    expect(더보기().querySelector('svg')?.getAttribute('class')).toContain('@lg:size-6');
+  });
+
+  it('댓글 삭제 자리도 같은 방식으로 바뀌었다', () => {
+    render(<CommentList comments={[{ id: 1, content: '좋아요!' }]} onRemove={() => {}} />);
+    const remove = screen.getByRole('button', { name: '댓글 삭제' });
+    const svg = remove.querySelector('svg');
+
+    expect(remove.textContent).toBe('');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    expect(svg?.getAttribute('class')).toContain('lucide-x');
+  });
+
+  it('화면 어디에도 더보기 문자가 안 남았다 — 카드가 두 장이라 한 장만 고치면 남는다', () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).not.toContain('⋯');
   });
 });

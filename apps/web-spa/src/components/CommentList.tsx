@@ -1,4 +1,5 @@
 // apps/web-spa/src/components/CommentList.tsx
+import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { List } from './List';
 
@@ -9,7 +10,7 @@ export interface DraftComment {
 
 interface CommentListProps {
   comments: DraftComment[];
-  // 지울 수 있는 목록에만 넘긴다 — 안 넘기면 × 버튼이 아예 안 그려진다
+  // 지울 수 있는 목록에만 넘긴다 — 안 넘기면 삭제 버튼이 아예 안 그려진다
   onRemove?: (id: number) => void;
 }
 
@@ -28,7 +29,7 @@ export function CommentList({ comments, onRemove }: CommentListProps) {
               aria-label="댓글 삭제"
               onClick={() => onRemove(comment.id)}
             >
-              ×
+              <X className="size-4" />
             </IconButton>
           )}
         </>
