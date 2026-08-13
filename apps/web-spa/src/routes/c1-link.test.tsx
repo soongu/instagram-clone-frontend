@@ -110,7 +110,10 @@ describe('C-1 Step 6 — 메뉴는 Layout 이 한 번만 그린다', () => {
     const signUp = await import('./SignUpPage.tsx?raw');
 
     expect(layout.default).toMatch(/from 'react-router'/);
-    expect(home.default).not.toMatch(/react-router/);
-    expect(signUp.default).not.toMatch(/react-router/);
+
+    // 여기서 지키는 것은 "페이지가 메뉴를 안 그린다" 이지
+    // "페이지가 라우터를 안 쓴다" 가 아니다 — 페이지도 주소를 다룰 일이 생긴다.
+    expect(home.default).not.toMatch(/<(Nav)?Link\b/);
+    expect(signUp.default).not.toMatch(/<(Nav)?Link\b/);
   });
 });
