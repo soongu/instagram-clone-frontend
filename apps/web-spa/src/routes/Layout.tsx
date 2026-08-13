@@ -19,6 +19,9 @@ export function Layout() {
           <NavLink to="/" className={navLinkClass}>
             홈
           </NavLink>
+          <NavLink to="/explore" className={navLinkClass}>
+            탐색
+          </NavLink>
           <NavLink to="/signup" className={navLinkClass}>
             회원가입
           </NavLink>

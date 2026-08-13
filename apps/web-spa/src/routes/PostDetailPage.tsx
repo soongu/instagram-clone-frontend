@@ -1,6 +1,6 @@
 // apps/web-spa/src/routes/PostDetailPage.tsx
 import { useNavigate, useParams } from 'react-router';
-import { feedPosts } from '../data/feed';
+import { allPosts } from '../data/feed';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { PostHeader } from '../components/PostHeader';
@@ -13,7 +13,7 @@ export function PostDetailPage() {
   const navigate = useNavigate();
 
   // id 는 number, postId 는 string — 바꾸지 않으면 영원히 안 맞는다.
-  const post = feedPosts.find((item) => item.id === Number(postId));
+  const post = allPosts.find((item) => item.id === Number(postId));
 
   if (!post) {
     return (
