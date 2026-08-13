@@ -1,0 +1,16 @@
+C-2 Step 5 채증 — useLoaderData 의 기본 제네릭
+
+설치본 시그니처 (node_modules/react-router/dist/development/lib/hooks.d.ts:636)
+  declare function useLoaderData<T = any>(): SerializeFrom<T>;
+                                    ^^^^^ 기본값이 any
+
+판: 같은 파일에 두 컴포넌트. 둘 다 Post 에 없는 nickname 을 부른다.
+  WithGeneric      const { post } = useLoaderData<typeof postLoader>();
+  WithoutGeneric   const { post } = useLoaderData();
+
+tsc --strict 결과:
+scratch/c2-loaderdata-any-probe.tsx(8,20): error TS2339: Property 'nickname' does not exist on type 'Post'.
+
+→ 8행(WithGeneric) 하나만 잡힌다. 14행(WithoutGeneric)은 아무 말이 없다.
+→ 제네릭을 비우면 타입 검사가 통과한다. 틀린 것을 아무도 안 알려준다.
+  TypeScript 6.0.3 / react-router 8.3.0 / 2026-08-13

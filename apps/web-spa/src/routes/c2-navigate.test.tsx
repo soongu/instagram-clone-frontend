@@ -76,6 +76,8 @@ describe('C-2 Step 2 — 뒤로 가기도 코드가 시킨다', () => {
   it('상세의 뒤로 버튼은 앞 화면으로 돌아간다', async () => {
     const router = renderAt(['/', '/p/1']);
 
+    // Step 5 부터는 loader 가 끝나야 화면이 생긴다
+    await screen.findByRole('button', { name: '뒤로' });
     await userEvent.click(screen.getByRole('button', { name: '뒤로' }));
 
     expect(router.state.location.pathname).toBe('/');
