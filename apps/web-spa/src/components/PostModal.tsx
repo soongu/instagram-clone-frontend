@@ -15,6 +15,10 @@ interface PostModalProps {
   content: string;
   likeCount: number;
   commentCount: number;
+  // 아래 둘은 주소와 이어 붙일 때만 준다.
+  // 안 주면 상자가 예전처럼 혼자 열고 닫는다.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // 게시물을 크게 띄우는 대화 상자.
@@ -26,9 +30,13 @@ export function PostModal({
   content,
   likeCount,
   commentCount,
+  open,
+  onOpenChange,
 }: PostModalProps) {
   return (
-    <Dialog>
+    // open 이 undefined 면 상자가 스스로 상태를 들고 있는다.
+    // 값을 주는 순간부터는 우리가 시키는 대로만 열리고 닫힌다.
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger className="cursor-pointer px-3 pt-1 pb-3 text-left text-sm text-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
         댓글 {commentCount}개 모두 보기
       </DialogTrigger>

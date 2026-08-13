@@ -4,11 +4,18 @@
 // 페이지 컴포넌트만 홀로 그리면 그 껍데기가 안 나오므로,
 // 껍데기까지 함께 보려면 라우터를 통해 그린다.
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from '../src/routes/routes';
 
 export function pageMarkup(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
 
   return renderToStaticMarkup(<RouterProvider router={router} />);
+}
+
+// C-2 Step 8 에서 HomePage 가 useSearchParams 를 쓰게 됐다.
+// 라우터 훅은 문맥 없이는 못 돈다 — 홀로 그리던 판들에 문맥만 씌워준다.
+// 화면에는 아무것도 안 더한다. Layout 도 안 딸려온다.
+export function withRouter(ui: React.ReactNode) {
+  return <MemoryRouter>{ui}</MemoryRouter>;
 }

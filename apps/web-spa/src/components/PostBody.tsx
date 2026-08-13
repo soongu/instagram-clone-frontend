@@ -16,6 +16,9 @@ interface PostBodyProps {
   likeCount: number;
   commentCount: number;
   onToggle: () => void;
+  // 지나가기만 한다 — 이 컴포넌트는 주소를 모른다
+  modalOpen?: boolean;
+  onModalOpenChange?: (open: boolean) => void;
 }
 
 // 사진 아래 본문 구역 — 좋아요·캡션·댓글 수가 함께 산다.
@@ -28,6 +31,8 @@ export function PostBody({
   likeCount,
   commentCount,
   onToggle,
+  modalOpen,
+  onModalOpenChange,
 }: PostBodyProps) {
   const [captionOpen, toggleCaption] = useToggle();
   const isLong = content.length > CAPTION_LIMIT;
@@ -55,6 +60,8 @@ export function PostBody({
         content={content}
         likeCount={likeCount}
         commentCount={commentCount}
+        open={modalOpen}
+        onOpenChange={onModalOpenChange}
       />
     </>
   );

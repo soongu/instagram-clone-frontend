@@ -8,6 +8,7 @@ import { CommentForm } from './CommentForm';
 import { CommentInput } from './CommentInput';
 import { Section } from './Section';
 import { HomePage } from '../routes/HomePage';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('CommentInput — ref 를 props 로 받는다', () => {
   it('부모가 넘긴 ref 가 실제 input DOM 노드를 가리킨다', () => {
@@ -102,7 +103,7 @@ describe('Section — children 을 명시로 받는다', () => {
 describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
   it('이미지를 더블클릭하면 좋아요가 켜진다', async () => {
     const user = userEvent.setup();
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
 
     const [firstCard] = screen.getAllByRole('article');
     expect(within(firstCard).getByRole('button', { name: '좋아요', pressed: false })).toBeInTheDocument();
@@ -116,7 +117,7 @@ describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
 
   it('버튼으로 누른 것과 같은 상태를 공유한다', async () => {
     const user = userEvent.setup();
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.dblClick(within(firstCard).getByRole('img', { name: /게시물/ }));
@@ -128,7 +129,7 @@ describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
 
 describe('HomePage — 피드를 Section 으로 감싼다', () => {
   it('피드 섹션 안에 게시물 카드가 들어 있다', () => {
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
 
     const section = screen.getByRole('region', { name: '피드' });
     expect(within(section).getAllByRole('article')).toHaveLength(2);

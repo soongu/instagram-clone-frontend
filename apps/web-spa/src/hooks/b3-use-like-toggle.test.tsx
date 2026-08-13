@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { toB3Classes, b3BridgeHits, toVisibleText } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect } from 'vitest';
 import { HomePage } from '../routes/HomePage';
-import { pageMarkup } from '../../scratch/c1-router-harness';
+import { pageMarkup, withRouter } from '../../scratch/c1-router-harness';
 import { AppBeforeHook } from '../../scratch/b3-lecture-snapshots';
 import { useLikeToggle } from './useLikeToggle';
 import { feedPosts } from '../data/feed';
@@ -97,7 +97,7 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
 
   it('좋아요를 누르면 머리말 숫자가 함께 올라간다', async () => {
     const user = userEvent.setup();
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
 

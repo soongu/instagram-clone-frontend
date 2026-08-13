@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { Ellipsis, MoreHorizontal } from 'lucide-react';
 import { HomePage } from '../routes/HomePage';
-import { pageMarkup } from '../../scratch/c1-router-harness';
+import { pageMarkup, withRouter } from '../../scratch/c1-router-harness';
 import { Feed } from './Feed';
 import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
@@ -39,7 +39,7 @@ const 넓을_때만 = '@lg:size-11';
 
 describe('Step 2 — 갈리는 조건을 창에서 통으로 옮긴다', () => {
   it('바깥 통이 스스로 통이 된다고 선언한다', () => {
-    const html = renderToStaticMarkup(<HomePage />);
+    const html = renderToStaticMarkup(withRouter(<HomePage />));
 
     expect(html).toContain('@container');
   });
@@ -57,7 +57,7 @@ describe('Step 2 — 갈리는 조건을 창에서 통으로 옮긴다', () => {
   // 앞에 @ 가 없는 2col: 은 전부 죽은 글자가 된다.
   // Tailwind 는 이때 아무 경고도 안 내고, 클래스는 DOM 에 그대로 남는다.
   it('창을 보던 2col: 이 화면 어디에도 안 남았다', () => {
-    const html = renderToStaticMarkup(<HomePage />);
+    const html = renderToStaticMarkup(withRouter(<HomePage />));
 
     expect(html).not.toMatch(/(?<!@)2col:/);
   });
@@ -201,7 +201,7 @@ describe('Step 4 — 문자 자리에 아이콘을 놓는다', () => {
   });
 
   it('화면 어디에도 더보기 문자가 안 남았다 — 카드가 두 장이라 한 장만 고치면 남는다', () => {
-    const html = renderToStaticMarkup(<HomePage />);
+    const html = renderToStaticMarkup(withRouter(<HomePage />));
 
     expect(html).not.toContain('⋯');
   });
@@ -244,7 +244,7 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
 
   it('누르면 같은 이름의 버튼이 눌린 상태로 바뀐다', async () => {
     const user = userEvent.setup();
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
     const 첫카드 = screen.getAllByRole('listitem')[0];
 
     await user.click(within(첫카드).getByRole('button', { name: '좋아요', pressed: false }));
@@ -267,7 +267,7 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
   });
 
   it('화면 어디에도 하트 문자가 안 남았다', () => {
-    const html = renderToStaticMarkup(<HomePage />);
+    const html = renderToStaticMarkup(withRouter(<HomePage />));
 
     expect(html).not.toContain('♡');
     expect(html).not.toContain('♥');
@@ -323,7 +323,7 @@ function 읽어줄이름(el: Element): string {
 
 describe('Step 8 — 화면 전체를 훑는다', () => {
   it('조작할 수 있는 것에는 하나도 빠짐없이 읽어줄 이름이 있다', () => {
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
 
     const 이름없는것 = [...document.querySelectorAll('button, a, input, select, textarea, img')]
       .filter((el) => 읽어줄이름(el) === '')

@@ -1,0 +1,15 @@
+C-2 Step 8 채증 — base-ui Dialog 의 onOpenChange 는 인자가 둘이다
+
+타입 (node_modules/@base-ui/react/dialog/root/DialogRoot.d.ts)
+  onOpenChange?: ((open: boolean, eventDetails: DialogRoot.ChangeEventDetails) => void)
+
+실제로 무엇이 오는지 눌러본 결과:
+  열림 → 인자 2개 | 1번=true | 2번.reason=trigger-press
+  닫힘 → 인자 2개 | 1번=false | 2번.reason=close-press
+  Esc  → 인자 2개 | 1번=false | 2번.reason=escape-key
+
+→ 널리 쓰이는 Radix 예제의 onOpenChange 는 인자가 하나(open)뿐이다.
+  base-ui 는 두 번째로 eventDetails 를 준다 — 왜 닫혔는지(reason)가 담겨 있다.
+  우리는 첫 번째만 쓰므로 (open: boolean) => void 로 받아도 문제없다.
+  인자를 덜 받는 함수는 더 받는 자리에 넣을 수 있기 때문이다.
+  @base-ui/react 1.7.0 / 2026-08-13

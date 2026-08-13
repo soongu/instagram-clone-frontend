@@ -11,6 +11,8 @@ import { CommentForm } from './CommentForm';
 
 interface PostCardViewProps extends PostCardProps {
   onToggleLike: (id: number) => void;
+  modalOpen?: boolean;
+  onModalOpenChange?: (open: boolean) => void;
 }
 
 export function PostCard({
@@ -23,6 +25,8 @@ export function PostCard({
   likeCount,
   commentCount,
   onToggleLike,
+  modalOpen,
+  onModalOpenChange,
 }: PostCardViewProps) {
   // 이 댓글은 이 카드만 쓰니까 카드 안에 둔다
   const [comments, dispatch] = useReducer(commentReducer, initialCommentState);
@@ -49,6 +53,8 @@ export function PostCard({
           likeCount={likeCount}
           commentCount={commentCount + comments.items.length}
           onToggle={() => onToggleLike(id)}
+          modalOpen={modalOpen}
+          onModalOpenChange={onModalOpenChange}
         />
         <CommentList
           comments={comments.items}

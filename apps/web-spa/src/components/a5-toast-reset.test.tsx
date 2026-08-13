@@ -4,6 +4,7 @@ import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { HomePage } from '../routes/HomePage';
 import { AppStringToast } from '../../scratch/a5-toast-before';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 // jsdom 은 실제로 스크롤되지 않으니 위치를 직접 세팅하고 이벤트만 쏜다
 function scrollToBottom() {
@@ -70,7 +71,7 @@ describe('같은 문구가 연달아 뜰 때', () => {
   });
 
   it('리듀서로 옮긴 판 — 두 번째 알림이 3 초를 온전히 채운다', () => {
-    render(<HomePage />);
+    render(withRouter(<HomePage />));
     const result = reachBottomTwice();
 
     expect(result.firstMessage).toBe('게시물을 모두 확인했습니다 · 좋아요 1개');
@@ -124,6 +125,6 @@ describe('두 번째 알림이 화면에 머문 시간을 정확히 재면', () 
   });
 
   it('리듀서 판은 3000ms', () => {
-    expect(liveMsAfterSecondToast(<HomePage />)).toBe(3000);
+    expect(liveMsAfterSecondToast(withRouter(<HomePage />))).toBe(3000);
   });
 });
