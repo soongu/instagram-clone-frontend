@@ -60,12 +60,13 @@ describe('C-1 Step 5 — index 가 / 를 맡는다', () => {
     const [root] = routes;
 
     expect(root.path).toBe('/');
-    expect(root.children).toHaveLength(2);
 
-    const indexRoute = root.children?.find((child) => 'index' in child && child.index);
+    const indexRoutes = root.children?.filter((child) => 'index' in child && child.index);
     const signUpRoute = root.children?.find((child) => 'path' in child && child.path === 'signup');
 
-    expect(indexRoute).toBeDefined();
+    // 자식은 모듈이 갈 때마다 늘어난다. 여기서 지키는 것은 개수가 아니라
+    // "빈 주소를 맡는 index 는 하나뿐" 이라는 규칙이다.
+    expect(indexRoutes).toHaveLength(1);
     expect(signUpRoute).toBeDefined();
   });
 
