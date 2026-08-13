@@ -1,18 +1,17 @@
-// apps/web-spa/src/App.tsx
+// apps/web-spa/src/routes/HomePage.tsx
 import { useEffect } from 'react';
-import { Feed } from './components/Feed';
-import { Section } from './components/Section';
-import { SignUpForm } from './components/SignUpForm';
-import { ThemeToggle } from './components/ThemeToggle';
-import { Toast } from './components/Toast';
-import { feedPosts } from './data/feed';
-import { useFeed } from './hooks/useFeed';
-import { useScrollRestore } from './hooks/useScrollRestore';
+import { Feed } from '../components/Feed';
+import { Section } from '../components/Section';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { Toast } from '../components/Toast';
+import { feedPosts } from '../data/feed';
+import { useFeed } from '../hooks/useFeed';
+import { useScrollRestore } from '../hooks/useScrollRestore';
 
 // 알림이 화면에 머무는 시간
 const TOAST_DURATION = 3000;
 
-export function App() {
+export function HomePage() {
   const { posts, likedCount, toast, toggleLike, reachBottom, dismissToast } = useFeed(feedPosts);
 
   // 피드 끝에 닿으면 여기까지 봤다고 알려준다
@@ -41,9 +40,6 @@ export function App() {
         <span className="text-sm text-faint">좋아요 누른 게시물 {likedCount}개</span>
         <ThemeToggle />
       </header>
-      <Section title="회원가입">
-        <SignUpForm onSubmit={(values) => console.log('가입 요청', values.username)} />
-      </Section>
       <Section title="피드">
         <Feed posts={posts} onToggleLike={toggleLike} />
       </Section>

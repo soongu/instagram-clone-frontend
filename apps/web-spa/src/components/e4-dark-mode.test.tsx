@@ -6,7 +6,7 @@
 // scratch/e4-dark-observations.txt 에 재현 명령과 함께 적어 뒀다.
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect } from 'vitest';
-import { App } from '../App';
+import { HomePage } from '../routes/HomePage';
 import { Feed } from './Feed';
 import { PostCard } from './PostCard';
 import { SignUpForm } from './SignUpForm';
@@ -17,7 +17,7 @@ import { feedPosts } from '../data/feed';
 // 이름 앞의 @ 만 따라가고 지키는 내용은 그대로 둔다.
 describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', () => {
   it('바깥 통은 스스로 통이 되고 폭 상한을 하나만 갖는다', () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<HomePage />);
 
     expect(html).toContain('class="@container mx-auto max-w-[996px] py-4 sm:px-4"');
   });
@@ -44,7 +44,7 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
   });
 
   it('Tailwind 가 준 lg 는 더 이상 쓰지 않는다 — 우리 숫자로 갈린다', () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<HomePage />);
 
     // E-7 에서 통을 보는 @lg: 가 들어왔다. 이름은 같지만 다른 눈금이다
     // (창 lg: 는 64rem, 통 @lg: 는 32rem). 여기서 막으려던 것은 창 쪽이다.
@@ -59,7 +59,7 @@ describe('Step 5·6 — 다크 값은 토큰 한 곳에서 갈린다', () => {
   // 그래서 "App 전체에 0개" 는 더 못 지킨다. 대신 지킬 것을 좁힌다 —
   // dark: 가 붙은 곳은 전부 들여온 것(data-slot 을 단 요소)이어야 한다.
   it('dark: 는 들여온 컴포넌트에만 있고 우리가 쓴 곳에는 없다', () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<HomePage />);
     const 태그들 = html.match(/<[^>]*dark:[^>]*>/g) ?? [];
 
     expect(태그들.length).toBeGreaterThan(0);

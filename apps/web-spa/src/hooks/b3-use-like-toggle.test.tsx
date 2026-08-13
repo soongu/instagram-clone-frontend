@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { toB3Classes, b3BridgeHits, toVisibleText } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect } from 'vitest';
-import { App } from '../App';
+import { HomePage } from '../routes/HomePage';
 import { AppBeforeHook } from '../../scratch/b3-lecture-snapshots';
 import { useLikeToggle } from './useLikeToggle';
 import { feedPosts } from '../data/feed';
@@ -56,14 +56,11 @@ describe('useLikeToggle — 훅만 따로 돌려본다', () => {
   });
 });
 
-// B-5 에서 App 에 회원가입 Section 이 추가됐다. 이 테스트가 증명하려는 것은
-// "좋아요 로직을 훅으로 옮겨도 피드 렌더 결과가 안 바뀐다" 이므로,
-// 그 뒤에 App 에 덧붙은 부분은 빼고 견준다. 비교 대상 자체는 그대로다.
-function withoutSignUpSection(html: string) {
-  return html.replace(/<section class="section" aria-label="회원가입">.*?<\/section>/, '');
-}
+// B-5 가 덧붙였던 회원가입 Section 은 C-1 에서 /signup 으로 떨어져 나갔다.
+// 그래서 걷어낼 것이 애초에 없어졌고, 걷어내던 함수도 지웠다.
+// (없는 것을 지우고 없다고 단언하면 그 단언은 아무것도 증명하지 못한다.)
 
-// E-5 는 머리말에 화면 밝기 고르개를 덧붙였다. 같은 이유로 견주기 전에 걷어낸다.
+// E-5 는 머리말에 화면 밝기 고르개를 덧붙였다. 견주기 전에 걷어낸다.
 function withoutThemeToggle(html: string) {
   return html.replace(/<div class="[^"]*" role="group" aria-label="화면 밝기">.*?<\/div>/, '');
 }
@@ -71,16 +68,14 @@ function withoutThemeToggle(html: string) {
 // E-1 은 제목에 font-bold 를, E-2 는 나머지를 토큰 유틸리티로 옮겼다.
 // 둘 다 B-3 이후에 덧붙은 변화이므로 견주기 전에 옛 이름으로 되돌린다.
 
-describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', () => {
+describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', () => {
   it('첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다', () => {
-    const before = withoutSignUpSection(renderToStaticMarkup(<AppBeforeHook />));
-    const rendered = renderToStaticMarkup(<App />);
-    // 옛 이름으로 되돌린 뒤에 잘라낸다 — withoutSignUpSection 이 옛 이름을 찾기 때문이다
-    const after = withoutThemeToggle(withoutSignUpSection(toB3Classes(rendered)));
+    const before = renderToStaticMarkup(<AppBeforeHook />);
+    const rendered = renderToStaticMarkup(<HomePage />);
+    const after = withoutThemeToggle(toB3Classes(rendered));
 
     // 잘라낸 뒤에도 비교할 알맹이가 남아 있어야 한다
     expect(after).toContain('aria-label="피드"');
-    expect(after).not.toContain('aria-label="회원가입"');
     expect(after).not.toContain('aria-label="화면 밝기"');
     // 되돌리기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
     expect(b3BridgeHits(rendered)).toContain('feed');
@@ -94,7 +89,7 @@ describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', 
 
   it('좋아요를 누르면 머리말 숫자가 함께 올라간다', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(<HomePage />);
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
 

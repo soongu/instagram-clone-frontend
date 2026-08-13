@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect } from 'vitest';
 import { Avatar } from './Avatar';
 import { PostCard } from './PostCard';
-import { App } from '../App';
+import { HomePage } from '../routes/HomePage';
 import { feedPosts } from '../data/feed';
 
 const [firstPost] = feedPosts;
@@ -61,9 +61,9 @@ describe('PostCard', () => {
   });
 });
 
-describe('App', () => {
+describe('HomePage', () => {
   it('카드 두 장을 나란히 그린다', () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<HomePage />);
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('minji');

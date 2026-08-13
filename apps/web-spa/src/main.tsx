@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import { App } from './App';
+import { routes } from './routes/routes';
 import './styles/globals.css';
 
 const rootElement = document.getElementById('root');
@@ -14,7 +14,7 @@ if (!rootElement) {
 
 // 라우터는 React 바깥에서 딱 한 번 만든다.
 // 컴포넌트 안에서 만들면 다시 그려질 때마다 새 라우터가 생겨 주소 기록이 끊긴다.
-const router = createBrowserRouter([{ path: '/', Component: App }]);
+const router = createBrowserRouter(routes);
 
 createRoot(rootElement).render(
   <StrictMode>

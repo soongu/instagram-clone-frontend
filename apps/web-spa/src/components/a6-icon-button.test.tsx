@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { IconButton } from './IconButton';
-import { App } from '../App';
+import { HomePage } from '../routes/HomePage';
 
 describe('IconButton — Button 이 받는 것을 그대로 받는다', () => {
   it('읽어줄 이름으로 찾을 수 있다', () => {
@@ -49,7 +49,7 @@ describe('IconButton — Button 이 받는 것을 그대로 받는다', () => {
 
 describe('아이콘 버튼으로 바꾼 뒤에도 화면은 그대로다', () => {
   it('게시물 메뉴 버튼이 이름 그대로 남아 있다', () => {
-    render(<App />);
+    render(<HomePage />);
 
     expect(screen.getAllByRole('button', { name: '게시물 메뉴' })).toHaveLength(2);
   });
