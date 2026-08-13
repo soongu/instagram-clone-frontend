@@ -121,7 +121,7 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
 
     await user.click(screen.getByRole('button', { name: '더 보기' }));
 
-    expect(screen.getByRole('button', { name: '♡ 좋아요' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '좋아요', pressed: false })).toBeInTheDocument();
     expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
   });
 });

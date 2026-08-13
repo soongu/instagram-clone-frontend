@@ -17,7 +17,8 @@ describe('LikeButton — 제어 컴포넌트가 된 뒤', () => {
   it('자기 상태 없이 받은 props 그대로만 그린다', () => {
     render(<LikeButton liked likeCount={8500} onToggle={() => {}} />);
 
-    expect(screen.getByRole('button')).toHaveTextContent('♥ 좋아요 취소');
+    // E-7 에서 글자가 아이콘으로 바뀌면서 눌린 상태를 aria-pressed 가 들고 있다
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('좋아요 8500개')).toBeInTheDocument();
   });
 
@@ -29,7 +30,7 @@ describe('LikeButton — 제어 컴포넌트가 된 뒤', () => {
     await user.click(screen.getByRole('button'));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button')).toHaveTextContent('♡ 좋아요');
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
   });
 });

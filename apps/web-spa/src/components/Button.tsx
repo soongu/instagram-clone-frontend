@@ -10,6 +10,8 @@ interface ButtonProps {
   className?: string;
   // 글자 대신 기호만 보이는 버튼은 읽어줄 이름을 따로 준다
   'aria-label'?: string;
+  // 눌린 상태를 색으로만 알리면 눈으로 보는 사람만 안다
+  'aria-pressed'?: boolean;
 }
 
 export function Button({
@@ -19,6 +21,7 @@ export function Button({
   type = 'button',
   className,
   'aria-label': ariaLabel,
+  'aria-pressed': ariaPressed,
 }: ButtonProps) {
   return (
     <button
@@ -27,6 +30,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
     >
       {children}
     </button>

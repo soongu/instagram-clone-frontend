@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect, vi } from 'vitest';
+import { withSameLikeArea } from '../../scratch/e2-b3-class-bridge';
 import { Button } from './Button';
 import { LikeButton } from './LikeButton';
 import { CommentForm } from './CommentForm';
@@ -101,32 +102,33 @@ describe('LikeButton — 버튼을 갈아끼워도 동작은 그대로다', () =
     const user = userEvent.setup();
     render(<LikeButton liked={false} likeCount={3} onToggle={onToggle} />);
 
-    await user.click(screen.getByRole('button', { name: '♡ 좋아요' }));
+    await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it('좋아요 상태에 따라 글자와 클래스가 바뀐다', () => {
+  it('좋아요 상태에 따라 보이는 것이 바뀐다', () => {
     render(<LikeButton liked likeCount={4} onToggle={() => {}} />);
 
-    const button = screen.getByRole('button', { name: '♥ 좋아요 취소' });
-    // E-2 에서 좋아요 상태가 손 클래스(liked) 대신 색 토큰 유틸리티로 갈렸다
-    expect(button).toHaveClass('border-danger', 'text-danger', 'font-semibold');
-    expect(button).not.toHaveClass('border-line');
+    const button = screen.getByRole('button', { name: '좋아요', pressed: true });
+    // E-2 에서 좋아요 상태가 손 클래스(liked) 대신 색 토큰 유틸리티로 갈렸고,
+    // E-7 에서 그 갈림이 버튼에서 안쪽 아이콘으로 옮겨갔다.
+    expect(button.querySelector('svg')).toHaveClass('fill-current', 'text-danger');
     expect(screen.getByText('좋아요 4개')).toBeInTheDocument();
   });
 
-  it('달라진 것은 type="button" 이 붙은 것뿐이다', () => {
+  // B-3 이 여기서 지키려던 것은 "우리 Button 을 거쳐도 type 하나만 는다" 였다.
+  // E-7 이 글자를 아이콘으로 바꾸면서 안쪽은 달라졌지만, 우리 Button 을 거친다는
+  // 사실(type="button" 이 저절로 붙는 것)은 그대로다.
+  it('우리 Button 을 거치므로 type="button" 이 저절로 붙는다', () => {
     const withButtonComponent = renderToStaticMarkup(
       <LikeButton liked={false} likeCount={3} onToggle={() => {}} />,
     );
 
-    expect(withButtonComponent).toBe(
-      '<div class="px-3 pt-2">' +
-        '<button class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm' +
-        ' focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand' +
-        ' border-line" type="button">♡ 좋아요</button>' +
-        '<p class="px-3 pt-3 pb-1 text-sm font-semibold">좋아요 3개</p></div>',
+    expect(withButtonComponent).toContain('type="button"');
+    expect(withSameLikeArea(withButtonComponent)).toBe(
+      '<div class="px-1 pt-2">[좋아요자리]' +
+        '<p class="px-2 pt-1 pb-1 text-sm font-semibold">좋아요 3개</p></div>',
     );
   });
 });

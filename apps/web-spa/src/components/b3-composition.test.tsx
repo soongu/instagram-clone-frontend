@@ -90,7 +90,7 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: '♡ 좋아요' }));
+    await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
@@ -155,7 +155,7 @@ describe('PostCard — 세 구역으로 나눈 뒤에도 동작은 그대로다'
     const user = userEvent.setup();
     render(<PostCard {...firstPost} onToggleLike={onToggleLike} />);
 
-    await user.click(screen.getByRole('button', { name: '♡ 좋아요' }));
+    await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 
     expect(onToggleLike).toHaveBeenCalledWith(firstPost.id);
   });

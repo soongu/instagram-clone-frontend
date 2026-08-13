@@ -5,7 +5,7 @@
 // jsdom 은 배치를 안 하기 때문이다(E-4 때와 같은 이유).
 // 그쪽 실측은 scratch/e7-visual-observations.txt 에 재현 명령과 함께 적어 뒀다.
 import { renderToStaticMarkup } from 'react-dom/server';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { Ellipsis, MoreHorizontal } from 'lucide-react';
@@ -15,6 +15,7 @@ import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
 import { PostModal } from './PostModal';
 import { CommentList } from './CommentList';
+import { LikeButton } from './LikeButton';
 import { SignUpForm } from './SignUpForm';
 import { feedPosts } from '../data/feed';
 
@@ -199,5 +200,72 @@ describe('Step 4 — 문자 자리에 아이콘을 놓는다', () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).not.toContain('⋯');
+  });
+});
+
+describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
+  const 좋아요 = (liked: boolean) => {
+    render(<LikeButton liked={liked} likeCount={1240} onToggle={() => {}} />);
+    return screen.getByRole('button', { name: '좋아요' });
+  };
+
+  it('테두리 버튼이 하트 아이콘이 됐다', () => {
+    const button = 좋아요(false);
+
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg')?.getAttribute('class')).toContain('lucide-heart');
+  });
+
+  // 이 단언이 이번 Step 의 핵심이다.
+  // 글자가 있을 때는 이름이 '♡ 좋아요' 에서 '♥ 좋아요 취소' 로 바뀌면서
+  // 상태까지 함께 알려줬다. 아이콘만 남으면 이름이 안 바뀐다.
+  it('이름은 그대로고, 눌렸다는 것은 따로 알린다', () => {
+    const { unmount } = render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    expect(screen.getByRole('button', { name: '좋아요' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    unmount();
+    render(<LikeButton liked likeCount={1241} onToggle={() => {}} />);
+
+    // 이름으로 찾는 방법이 그대로 통한다 — 바뀐 것은 눌림 표시뿐이다
+    expect(screen.getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('눈으로 보는 사람에게는 속을 채워서 알린다', () => {
+    expect(좋아요(true).querySelector('svg')?.getAttribute('class')).toContain('fill-current');
+  });
+
+  it('누르면 같은 이름의 버튼이 눌린 상태로 바뀐다', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const 첫카드 = screen.getAllByRole('listitem')[0];
+
+    await user.click(within(첫카드).getByRole('button', { name: '좋아요', pressed: false }));
+
+    expect(within(첫카드).getByRole('button', { name: '좋아요', pressed: true })).toBeInTheDocument();
+  });
+
+  // 인스타그램에는 아이콘이 넷이지만 우리 앱에 있는 동작은 좋아요 하나다.
+  // 흉내만 낸 버튼을 놓으면 낭독기 사용자에게 "누를 수 있다" 고 거짓말을 하게 된다.
+  it('동작이 없는 아이콘은 줄에 놓지 않는다', () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('개수 줄은 그대로 남아 있다', () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
+  });
+
+  it('화면 어디에도 하트 문자가 안 남았다', () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).not.toContain('♡');
+    expect(html).not.toContain('♥');
   });
 });

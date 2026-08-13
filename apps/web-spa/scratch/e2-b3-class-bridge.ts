@@ -36,16 +36,11 @@ const BRIDGE: Array<[string, string]> = [
   ['class="px-3 py-1 text-sm"', 'class="post-content"'],
   [`class="cursor-pointer pl-1 text-sm text-faint${RING}"`, 'class="caption-toggle"'],
   ['class="px-3 pt-1 pb-3 text-sm text-faint"', 'class="post-comments"'],
-  ['class="px-3 pt-2"', 'class="like-area"'],
-  [
-    `class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm${RING} border-danger font-semibold text-danger"`,
-    'class="like-button liked"',
-  ],
-  [
-    `class="cursor-pointer rounded-md border bg-surface px-3 py-1.5 text-sm${RING} border-line"`,
-    'class="like-button"',
-  ],
-  ['class="px-3 pt-3 pb-1 text-sm font-semibold"', 'class="post-likes"'],
+  ['class="px-1 pt-2"', 'class="like-area"'],
+  // E-7 에서 좋아요가 글자 버튼에서 아이콘 버튼이 됐다. 눌린 것과 안 눌린 것의
+  // 클래스가 같아졌으므로(갈리는 곳이 아이콘으로 옮겨갔다) 되돌릴 짝이 없다.
+  // 그 자리는 withSameLikeArea 로 양쪽을 같은 표시로 맞춘다.
+  ['class="px-2 pt-1 pb-1 text-sm font-semibold"', 'class="post-likes"'],
   ['class="mb-3 text-sm font-semibold text-faint"', 'class="section-title"'],
   ['class="cursor-pointer px-3 py-1 text-note text-faint"', 'class="hide-button"'],
   // ── 댓글·폼·토스트 (Step 6) ────────────────────────────────
@@ -119,9 +114,22 @@ export function withSameAvatar(html: string): string {
     .replace(/<svg [^>]*lucide-ellipsis[^>]*>[\s\S]*?<\/svg>/g, '⋯');
 }
 
+// E-7 에서 좋아요 버튼이 글자('♡ 좋아요')에서 아이콘으로 바뀌었다.
+// 아바타 자리와 같은 방식으로, 달라진 그 버튼만 양쪽을 같은 표시로 맞추고 나머지를 견준다.
+// 개수 줄('좋아요 3개')은 그대로라 비교 대상에 남는다.
+export function withSameLikeArea(html: string): string {
+  return (
+    html
+      // 살아 있는 쪽 — 아이콘 버튼(눌림 여부와 상관없이 클래스가 같다)
+      .replace(/<button class="cursor-pointer p-2[^"]*"[\s\S]*?<\/button>/g, '[좋아요자리]')
+      // B-3 시점 — 글자 버튼
+      .replace(/<button class="like-button(?: liked)?"[^>]*>[^<]*<\/button>/g, '[좋아요자리]')
+  );
+}
+
 /** 카드 몸통이 들여온 것으로 바뀌어 감싸는 칸이 늘었다. 학생이 보는 글자만 남겨 견준다. */
 export function toVisibleText(html: string): string {
-  return withSameAvatar(html)
+  return withSameLikeArea(withSameAvatar(html))
     .replace(/<[^>]+>/g, ' ')
     .split(/\s+/)
     .filter(Boolean)

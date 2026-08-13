@@ -98,17 +98,17 @@ describe('App — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', 
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '♡ 좋아요' }));
+    await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 
     expect(screen.getByText('좋아요 누른 게시물 2개')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: '♥ 좋아요 취소' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: '좋아요', pressed: true })).toHaveLength(2);
   });
 
   it('옮기기 전 App 도 같은 방식으로 동작한다', async () => {
     const user = userEvent.setup();
     render(<AppBeforeHook />);
 
-    await user.click(screen.getByRole('button', { name: '♡ 좋아요' }));
+    await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 
     expect(screen.getByText('좋아요 누른 게시물 2개')).toBeInTheDocument();
   });

@@ -88,9 +88,11 @@ describe('알림 타이머와 클린업', () => {
 });
 
 // 가짜 시간을 쓸 때는 userEvent 대신 직접 click 을 부른다
-function click(name: string) {
+// E-7 에서 좋아요 버튼의 이름이 눌림 여부와 상관없이 '좋아요' 로 고정됐다.
+// 어느 쪽을 누를지는 눌림 표시로 고른다.
+function click(name: string, pressed?: boolean) {
   act(() => {
-    screen.getAllByRole('button', { name })[0].click();
+    screen.getAllByRole('button', { name, pressed })[0].click();
   });
 }
 
@@ -103,7 +105,7 @@ describe('App 의 알림', () => {
     vi.useFakeTimers();
     render(<App />);
 
-    click('♡ 좋아요');
+    click('좋아요', false);
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'jaehoon님의 게시물을 좋아합니다',
@@ -121,7 +123,7 @@ describe('App 의 알림', () => {
     render(<App />);
 
     // minji 의 게시물은 처음부터 좋아요가 눌려 있다
-    click('♥ 좋아요 취소');
+    click('좋아요', true);
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'minji님의 게시물 좋아요를 취소했습니다',
@@ -137,7 +139,7 @@ describe('App 의 탭 제목', () => {
     // 처음엔 minji 게시물 하나만 좋아요가 눌려 있다
     expect(document.title).toBe('인스타그램 (좋아요 1)');
 
-    await user.click(screen.getAllByRole('button', { name: '♡ 좋아요' })[0]);
+    await user.click(screen.getAllByRole('button', { name: '좋아요', pressed: false })[0]);
 
     expect(document.title).toBe('인스타그램 (좋아요 2)');
   });

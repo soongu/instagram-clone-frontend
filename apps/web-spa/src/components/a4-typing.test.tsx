@@ -105,12 +105,12 @@ describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
     render(<App />);
 
     const [firstCard] = screen.getAllByRole('article');
-    expect(within(firstCard).getByRole('button', { name: '♡ 좋아요' })).toBeInTheDocument();
+    expect(within(firstCard).getByRole('button', { name: '좋아요', pressed: false })).toBeInTheDocument();
 
     await user.dblClick(within(firstCard).getByRole('img', { name: /게시물/ }));
 
     expect(
-      within(firstCard).getByRole('button', { name: '♥ 좋아요 취소' }),
+      within(firstCard).getByRole('button', { name: '좋아요', pressed: true }),
     ).toBeInTheDocument();
   });
 
@@ -120,9 +120,9 @@ describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
 
     const [firstCard] = screen.getAllByRole('article');
     await user.dblClick(within(firstCard).getByRole('img', { name: /게시물/ }));
-    await user.click(within(firstCard).getByRole('button', { name: '♥ 좋아요 취소' }));
+    await user.click(within(firstCard).getByRole('button', { name: '좋아요', pressed: true }));
 
-    expect(within(firstCard).getByRole('button', { name: '♡ 좋아요' })).toBeInTheDocument();
+    expect(within(firstCard).getByRole('button', { name: '좋아요', pressed: false })).toBeInTheDocument();
   });
 });
 

@@ -14,7 +14,7 @@ import {
   LikeButtonBefore,
   CommentFormBefore,
 } from '../../scratch/b3-lecture-snapshots';
-import { toB3Classes, b3BridgeHits } from '../../scratch/e2-b3-class-bridge';
+import { toB3Classes, b3BridgeHits, withSameLikeArea } from '../../scratch/e2-b3-class-bridge';
 import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
 import { Avatar } from './Avatar';
@@ -81,8 +81,10 @@ describe('Step 1 — 세 구역으로 나눠도 화면은 글자 하나 안 바�
       <PostCardStep1 {...likedPost} onToggleLike={() => {}} />,
     );
 
-    expect(b3BridgeHits(step1)).toContain('like-button liked');
-    expect(toB3Classes(step1)).toBe(toB3Classes(before));
+    // E-7 에서 좋아요 버튼이 글자에서 아이콘으로 바뀌었다.
+    // 그 자리만 양쪽을 같은 표시로 맞추고 나머지는 그대로 견준다(아바타와 같은 방식).
+    expect(b3BridgeHits(step1)).toContain('like-area');
+    expect(withSameLikeArea(toB3Classes(step1))).toBe(withSameLikeArea(toB3Classes(before)));
   });
 });
 
@@ -179,9 +181,9 @@ describe('Step 2 — Button 으로 갈아끼운 뒤 달라지는 것', () => {
 
     expect(before).toBe('<div class="like-area"><button class="like-button">♡ 좋아요</button><p class="post-likes">좋아요 3개</p></div>');
     expect(b3BridgeHits(after)).toContain('like-area');
-    expect(toB3Classes(after)).toBe(
-      before.replace('class="like-button"', 'class="like-button" type="button"'),
-    );
+    // 버튼 안이 E-7 에서 아이콘으로 바뀌어 글자 단위로는 못 견준다.
+    // 감싸는 자리와 개수 줄은 그대로이므로 그 둘을 본다.
+    expect(withSameLikeArea(toB3Classes(after))).toBe(withSameLikeArea(before));
   });
 
   it('제출 버튼은 HTML 이 완전히 같다', () => {
