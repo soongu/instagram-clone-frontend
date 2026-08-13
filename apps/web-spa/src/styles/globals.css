@@ -248,10 +248,12 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* 우리 빨강과 들여온 빨강이 따로 놀지 않게 잇는다 (E-6 에서 --card 를 이은 것과 같은 방식) */
+  --destructive: var(--color-danger);
   --border: var(--color-line);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* 포커스 테두리 색 — 우리 화면의 포커스는 파랑 하나여야 한다 */
+  --ring: var(--color-brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -281,9 +283,8 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* --destructive · --ring 은 :root 에서 우리 토큰을 가리키므로 여기서 지웠다 */
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

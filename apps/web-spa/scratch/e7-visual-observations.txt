@@ -432,3 +432,138 @@ E-6 채증(e6-shadcn-observations.txt)의 이어짐. 단위 테스트로 못 잡
     Step 5 뒤            40,545 B    408,621 B    ← CSS +32 · JS +227
 
   게이트: 65 files / 512 passed · tsc 0 · eslint 0 · build 성공
+
+
+11. Step 6 — 누르면 반응하게 (tw-animate-css 1.4.0 실측)
+--------------------------------------------------------------------------------
+
+  이 꾸러미는 **CSS 파일 하나뿐**이다(dist/tw-animate.css 14,880 B). JS 가 없다.
+  globals.css 의 @import "tw-animate-css" 한 줄이 전부다.
+
+  구조가 재밌다 — 애니메이션은 딱 둘(enter · exit)이고, 나머지 유틸리티는
+  그 키프레임이 읽는 변수를 세팅만 한다.
+
+    --animate-in: enter var(--tw-animation-duration,var(--tw-duration,.15s)) ...
+    @keyframes enter { from {
+      opacity: var(--tw-enter-opacity,1);
+      transform: translate3d(...) scale3d(var(--tw-enter-scale,1),...) ...
+    }}
+    @utility zoom-in-*  { --tw-enter-scale: ... }
+    @utility fade-in-*  { --tw-enter-opacity: ... }
+
+  => fade-in-0 과 zoom-in-95 를 함께 쓰면 둘 다 먹는 이유가 이것이다.
+     애니메이션이 둘 겹치는 게 아니라 한 키프레임의 변수 둘을 채우는 것이다.
+     duration-200 이 먹는 것도 --tw-duration 을 읽기 때문이다(실측 0.2s).
+
+  우리가 넣은 것:
+    버튼   transition duration-150 hover:opacity-60 active:scale-90
+    하트   liked 일 때만  animate-in zoom-in-50 duration-200
+
+  브라우저 실측(계산값이라 숨은 탭에서도 유효):
+    안 눌림   animationName: none    / 버튼 transitionDuration 0.15s
+    눌림      animationName: enter   / animationDuration 0.2s
+
+
+11-1. ⚠️⚠️ 이 꾸러미는 "움직임 줄이기" 를 전혀 안 본다
+--------------------------------------------------------------------------------
+
+    grep -c "prefers-reduced-motion" node_modules/tw-animate-css/dist/tw-animate.css
+      → 0
+    grep -c "prefers-reduced-motion" node_modules/shadcn/dist/tailwind.css
+      → 1   (그런데 .shimmer 한 클래스용이고 우리는 그 클래스를 안 쓴다)
+
+  즉 E-6 에서 딸려온 모달의 나타나는 움직임은 아무 보호가 없었다.
+  유틸리티(motion-reduce:)로 한 곳씩 붙이면 우리가 안 쓴 클래스는 못 덮으므로
+  globals.css 에 미디어 쿼리 한 덩어리로 전부 걸었다.
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+  빌드 CSS 에서 확인:
+    *,:before,:after{transition-duration:.01ms!important;animation-duration:.01ms!important;...}
+
+  크기: CSS 40,545 → 41,963 B (+1,418) · JS 408,621 → 408,713 B (+92)
+
+
+11-2. ⚠️⚠️⚠️ 숨은 탭 함정 3차 — 이번엔 "멈춘 트랜지션" 이 색을 거짓말했다
+--------------------------------------------------------------------------------
+
+  좋아요를 누른 직후 하트 색을 읽으니 oklab(0.269 0 0) = ink 였다. 빨강이어야 하는데.
+  transition: all 0.2s 가 색을 ink → danger 로 옮기는 중인데, 숨은 탭에서는
+  그 진행이 아예 안 돌아 시작값에 멈춰 있었던 것이다.
+
+  ⚠️ 정리:
+     배치(offsetWidth·clientWidth)          숨은 탭에서도 참
+     계산된 정적 값(animationName·duration)  참
+     전환 중인 값(색·transform·rect)         거짓 — 시작값에 멈춰 있다
+
+  ⚠️ 그리고 rAF 로 프레임을 세는 코드는 절대 넣지 말 것.
+     숨은 탭에서 rAF 가 안 돌아 Promise 가 영원히 안 풀리고,
+     CDP Runtime.evaluate 가 45초 뒤 타임아웃 나면서 렌더러가 죽은 것처럼 보인다.
+     (E-6 채증의 "45초 무응답" 과 같은 원인 — 이번엔 내가 직접 재현했다.)
+
+  ⚠️ 클래스를 바꾸고 다른 요소의 계산값을 읽을 때는 리플로우를 한 번 강제할 것.
+     .dark 를 붙인 직후 카드 배경은 새 값이 나오는데 버튼 outline-color 는
+     옛 값이 나오는 일이 있었다. void el.offsetWidth 한 줄이면 사라진다.
+
+
+12. Step 7 — 어두운 화면에 남은 어긋남 (--ring · 두 빨강)
+--------------------------------------------------------------------------------
+
+  들여온 판이 :root 와 .dark 에 자기 값을 들고 있었다.
+
+                    :root                      .dark
+    --ring          oklch(0.708 0 0) 회색       oklch(0.556 0 0) 회색
+    --destructive   oklch(0.577 .245 27.3)     oklch(0.704 .191 22.2)
+    (우리 --color-danger 는 양쪽 다 oklch(64.1% 0.2 20.5) 한 값)
+
+  ⚠️ --ring 은 우리 포커스 색(brand)과 아무 관계가 없었는데, 화면 전체에 걸려 있었다.
+
+    빌드 CSS 에서 실제로 이렇게 나온다:
+      *{border-color:var(--border);outline-color:var(--ring)}
+      *{outline-color:color-mix(in oklab, var(--ring) 50%, transparent)}
+
+    globals.css 의 @layer base { * { @apply border-border outline-ring/50 } } 이 그것이다.
+    var(--ring) 5곳 · var(--destructive) 22곳.
+
+  ⚠️ E-2 회수 — --color-ring · --color-destructive 는 빌드 CSS 에 **0건**이다.
+     이 이름들이 @theme inline 안에 있어서다(값이 쓰는 자리에 박히고 :root 에 안 남는다).
+     E-4 의 --breakpoint-* 가 0건이던 것과 결과는 같지만 이유가 다르다.
+       E-4: 미디어 조건이 var() 를 못 읽어서
+       E-7: @theme inline 이라 원래 안 남는 것
+     getComputedStyle 로 --color-ring 을 읽으면 빈 문자열이 나온다.
+
+  고침(E-6 에서 --card 를 이은 것과 같은 방식):
+    :root  --ring: var(--color-brand);  --destructive: var(--color-danger);
+    .dark  두 줄 삭제
+
+  확인: 빌드 CSS 전체에서 --ring 선언 1개 · --destructive 선언 1개, 둘 다 우리 토큰.
+        getComputedStyle 로 읽은 --ring 이 밝은 화면·어두운 화면 모두 brand.
+  크기: CSS 41,963 → 41,897 B (-66) · JS 그대로
+
+
+12-1. 대비 실측 (canvas 로 sRGB 픽셀을 읽어 WCAG 공식으로 계산)
+--------------------------------------------------------------------------------
+
+  danger = #ed4956 (인스타 빨강) · brand = #0095f6 · 어두운 판 = #121212
+
+    우리 빨강   밝은 판 3.69   어두운 판 5.07
+    들여온 빨강 밝은 판 4.77   어두운 판 6.49
+    브랜드      밝은 판 3.17   어두운 판 5.91
+    옛 회색 링  밝은 판 2.58   어두운 판 3.95
+
+  => 포커스 테두리를 잇는 것은 취향 문제가 아니었다.
+     옛 회색 링은 밝은 화면에서 2.58 로 비-글자 기준 3:1 에 못 미친다.
+     브랜드로 이으면 3.17 로 넘어간다.
+
+  ⚠️ 다만 shadcn 버튼은 ring-ring/50 (반투명 3px) 과 border-ring (불투명)을 함께 쓴다.
+     반투명 쪽만 재면 밝은 판 1.79 · 어두운 판 2.33 이다. 기준을 넘는 것은
+     불투명한 테두리 쪽이다. "링을 이었으니 대비도 통과" 로 뭉뚱그리면 틀린다.
+
+  ⚠️⚠️ 남은 것 — 우리 빨강이 밝은 화면에서 3.69 다.
+     하트(그림)는 3:1 기준이라 통과지만, 회원가입 오류 글자(text-xs text-danger)는
+     글자라서 4.5:1 이 필요하다. Step 8 에서 다룬다.
