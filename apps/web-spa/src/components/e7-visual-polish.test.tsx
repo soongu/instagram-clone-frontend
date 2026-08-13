@@ -269,3 +269,33 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
     expect(html).not.toContain('♥');
   });
 });
+
+describe('Step 6 — 누르면 반응하게', () => {
+  const 하트버튼 = (liked: boolean) => {
+    render(<LikeButton liked={liked} likeCount={1240} onToggle={() => {}} />);
+    return screen.getByRole('button', { name: '좋아요' });
+  };
+
+  it('누르는 동안 살짝 줄어든다', () => {
+    const button = 하트버튼(false);
+
+    expect(button.className).toContain('active:scale-90');
+    expect(button.className).toContain('transition');
+  });
+
+  // 이 단언이 이번 Step 의 핵심이다.
+  // 켤 때만 튀어야 한다. 끌 때도 튀면 취소가 축하처럼 보인다.
+  it('켤 때만 튄다 — 끌 때는 조용하다', () => {
+    expect(하트버튼(true).querySelector('svg')?.getAttribute('class')).toContain('zoom-in-50');
+  });
+
+  it('안 눌린 하트에는 튀는 글자가 없다', () => {
+    expect(하트버튼(false).querySelector('svg')?.getAttribute('class')).not.toContain('zoom-in');
+  });
+
+  // E-6 에서 모달이 나타날 때 쓰던 그 꾸러미의 글자다.
+  // 우리가 처음 직접 부르는 자리다.
+  it('나타나는 움직임은 들여온 꾸러미의 글자를 쓴다', () => {
+    expect(하트버튼(true).querySelector('svg')?.getAttribute('class')).toContain('animate-in');
+  });
+});

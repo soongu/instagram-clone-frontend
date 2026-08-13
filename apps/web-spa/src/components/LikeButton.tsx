@@ -16,14 +16,19 @@ export function LikeButton({ liked, likeCount, onToggle }: LikeButtonProps) {
   return (
     <div className="px-1 pt-2">
       <IconButton
-        className="cursor-pointer p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="cursor-pointer p-2 transition duration-150 hover:opacity-60 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         aria-label="좋아요"
         aria-pressed={liked}
         onClick={onToggle}
       >
         {/* 이름이 안 바뀌니 눌렸다는 것은 aria-pressed 가 알린다.
-            눈으로 보는 사람에게는 속을 채우고 색을 바꿔서 알린다. */}
-        <Heart className={`size-6 ${liked ? 'fill-current text-danger' : ''}`} />
+            눈으로 보는 사람에게는 속을 채우고 색을 바꿔서 알린다.
+            켤 때만 한 번 튄다 — 끌 때도 튀면 취소가 축하처럼 보인다. */}
+        <Heart
+          className={`size-6 ${
+            liked ? 'fill-current text-danger animate-in zoom-in-50 duration-200' : ''
+          }`}
+        />
       </IconButton>
       {likeCount > 0 && <p className="px-2 pt-1 pb-1 text-sm font-semibold">좋아요 {likeCount}개</p>}
     </div>
