@@ -18,7 +18,10 @@ interface CommentListProps {
 // 줄줄이 그리는 일은 List 에 맡기고, 한 줄을 어떻게 그릴지만 정한다.
 export function CommentList({ comments, onRemove }: CommentListProps) {
   // 물어보라고 부탁만 한다. 상자를 어디에 어떻게 그리는지는 이 컴포넌트가 모른다.
-  const { ask } = useConfirmStore();
+  //
+  // 통째로 받지 않고 ask 한 조각만 고른다. 이 조각은 만들어진 뒤로 안 바뀌니까,
+  // 다른 사람이 무엇을 물어보든 이 목록은 다시 그려지지 않는다.
+  const ask = useConfirmStore((state) => state.ask);
 
   return (
     <List

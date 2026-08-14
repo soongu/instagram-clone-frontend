@@ -61,7 +61,7 @@ export default tseslint.config(
   {
     // 누가 몇 번 다시 그려지는지 세는 판이다. 세려면 렌더 중에 바깥 값을 건드려야 하는데
     // 그게 정확히 이 규칙이 막는 것이다 — 재는 행위 자체가 규칙 위반이라 여기서만 끈다.
-    files: ['src/contexts/c3-rerender-scope.test.tsx'],
+    files: ['src/contexts/c3-rerender-scope.test.tsx', 'src/components/c4-selector-scope.test.tsx'],
     rules: {
       'react-hooks/immutability': 'off',
     },
