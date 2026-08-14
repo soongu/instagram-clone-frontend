@@ -16,8 +16,8 @@ vite build           : 성공 · CSS 42,480 B · JS 510,630 B
 
 [1] 커스텀 훅은 상태를 공유하지 않는다 — 그런데 화면은 멀쩡해 보인다
 --------------------------------------------------------------------
-probe: scratch/c3-probe-hook-not-shared.test.tsx
-<ThemeToggle /> 와 useTheme() 을 부르는 <ThemeLabel /> 을 나란히 렌더한 뒤
+probe: 계획 단계 임시 파일 -> src/components/c3-theme-not-shared.test.tsx 로 승격(같은 주장)
+useTheme() 을 각각 부르는 컴포넌트 둘을 나란히 렌더한 뒤
 '어둡게' 버튼을 누름.
 
   ThemeToggle 의 aria-pressed  : '어둡게' = true   (바뀜)
@@ -103,3 +103,52 @@ react.dev/blog/2024/12/05/react-19:
    PostModal 이 직접 useSearchParams() 를 부르면 배달 자체가 없어진다.
    => "전역 상태가 필요하다" 의 예시로 이걸 쓰면 틀린다. Context/Zustand 가 아니라
       URL 이 이미 답인 경우다. 이 어긋남을 정면으로 다뤄야 C-2 를 부정하지 않는다.
+
+
+================================================================
+Step 1~2 구현 실측 (2026-08-14)
+================================================================
+
+[Step 1] 두 번째 소비자를 실제 기능으로 — <meta name="theme-color">
+--------------------------------------------------------------
+주소창 색은 CSS 가 닿지 않는 화면 밖이라 React 가 맞춰야 한다(B-4 document.title 선례).
+`--color-canvas` OKLCH -> sRGB 변환(직접 계산):
+  light oklch(98.5% 0 none) -> #fafafa
+  dark  oklch(0% 0 none)    -> #000000
+=> lib/theme.ts 의 THEME_COLOR 에 박고 index.html 에 기본값 <meta> 추가.
+⚠️ 토큰과 값이 두 곳에 있다. index.html 인라인 스크립트가 lib/theme.ts 규칙을
+   베껴 쓰는 것과 같은 사정 — 주석으로 명시.
+
+ThemeColorMeta 가 useTheme() 을 직접 부르면 (Step 1 상태):
+  '어둡게' 클릭 -> 버튼 aria-pressed=true / html.dark=true / localStorage='dark'
+                -> <meta theme-color> = #fafafa  (★ 밝은 값 그대로)
+  화면은 정상이고 주소창만 틀린다.
+
+[Step 2] Context 로 잇기
+-------------------------
+src/contexts/ThemeContext.tsx 신설.
+  type ThemeContextValue = ReturnType<typeof useTheme>   (A-3 파생 회수)
+  createContext<ThemeContextValue>({choice:'system', resolved:'light', select:()=>{}})
+  <ThemeContext value={theme}>   (React 19 — .Provider 안 붙임)
+ThemeToggle·ThemeColorMeta 가 useThemeContext() 로 전환. Provider 는 Layout 에.
+
+⚠️ blast radius: e5-theme-toggle.test.tsx 6건 FAIL.
+   ThemeToggle 을 홀로 그리면 값을 넣어주는 쪽이 없어 select 가 no-op 이 된다.
+   => scratch/c3-theme-harness.tsx 의 withTheme() 로 문맥만 씌움(withRouter 선례).
+      단언은 하나도 안 약화시켰다 — render 호출 9곳만 감쌌다.
+   ⚠️ 그중 2건은 감싸기 전에도 "통과" 하고 있었다(기본값 choice:'system' 이 우연히 일치).
+      기본값이 있으면 틀린 상태가 초록으로 보인다 — Step 3 의 근거가 여기서도 나온다.
+
+가드 일부러 깨기: ThemeColorMeta 를 useTheme() 으로 되돌림 -> c3-theme-context 2/3 FAIL.
+  (localStorage 단언 1건은 통과 — useTheme 이 어느 쪽이든 저장은 하기 때문. 정상)
+
+[Step 2 채증] 두 문법 · 기본값 · Provider 두 개 (scratch/c3-provider-equivalence.test.tsx)
+------------------------------------------------------------------------------------
+  renderToStaticMarkup(<Ctx value="넣은 값"><Reader/></Ctx>)          -> '<p>넣은 값</p>'
+  renderToStaticMarkup(<Ctx.Provider value="넣은 값">...</Ctx.Provider>) -> 위와 byte 동일
+  Provider 없이 <Reader/> 만                                          -> '<p>기본값</p>'
+       ★ 에러도 경고도 없다. 감싸는 걸 잊어도 조용히 돌아간다 (Step 3 동기)
+  같은 Ctx 에 Provider 둘                                             -> '<p>왼쪽</p><p>오른쪽</p>'
+       ★ Context 자체는 값을 안 들고 있다 (Step 5 의 의존성 주입 근거)
+
+게이트: 80 files / 617 passed · tsc 0 · eslint 0 (기준선 77/608)

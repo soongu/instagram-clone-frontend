@@ -1,5 +1,5 @@
 // apps/web-spa/src/components/ThemeToggle.tsx
-import { useTheme } from '../hooks/useTheme';
+import { useThemeContext } from '../contexts/ThemeContext';
 import type { ThemeChoice } from '../lib/theme';
 
 // '시스템' 이 함께 있어야 "안 고르겠다" 로 돌아올 길이 생긴다
@@ -10,7 +10,7 @@ const OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string }> = [
 ];
 
 export function ThemeToggle() {
-  const { choice, select } = useTheme();
+  const { choice, select } = useThemeContext();
 
   return (
     <div className="flex gap-0.5 rounded-md border border-line p-0.5" role="group" aria-label="화면 밝기">
