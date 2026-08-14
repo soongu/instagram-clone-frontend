@@ -189,3 +189,48 @@ Red 의 모습이 그대로 주장이었다:
    A-2 의 좁히기가 "런타임 가드 + 타입 좁히기" 로 동시에 값을 하는 자리.
 
 게이트: 81 files / 620 passed · tsc 0 · eslint 0
+
+
+[Step 4] use 와 useContext — 규칙이 갈리는 자리
+================================================
+데모: src/components/ConditionalContextDemo.tsx (ClickCounter·RefVsStateDemo 선례 —
+      일부러 규칙을 어긴 판을 src 에 두고 eslint.config.js 에서만 규칙을 끈다)
+      ⚠️ scratch 가 아니라 src 에 둔 이유: tsconfig include 가 src 뿐이라
+         scratch 에 두면 타입체크를 안 받는다(위 [2] 정정 참조)
+
+린트를 강제로 켜고 잰 값:
+  npx eslint --rule '{"react-hooks/rules-of-hooks":"error"}' src/components/ConditionalContextDemo.tsx
+  -> 4 problems
+     31:17 useContext  (b) 조건부
+     45:17 useContext  (c) 앞에 useState 가 있는 조건부
+     58:19 useState    (d) 대조군
+     69:19 useContext  (e) 진짜 훅 두 개 사이
+  ★ 파일 안에서 조건부로 읽는 자리는 다섯인데 잡힌 것은 넷.
+    안 잡힌 하나가 use 다.
+
+⚠️⚠️⚠️ 예측이 틀렸다 — 조건부 useContext 는 런타임에서 안 터진다
+------------------------------------------------------------------
+처음에 "앞에 살아남는 훅이 있으면 터진다"(B-3 canon 의 2단 갈림)로 예상하고
+toThrow 단언을 썼는데 실패했다. 실제로 재보니:
+
+  (b) 조건부 useContext, 앞에 훅 없음        -> 안 터짐. '읽었음' 정상 렌더
+  (c) 조건부 useContext, 앞에 useState 있음  -> 안 터짐. '읽었음(붙어있음)' 정상
+  (d) 조건부 useState,  앞에 useState 있음   -> Error: Rendered more hooks than
+                                                during the previous render.
+  (e) 조건부 useContext 를 useState 두 개 사이에 끼움
+      show 를 켜도 뒤 useState 값이 안 밀린다 ('앞/뒤' 유지)
+
+=> 결론: useContext 는 훅 목록에 자리를 안 잡는다. 그래서 조건 안에 넣어도
+   순서가 안 밀리고 런타임이 안 터진다. 진짜 훅(useState)은 (d) 처럼 터진다.
+   (e) 가 결정적 증거 — 자리를 잡았다면 뒤 useState 가 앞 슬롯을 읽었어야 한다.
+
+=> 그래서 React 19 의 use 는 "없던 능력을 새로 준 것" 이 아니라
+   원래 순서에 안 묶여 있던 성질에 이름과 공식 허가를 준 쪽에 가깝다.
+   린트가 useContext 까지 막는 것은 규칙을 하나로 단순하게 유지하려는 선택이고,
+   조건 안에서 읽어야 하면 use 를 쓰라는 정리다.
+
+⚠️ 교안에 "조건부 useContext 는 터진다" 로 쓰면 사실 오류.
+   B-3 canon 의 "앞에 살아남는 훅이 있어야 터진다" 는 진짜 훅에 대한 이야기이고
+   useContext 에는 적용되지 않는다.
+
+게이트: 82 files / 625 passed · tsc 0 · eslint 0

@@ -59,6 +59,15 @@ export default tseslint.config(
     },
   },
   {
+    // use 와 useContext 를 같은 조건 안에 나란히 두고 무엇이 갈리는지 보여주는 판이다.
+    // 규칙에 걸리는 쪽을 지우면 비교 자체가 사라지므로 여기서만 끈다.
+    // 학생이 따라 칠 때는 (b)·(c) 에서 이 에러가 그대로 떠야 한다.
+    files: ['src/components/ConditionalContextDemo.tsx'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
+  {
     // use 와 useContext 를 같은 조건 안에 나란히 두고 린트가 무엇만 잡는지 보려는 파일이다.
     // 규칙이 걸리는 쪽을 지우면 비교 자체가 사라지므로 여기서만 끈다.
     files: ['scratch/c3-probe-use-conditional.tsx'],
