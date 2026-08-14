@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { HomePage } from '../routes/HomePage';
+import { feedPosts } from '../data/feed';
+import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
 
 const TOAST_DURATION = 3000;
@@ -104,7 +105,7 @@ describe('HomePage 의 알림', () => {
 
   it('좋아요를 누르면 알림이 뜨고 3초 뒤 사라진다', () => {
     vi.useFakeTimers();
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     click('좋아요', false);
 
@@ -121,7 +122,7 @@ describe('HomePage 의 알림', () => {
 
   it('좋아요를 취소하면 취소했다는 알림이 뜬다', () => {
     vi.useFakeTimers();
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     // minji 의 게시물은 처음부터 좋아요가 눌려 있다
     click('좋아요', true);
@@ -135,7 +136,7 @@ describe('HomePage 의 알림', () => {
 describe('HomePage 의 탭 제목', () => {
   it('좋아요 개수가 탭 제목에 따라붙는다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     // 처음엔 minji 게시물 하나만 좋아요가 눌려 있다
     expect(document.title).toBe('인스타그램 (좋아요 1)');

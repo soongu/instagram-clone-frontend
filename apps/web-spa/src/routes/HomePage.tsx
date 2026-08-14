@@ -1,45 +1,55 @@
 // apps/web-spa/src/routes/HomePage.tsx
-import { useEffect } from 'react';
-import { Feed } from '../components/Feed';
-import { Section } from '../components/Section';
-import { Toast } from '../components/Toast';
-import { feedPosts } from '../data/feed';
-import { useFeed } from '../hooks/useFeed';
-import { useScrollRestore } from '../hooks/useScrollRestore';
+import { useEffect, useState } from 'react';
+import { FeedSection } from '../components/FeedSection';
+import type { Post } from '../types/instagram';
 
-// 알림이 화면에 머무는 시간
-const TOAST_DURATION = 3000;
+const FEED_URL = 'http://localhost:8090/api/posts';
 
 export function HomePage() {
-  const { posts, likedCount, toast, toggleLike, reachBottom, dismissToast } = useFeed(feedPosts);
+  // 세 갈래를 손으로 들고 있어야 한다. 데이터·기다림·실패.
+  const [posts, setPosts] = useState<Post[] | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 피드 끝에 닿으면 여기까지 봤다고 알려준다
-  useScrollRestore(reachBottom);
-
-  // 브라우저 탭 제목은 React 가 그리는 화면 밖에 있다. 직접 맞춰줘야 한다.
   useEffect(() => {
-    document.title = `인스타그램 (좋아요 ${likedCount})`;
-  }, [likedCount]);
+    // 늦게 온 응답이 이미 떠난 화면을 덮어쓰지 않게 표시를 남긴다
+    let cancelled = false;
 
-  // 알림을 띄웠으면 치우는 것까지가 한 일이다.
-  useEffect(() => {
-    if (toast === null) {
-      return;
-    }
+    fetch(FEED_URL)
+      .then((response) => response.json())
+      .then((body) => {
+        if (cancelled) {
+          return;
+        }
 
-    const timerId = setTimeout(dismissToast, TOAST_DURATION);
+        // fetch 는 404 든 500 이든 성공으로 친다. 봉투를 열어봐야 안다.
+        if (body.success === false) {
+          setErrorMessage(body.message);
+          return;
+        }
 
-    return () => clearTimeout(timerId);
-  }, [toast, dismissToast]);
+        setPosts(body.data);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
 
-  // 껍데기(main·머리말)는 Layout 이 들고 있다. 여기는 홈에만 있는 것만 그린다.
-  return (
-    <>
-      <p className="mb-4 text-sm text-faint">좋아요 누른 게시물 {likedCount}개</p>
-      <Section title="피드">
-        <Feed posts={posts} onToggleLike={toggleLike} />
-      </Section>
-      {toast !== null && <Toast message={toast.message} />}
-    </>
-  );
+        setErrorMessage('피드를 불러오지 못했어요');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (errorMessage !== null) {
+    return <p className="text-sm text-danger-strong">{errorMessage}</p>;
+  }
+
+  // 게시물이 도착한 뒤에야 피드를 그린다.
+  if (posts === null) {
+    return <p className="text-sm text-faint">피드를 불러오는 중이에요…</p>;
+  }
+
+  return <FeedSection posts={posts} />;
 }

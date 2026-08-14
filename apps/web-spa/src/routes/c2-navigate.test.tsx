@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { routes } from './routes';
+import { routesWithFeed } from '../../scratch/c1-router-harness';
 import { withApp } from '../../scratch/c3-theme-harness';
 
 const VALID = {
@@ -14,7 +14,7 @@ const VALID = {
 };
 
 function renderAt(entries: string[], index = entries.length - 1) {
-  const router = createMemoryRouter(routes, { initialEntries: entries, initialIndex: index });
+  const router = createMemoryRouter(routesWithFeed(), { initialEntries: entries, initialIndex: index });
   render(withApp(<RouterProvider router={router} />));
   return router;
 }

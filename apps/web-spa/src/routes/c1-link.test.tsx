@@ -3,14 +3,15 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { routes } from './routes';
-import { HomePage } from './HomePage';
+import { routesWithFeed } from '../../scratch/c1-router-harness';
+import { FeedSection } from '../components/FeedSection';
+import { feedPosts } from '../data/feed';
 import { SignUpPage } from './SignUpPage';
 import { AnchorLayout } from '../../scratch/c1-anchor-nav';
 import { withApp, withTheme } from '../../scratch/c3-theme-harness';
 
 function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const router = createMemoryRouter(routesWithFeed(), { initialEntries: [path] });
   render(withApp(<RouterProvider router={router} />));
   return router;
 }
@@ -27,7 +28,7 @@ function renderAnchorAt(path: string) {
         path: '/',
         Component: AnchorLayout,
         children: [
-          { index: true, Component: HomePage },
+          { index: true, Component: () => <FeedSection posts={feedPosts} /> },
           { path: 'signup', Component: SignUpPage },
         ],
       },

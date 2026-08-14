@@ -2,7 +2,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { List } from './List';
-import { HomePage } from '../routes/HomePage';
+import { feedPosts } from '../data/feed';
+import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
 
 const comments = [
@@ -52,14 +53,14 @@ describe('List — 담긴 것이 무엇이든 같은 방식으로 그린다', ()
 
 describe('List 로 바꾼 뒤에도 화면은 그대로다', () => {
   it('피드에 게시물 두 장이 그대로 뜬다', () => {
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     expect(screen.getByText('오늘 한강 노을이...')).toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(2);
   });
 
   it('피드가 목록으로 그려지고, 각 게시물이 한 줄씩 차지한다', () => {
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     const feedList = screen.getByRole('list', { name: '피드 목록' });
     expect(within(feedList).getAllByRole('article')).toHaveLength(2);

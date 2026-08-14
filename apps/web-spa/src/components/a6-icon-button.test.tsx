@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { IconButton } from './IconButton';
-import { HomePage } from '../routes/HomePage';
+import { feedPosts } from '../data/feed';
+import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('IconButton — Button 이 받는 것을 그대로 받는다', () => {
@@ -50,7 +51,7 @@ describe('IconButton — Button 이 받는 것을 그대로 받는다', () => {
 
 describe('아이콘 버튼으로 바꾼 뒤에도 화면은 그대로다', () => {
   it('게시물 메뉴 버튼이 이름 그대로 남아 있다', () => {
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     expect(screen.getAllByRole('button', { name: '게시물 메뉴' })).toHaveLength(2);
   });

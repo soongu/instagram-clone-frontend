@@ -2,14 +2,14 @@
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { routes } from './routes';
+import { routesWithFeed } from '../../scratch/c1-router-harness';
 import mainSource from '../main.tsx?raw';
 import { withApp } from '../../scratch/c3-theme-harness';
 
 // 한 it 안에서 두 번 render 하면 앞의 화면이 DOM 에 남아 개수 단언이 엉뚱하게 통과한다.
 // 주소마다 it 을 따로 두고 한 번만 그린다.
 function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const router = createMemoryRouter(routesWithFeed(), { initialEntries: [path] });
   return render(withApp(<RouterProvider router={router} />));
 }
 
@@ -51,8 +51,8 @@ describe('C-1 Step 4 — 라우트 표를 따로 뺐다', () => {
   });
 
   it('두 주소로 갈 수 있다', () => {
-    const home = createMemoryRouter(routes, { initialEntries: ['/'] });
-    const signUp = createMemoryRouter(routes, { initialEntries: ['/signup'] });
+    const home = createMemoryRouter(routesWithFeed(), { initialEntries: ['/'] });
+    const signUp = createMemoryRouter(routesWithFeed(), { initialEntries: ['/signup'] });
 
     expect(home.state.location.pathname).toBe('/');
     expect(signUp.state.location.pathname).toBe('/signup');

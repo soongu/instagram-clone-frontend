@@ -2,13 +2,13 @@
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { routes } from './routes';
+import { routesWithFeed } from '../../scratch/c1-router-harness';
 import { feedPosts } from '../data/feed';
 import { withApp } from '../../scratch/c3-theme-harness';
 
 // 한 it 안에서 두 번 render 하면 앞의 화면이 DOM 에 남는다. 주소마다 it 을 따로 둔다.
 function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const router = createMemoryRouter(routesWithFeed(), { initialEntries: [path] });
   return render(withApp(<RouterProvider router={router} />));
 }
 
@@ -44,14 +44,14 @@ describe('C-2 Step 1 — 주소의 일부를 값으로 받는다', () => {
 
 describe('C-2 Step 1 — 주소 표의 :postId', () => {
   it('p/:postId 는 Layout 의 자식이라 매치가 2단이다', () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/p/1'] });
+    const router = createMemoryRouter(routesWithFeed(), { initialEntries: ['/p/1'] });
 
     expect(router.state.location.pathname).toBe('/p/1');
     expect(router.state.matches).toHaveLength(2);
   });
 
   it('주소에서 뽑은 값은 숫자가 아니라 문자열이다', () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/p/1'] });
+    const router = createMemoryRouter(routesWithFeed(), { initialEntries: ['/p/1'] });
     const params = router.state.matches.at(-1)?.params;
 
     expect(params?.postId).toBe('1');
@@ -59,7 +59,7 @@ describe('C-2 Step 1 — 주소 표의 :postId', () => {
   });
 
   it('그래서 그냥 찾으면 못 찾고, 숫자로 바꿔야 찾는다', () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/p/1'] });
+    const router = createMemoryRouter(routesWithFeed(), { initialEntries: ['/p/1'] });
     const postId = router.state.matches.at(-1)?.params.postId;
 
     // id 는 number, postId 는 string — 둘은 영원히 안 맞는다
@@ -68,7 +68,7 @@ describe('C-2 Step 1 — 주소 표의 :postId', () => {
   });
 
   it('고정 주소는 그대로 산다 — /signup 이 :postId 에 먹히지 않는다', () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/signup'] });
+    const router = createMemoryRouter(routesWithFeed(), { initialEntries: ['/signup'] });
 
     expect(router.state.location.pathname).toBe('/signup');
     expect(router.state.matches.at(-1)?.params.postId).toBeUndefined();

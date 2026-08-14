@@ -1,9 +1,9 @@
+import { routesWithFeed } from '../../scratch/c1-router-harness';
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router';
 import { withApp } from '../../scratch/c3-theme-harness';
-import { routes } from './routes';
 import { Feed } from '../components/Feed';
 import { PostCard } from '../components/PostCard';
 import { feedPosts } from '../data/feed';
@@ -42,7 +42,7 @@ describe('배달을 걷어낸 뒤', () => {
   });
 
   it('열고 닫는 것도 그대로다 — 주소가 따라 움직인다', async () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+    const router = createMemoryRouter(routesWithFeed(), { initialEntries: ['/'] });
     render(withApp(<RouterProvider router={router} />));
 
     const [trigger] = screen.getAllByRole('button', { name: /모두 보기/ });

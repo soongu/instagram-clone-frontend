@@ -4,8 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect } from 'vitest';
 import { Avatar } from './Avatar';
 import { PostCard } from './PostCard';
-import { HomePage } from '../routes/HomePage';
 import { feedPosts } from '../data/feed';
+import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
 
 const [firstPost] = feedPosts;
@@ -64,7 +64,7 @@ describe('PostCard', () => {
 
 describe('HomePage', () => {
   it('카드 두 장을 나란히 그린다', () => {
-    const html = renderToStaticMarkup(withRouter(<HomePage />));
+    const html = renderToStaticMarkup(withRouter(<FeedSection posts={feedPosts} />));
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('minji');

@@ -5,11 +5,11 @@ import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { toB3Classes, b3BridgeHits, toVisibleText } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect } from 'vitest';
-import { HomePage } from '../routes/HomePage';
-import { pageMarkup, withRouter } from '../../scratch/c1-router-harness';
+import { feedPosts } from '../data/feed';
+import { FeedSection } from '../components/FeedSection';
+import { homeMarkup, withRouter } from '../../scratch/c1-router-harness';
 import { AppBeforeHook } from '../../scratch/b3-lecture-snapshots';
 import { useLikeToggle } from './useLikeToggle';
-import { feedPosts } from '../data/feed';
 
 describe('useLikeToggle — 훅만 따로 돌려본다', () => {
   it('넘긴 게시물을 그대로 돌려주고, 좋아요 누른 수를 함께 센다', () => {
@@ -78,7 +78,7 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
   it('첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다', () => {
     const before = renderToStaticMarkup(withRouter(<AppBeforeHook />));
     // C-1 에서 main·머리말이 Layout 으로 옮겨갔다. 견주려면 껍데기까지 함께 그려야 한다.
-    const rendered = pageMarkup('/');
+    const rendered = homeMarkup();
     const after = withoutSiteNav(withoutThemeToggle(toB3Classes(rendered)));
 
     // 잘라낸 뒤에도 비교할 알맹이가 남아 있어야 한다
@@ -97,7 +97,7 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
 
   it('좋아요를 누르면 머리말 숫자가 함께 올라간다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
 

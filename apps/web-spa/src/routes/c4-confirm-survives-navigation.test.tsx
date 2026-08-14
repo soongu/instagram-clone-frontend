@@ -1,9 +1,9 @@
+import { routesWithFeed } from '../../scratch/c1-router-harness';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { withApp } from '../../scratch/c3-theme-harness';
-import { routes } from './routes';
 import { useConfirmStore } from '../stores/useConfirmStore';
 import { closeConfirmOnNavigate } from '../lib/closeConfirmOnNavigate';
 
@@ -14,7 +14,7 @@ beforeEach(() => {
 
 async function openConfirmOnHome() {
   const user = userEvent.setup();
-  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+  const router = createMemoryRouter(routesWithFeed(), { initialEntries: ['/'] });
 
   render(withApp(<RouterProvider router={router} />));
 

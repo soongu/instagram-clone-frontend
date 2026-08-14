@@ -2,7 +2,8 @@
 // 같은 문구가 연달아 뜰 때 타이머가 다시 걸리는지를 두 판으로 나란히 잰다.
 import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { HomePage } from '../routes/HomePage';
+import { feedPosts } from '../data/feed';
+import { FeedSection } from './FeedSection';
 import { AppStringToast } from '../../scratch/a5-toast-before';
 import { withRouter } from '../../scratch/c1-router-harness';
 
@@ -71,7 +72,7 @@ describe('같은 문구가 연달아 뜰 때', () => {
   });
 
   it('리듀서로 옮긴 판 — 두 번째 알림이 3 초를 온전히 채운다', () => {
-    render(withRouter(<HomePage />));
+    render(withRouter(<FeedSection posts={feedPosts} />));
     const result = reachBottomTwice();
 
     expect(result.firstMessage).toBe('게시물을 모두 확인했습니다 · 좋아요 1개');
@@ -125,6 +126,6 @@ describe('두 번째 알림이 화면에 머문 시간을 정확히 재면', () 
   });
 
   it('리듀서 판은 3000ms', () => {
-    expect(liveMsAfterSecondToast(<HomePage />)).toBe(3000);
+    expect(liveMsAfterSecondToast(<FeedSection posts={feedPosts} />)).toBe(3000);
   });
 });

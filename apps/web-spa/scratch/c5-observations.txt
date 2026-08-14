@@ -1,0 +1,142 @@
+C-5 관찰 채증 — 서버 상태 ① (Axios·useQuery 로 가져온다)
+================================================================
+
+기록 시점: 2026-08-14
+브랜치: module-C5-tanstack-query (module-C4-zustand 1801089 에서 분기)
+
+
+0. 버전 실측 (npm registry — WebSearch 아님, C-4 교훈)
+----------------------------------------------------------------
+  npm view @tanstack/react-query version   → 5.101.4  (published 2026-07-21)
+  npm view axios version                   → 1.19.0   (published 2026-07-29)
+  npm view msw version                     → 2.15.0   (published 2026-07-08)
+  npm view @tanstack/react-query-devtools   → 5.101.4  (본체와 같은 버전)
+
+  @tanstack/react-query 5.101.4 의 peerDependencies: { "react": "^18 || ^19" }
+  → 우리 19.2.8 통과. 커리큘럼이 적어둔 5.101.0 에서 patch 만 올랐다.
+
+  ⚠️ 커리큘럼 표의 TanStack Query 5.101.0 · 과목 CLAUDE.md 의 MSW 2.14.6 을
+     실측값으로 갱신했다. axios 행은 커리큘럼에 아예 없어서 신설했다.
+
+
+1. :8090 에 붙일 실물이 없었다 (모듈 착수 전제 조건)
+----------------------------------------------------------------
+  현행 백엔드 lectures/spring-boot/instagram-clone-v2/src 의 컨트롤러:
+      core/api/HelloController.java   ← 이것 하나뿐
+
+  즉 게시물 API 가 없다. ApiResponse 만 있다:
+      public record ApiResponse<T>(boolean success, T data, String message)
+      ok(data)      → { success:true,  data,       message:null }
+      error(message)→ { success:false, data:null,  message }
+
+  레거시 instagram-clone-with-jpa202502 에는 PostController·CommentController·
+  AuthController 가 전부 있지만 봉투가 다르다:
+      record ApiResponse<T>(boolean success, T data, ErrorResponse error)
+      → 실패가 { success:false, data:null, error:{ code, message } }
+  과목 canon 은 v2 쪽(message 한 칸)이라 레거시를 그대로 쓰면 어긋난다.
+
+  => 사용자 승인으로 apps/api-stub/server.mjs 를 세웠다. Node 내장 http 만
+     쓰므로 설치할 것이 없고, v2 봉투를 그대로 말한다.
+
+
+2. 연습용 서버 실측 (DELAY_MS=0 으로 띄워 curl 로 확인)
+----------------------------------------------------------------
+  GET  /api/posts            → 200 { success:true, data:[10장], message:null }
+  GET  /api/posts/999        → 404 { success:false, data:null,
+                                     message:"게시물을 찾을 수 없습니다" }
+  POST /api/posts/1/like     → 401 { ..., message:"로그인이 필요합니다" }  (토큰 없음)
+
+  로그인 → 토큰 발급:
+  POST /api/auth/login {"username":"jaehoon"}
+       → { accessToken:"access-1", refreshToken:"refresh-2", user:{...} }
+
+  좋아요 1~5회 (매번 새 토큰):
+       1회 200 liked:true  likeCount:1241
+       2회 200 liked:false likeCount:1240
+       3회 200 liked:true  likeCount:1241
+       4회 200 liked:false likeCount:1240
+       5회 500 { success:false, message:"좋아요를 저장하지 못했습니다" }
+       → LIKE_FAIL_EVERY=5 가 실제로 다섯 번째에서 떨어진다 (롤백 교보재)
+
+  같은 액세스 토큰으로 4회 (ACCESS_TOKEN_USES=3):
+       1회 200 · 2회 200 · 3회 200 · 4회 401
+       → 401 갱신을 눈으로 볼 수 있다
+
+  남의 댓글 삭제:
+  DELETE /api/comments/1 (jaehoon 토큰, 그 댓글은 minji 것)
+       → 403 { success:false, message:"내가 쓴 댓글만 지울 수 있습니다" }
+       → C-4 확인 상자 되돌리기(C-6)의 재료
+
+
+3. Step 1 실측 — 직접 effect+fetch 로 짠 판
+----------------------------------------------------------------
+  검증 파일: src/routes/c5-effect-fetch.test.tsx (11건 통과)
+
+  (a) 첫 페인트에 게시물이 0장
+      renderToStaticMarkup(withRouter(<HomePage />)) 안에
+      'jaehoon' 0건 · <article data-slot="card" 0건 · '피드를 불러오는 중이에요' 1건
+
+  (b) 봉투를 열어봐야 실패를 안다
+      500 + { success:false, message:"피드를 만들지 못했습니다" } 를 내려도
+      fetch 는 reject 하지 않는다. body.success 를 보고서야 오류 화면이 뜬다.
+      (Step 2 에서 이 함정을 정면으로 다룬다 — Axios 는 여기서 갈린다)
+
+  (c) ★ StrictMode 에서 화면 하나에 요청이 두 번
+      requestLog === ['GET /api/posts', 'GET /api/posts']
+      B-4 의 이중 실행이 "리스너 두 번" 이 아니라 "요청 두 번" 으로 돌아왔다.
+
+  (d) 같은 피드를 두 곳에서 그리면 요청도 두 번
+      HomePage 를 나란히 두 번 그리면 requestLog 길이 2 · 카드 20장.
+      두 화면이 같은 데이터를 봐도 공유되는 것이 없다.
+
+  (e) ★ 초기값 함정 — 나중에 도착한 배열은 안 들어간다
+      render(<FeedSection posts={[]} />) → 카드 0장
+      rerender(<FeedSection posts={allPosts} />) → 여전히 카드 0장
+      useFeed 안이 useReducer(feedReducer, createFeedState(initialPosts)) 이고
+      초기값은 첫 렌더에서 한 번만 읽힌다 (A-5 회수).
+      => 그래서 HomePage 는 "데이터가 온 뒤에 FeedSection 을 마운트" 하는 쪽으로
+         갔다. 부모가 useFeed(posts) 를 부르는 판은 영영 빈 화면이 된다.
+
+  (f) 린트 — setState 를 effect 본문에서 부르지 않았으므로 통과
+      C-2 가 남긴 scratch/c2-effect-lint.txt 의 react-hooks/set-state-in-effect
+      는 effect 본문에서 곧바로 부를 때만 뜬다. .then 콜백 안은 안 뜬다.
+      eslint 0 확인.
+
+
+4. Step 1 blast radius — 앞 모듈 테스트 18파일이 물었다
+----------------------------------------------------------------
+  홈이 서버를 부르는 순간 "홈은 즉시 그려진다" 는 전제가 깨져 42건이 실패했다.
+  단언은 한 줄도 고치지 않고 두 가지로 처리했다.
+
+  (1) 피드 내용·동작을 보던 판 11파일 → <HomePage /> 를 <FeedSection posts={feedPosts} />
+      (a4-typing · a5-toast-reset · a6-icon-button · a6-list · b1-render ·
+       b2-form · b2-lifting · b4-toast · e4-dark-mode · e7-visual-polish ·
+       b3-use-like-toggle)
+      그 판들은 애초에 가져오기를 보던 게 아니라 피드를 보고 있었다.
+
+  (2) 라우팅·모달·store 를 보던 판 10파일 → createMemoryRouter(routes)
+      를 createMemoryRouter(routesWithFeed()) 로
+      (c1-layout · c1-link · c1-routes-split · c2-loader · c2-modal-address ·
+       c2-navigate · c2-post-detail · c4-state-split ·
+       c4-confirm-survives-navigation · c4-props-delivery)
+      routesWithFeed() 는 홈 자리만 "게시물을 이미 쥔 홈" 으로 갈아 끼운
+      라우트 표다 (scratch/c1-router-harness.tsx).
+      pageMarkup('/') 를 쓰던 3자리는 homeMarkup() 으로.
+
+  ⚠️⚠️ 처음엔 test-setup.ts 에 MSW 를 전역으로 켜서 모든 판이 진짜 네트워크를
+     재게 만들었다. 결과는 더 나빠졌다 — 96파일 전부에 가로채기 비용이 붙어
+     userEvent 판들이 타임아웃으로 무더기 실패(26건). 되돌리고 (2) 로 갔다.
+     원칙: 네트워크를 보지 않는 판에 네트워크를 얹지 않는다.
+
+  ⚠️⚠️⚠️ 측정이 틀린 사고 — 전체 테스트를 두 개 동시에 돌리면 거짓 실패가 쏟아진다.
+     같은 코드에서 한 번은 48건 실패, 단독 실행은 1건 실패.
+     겹친 실행이 서로의 CPU 를 빼앗아 userEvent·findBy 가 1초 안에 못 끝난다.
+     C-4 의 "act() 를 안 하면 코드가 아니라 측정이 틀린다" 와 같은 계열.
+     => 게이트 수치는 반드시 단독 실행으로 잰다.
+
+
+5. Step 1 게이트
+----------------------------------------------------------------
+  npm test (단독)  96 files / 703 passed   (C-4: 95 / 692)
+  tsc --noEmit     0
+  eslint           0
