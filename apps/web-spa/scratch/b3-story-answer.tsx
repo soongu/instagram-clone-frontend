@@ -127,6 +127,7 @@ export function PostCardWithSave({
         onLike={() => onToggleLike(id)}
       />
       <PostBody
+        id={id}
         username={username}
         profileImageUrl={profileImageUrl}
         imageUrl={imageUrl}
@@ -241,6 +242,7 @@ function WrongPostCard({
         onLike={() => onToggleLike(id)}
       />
       <PostBody
+        id={id}
         username={username}
         profileImageUrl={profileImageUrl}
         imageUrl={imageUrl}

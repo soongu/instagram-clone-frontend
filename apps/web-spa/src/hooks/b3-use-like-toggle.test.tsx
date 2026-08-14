@@ -76,7 +76,7 @@ function withoutSiteNav(html: string) {
 
 describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로다', () => {
   it('첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다', () => {
-    const before = renderToStaticMarkup(<AppBeforeHook />);
+    const before = renderToStaticMarkup(withRouter(<AppBeforeHook />));
     // C-1 에서 main·머리말이 Layout 으로 옮겨갔다. 견주려면 껍데기까지 함께 그려야 한다.
     const rendered = pageMarkup('/');
     const after = withoutSiteNav(withoutThemeToggle(toB3Classes(rendered)));
@@ -109,7 +109,7 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
 
   it('옮기기 전 App 도 같은 방식으로 동작한다', async () => {
     const user = userEvent.setup();
-    render(<AppBeforeHook />);
+    render(withRouter(<AppBeforeHook />));
 
     await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 

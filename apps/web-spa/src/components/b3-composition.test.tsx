@@ -9,12 +9,13 @@ import { PostBody } from './PostBody';
 import { PostCard } from './PostCard';
 import { CommentList } from './CommentList';
 import { feedPosts } from '../data/feed';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 const [firstPost] = feedPosts;
 
 describe('PostHeader — 카드의 머리 구역', () => {
   it('작성자 이름과 프로필 사진을 그린다', () => {
-    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+    render(withRouter(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />));
 
     expect(screen.getByText('jaehoon')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'jaehoon 프로필 사진' })).toHaveAttribute(
@@ -24,7 +25,7 @@ describe('PostHeader — 카드의 머리 구역', () => {
   });
 
   it('프로필 옆에 더보기 버튼이 함께 선다 — 묶을 것이 둘이라 파일을 따로 둔다', () => {
-    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+    render(withRouter(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />));
 
     const more = screen.getByRole('button', { name: '게시물 메뉴' });
     // E-7 에서 이 자리의 문자가 그림으로 바뀌었다. B-3 이 지키려던 것은
@@ -35,7 +36,7 @@ describe('PostHeader — 카드의 머리 구역', () => {
 
   it('더보기 버튼은 아직 아무 일도 하지 않는다 — 눌러도 화면이 그대로다', async () => {
     const user = userEvent.setup();
-    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+    render(withRouter(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />));
     // 들여온 Avatar 는 처음 나타날 때 data-starting-style 표시를 잠깐 달았다 뗀다.
     // 더보기 버튼과 무관한 표시라 견주기 전에 걷어낸다.
     const 머리구역 = () =>
@@ -55,7 +56,7 @@ describe('PostImage — 사진 구역이 자기 이벤트를 가진다', () => {
   it('더블클릭하면 부모가 준 함수를 부른다', async () => {
     const onLike = vi.fn();
     const user = userEvent.setup();
-    render(<PostImage imageUrl="/post1.jpg" username="jaehoon" onLike={onLike} />);
+    render(withRouter(<PostImage imageUrl="/post1.jpg" username="jaehoon" onLike={onLike} />));
 
     await user.dblClick(screen.getByRole('img', { name: 'jaehoon 의 게시물' }));
 
@@ -65,7 +66,7 @@ describe('PostImage — 사진 구역이 자기 이벤트를 가진다', () => {
   it('한 번 클릭으로는 아무 일도 없다', async () => {
     const onLike = vi.fn();
     const user = userEvent.setup();
-    render(<PostImage imageUrl="/post1.jpg" username="jaehoon" onLike={onLike} />);
+    render(withRouter(<PostImage imageUrl="/post1.jpg" username="jaehoon" onLike={onLike} />));
 
     await user.click(screen.getByRole('img', { name: 'jaehoon 의 게시물' }));
 
@@ -78,7 +79,8 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
     const onToggle = vi.fn();
     const user = userEvent.setup();
     render(
-      <PostBody
+      withRouter(<PostBody
+        id={1}
         username="jaehoon"
         profileImageUrl="/jaehoon.jpg"
         imageUrl="/post-1.jpg"
@@ -87,7 +89,7 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
         likeCount={1240}
         commentCount={32}
         onToggle={onToggle}
-      />,
+      />),
     );
 
     await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
@@ -97,7 +99,8 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
 
   it('좋아요 수·캡션·댓글 수를 함께 그린다', () => {
     render(
-      <PostBody
+      withRouter(<PostBody
+        id={1}
         username="jaehoon"
         profileImageUrl="/jaehoon.jpg"
         imageUrl="/post-1.jpg"
@@ -106,7 +109,7 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
         likeCount={1241}
         commentCount={33}
         onToggle={() => {}}
-      />,
+      />,)
     );
 
     expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
@@ -118,12 +121,12 @@ describe('PostBody — 좋아요·캡션·댓글 수 구역', () => {
 describe('CommentList — 카드 안에 있던 목록을 꺼낸다', () => {
   it('넘긴 댓글을 순서대로 그린다', () => {
     render(
-      <CommentList
+      withRouter(<CommentList
         comments={[
           { id: 1, content: '노을 최고' },
           { id: 2, content: '어디예요?' },
         ]}
-      />,
+      />),
     );
 
     const items = screen.getAllByRole('listitem');
@@ -133,7 +136,7 @@ describe('CommentList — 카드 안에 있던 목록을 꺼낸다', () => {
   });
 
   it('댓글이 없어도 목록 자리는 남는다', () => {
-    render(<CommentList comments={[]} />);
+    render(withRouter(<CommentList comments={[]} />));
 
     expect(screen.getByRole('list')).toBeEmptyDOMElement();
   });
@@ -143,7 +146,7 @@ describe('PostCard — 세 구역으로 나눈 뒤에도 동작은 그대로다'
   it('이미지를 더블클릭하면 좋아요 요청이 부모로 올라간다', async () => {
     const onToggleLike = vi.fn();
     const user = userEvent.setup();
-    render(<PostCard {...firstPost} onToggleLike={onToggleLike} />);
+    render(withRouter(<PostCard {...firstPost} onToggleLike={onToggleLike} />));
 
     await user.dblClick(screen.getByRole('img', { name: 'jaehoon 의 게시물' }));
 
@@ -153,7 +156,7 @@ describe('PostCard — 세 구역으로 나눈 뒤에도 동작은 그대로다'
   it('좋아요 버튼을 눌러도 같은 요청이 올라간다', async () => {
     const onToggleLike = vi.fn();
     const user = userEvent.setup();
-    render(<PostCard {...firstPost} onToggleLike={onToggleLike} />);
+    render(withRouter(<PostCard {...firstPost} onToggleLike={onToggleLike} />));
 
     await user.click(screen.getByRole('button', { name: '좋아요', pressed: false }));
 
@@ -162,7 +165,7 @@ describe('PostCard — 세 구역으로 나눈 뒤에도 동작은 그대로다'
 
   it('댓글을 달면 카드 안 목록과 댓글 수가 함께 늘어난다', async () => {
     const user = userEvent.setup();
-    render(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    render(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     await user.type(screen.getByLabelText('댓글 입력'), '노을 최고');
     await user.click(screen.getByRole('button', { name: '게시' }));

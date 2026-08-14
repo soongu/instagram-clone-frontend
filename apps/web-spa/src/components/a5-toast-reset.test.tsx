@@ -59,7 +59,7 @@ describe('같은 문구가 연달아 뜰 때', () => {
   });
 
   it('문자열로 들고 있던 판 — 두 번째 알림이 자기 시간을 못 채운다', () => {
-    render(<AppStringToast />);
+    render(withRouter(<AppStringToast />));
     const result = reachBottomTwice();
 
     // 피드에 minji 것 하나가 이미 좋아요 상태라 1 개다
@@ -103,7 +103,7 @@ describe('두 번째 알림이 화면에 머문 시간을 정확히 재면', () 
   });
 
   function liveMsAfterSecondToast(ui: React.ReactElement) {
-    render(ui);
+    render(withRouter(ui));
     scrollToBottom();
     act(() => {
       vi.advanceTimersByTime(2000);
@@ -125,6 +125,6 @@ describe('두 번째 알림이 화면에 머문 시간을 정확히 재면', () 
   });
 
   it('리듀서 판은 3000ms', () => {
-    expect(liveMsAfterSecondToast(withRouter(<HomePage />))).toBe(3000);
+    expect(liveMsAfterSecondToast(<HomePage />)).toBe(3000);
   });
 });

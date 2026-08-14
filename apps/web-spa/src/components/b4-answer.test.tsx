@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useWindowWidth, AppWithWidth } from '../../scratch/b4-story-answer';
 import { useLikeToggle } from '../hooks/useLikeToggle';
 import { feedPosts } from '../data/feed';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 function resizeTo(width: number) {
   Object.defineProperty(window, 'innerWidth', {
@@ -28,13 +29,13 @@ describe('과제 1 — 창 너비를 듣는 훅', () => {
   });
 
   it('처음 값은 지금 창 너비다', () => {
-    render(<AppWithWidth />);
+    render(withRouter(<AppWithWidth />));
 
     expect(screen.getByText('너비 1024px')).toBeInTheDocument();
   });
 
   it('창을 줄이면 숫자가 따라온다', () => {
-    render(<AppWithWidth />);
+    render(withRouter(<AppWithWidth />));
 
     resizeTo(500);
 
@@ -42,7 +43,7 @@ describe('과제 1 — 창 너비를 듣는 훅', () => {
   });
 
   it('640 미만이면 안내가 뜨고 넘으면 사라진다', () => {
-    render(<AppWithWidth />);
+    render(withRouter(<AppWithWidth />));
     expect(screen.queryByText(/화면이 좁아요/)).not.toBeInTheDocument();
 
     resizeTo(500);
@@ -55,7 +56,7 @@ describe('과제 1 — 창 너비를 듣는 훅', () => {
   it('화면에서 떨어지면 구독을 끊는다', () => {
     const removeSpy = vi.spyOn(window, 'removeEventListener');
 
-    const view = render(<AppWithWidth />);
+    const view = render(withRouter(<AppWithWidth />));
     view.unmount();
 
     const resizeRemovals = removeSpy.mock.calls.filter((call) => call[0] === 'resize');
@@ -70,7 +71,7 @@ describe('과제 1 — 창 너비를 듣는 훅', () => {
       return <p>{width}</p>;
     }
 
-    const view = render(<Probe />);
+    const view = render(withRouter(<Probe />));
     view.unmount();
 
     // 끊긴 뒤에 창을 줄여도 경고 없이 조용해야 한다
@@ -129,11 +130,7 @@ describe('과제 2 — 클린업을 지웠을 때', () => {
   it('개발 모드에서 리스너가 둘 붙어 한 번 스크롤에 두 줄이 찍힌다', () => {
     const addSpy = spyOnAdd();
 
-    render(
-      <StrictMode>
-        <Screen />
-      </StrictMode>,
-    );
+    render(<StrictMode>{withRouter(<Screen />)}</StrictMode>);
     expect(scrollListenerCount(addSpy)).toBe(2);
 
     act(() => {
@@ -146,7 +143,7 @@ describe('과제 2 — 클린업을 지웠을 때', () => {
   it('StrictMode 를 벗기면 한 줄로 줄어든다 — 문제가 사라진 것은 아니다', () => {
     const addSpy = spyOnAdd();
 
-    render(<Screen />);
+    render(withRouter(<Screen />));
     expect(scrollListenerCount(addSpy)).toBe(1);
 
     act(() => {
@@ -159,7 +156,7 @@ describe('과제 2 — 클린업을 지웠을 때', () => {
   it('화면에서 떠난 뒤에도 안 뗀 리스너는 계속 반응한다', () => {
     spyOnAdd();
 
-    const view = render(<Screen />);
+    const view = render(withRouter(<Screen />));
     view.unmount();
     scrolls.length = 0;
 
@@ -190,7 +187,7 @@ describe('과제 2 — 의존성 배열을 비웠을 때', () => {
   }
 
   it('탭 제목은 처음 값에서 멈추는데 화면 숫자는 따라온다', () => {
-    render(<AppFrozenTitle />);
+    render(withRouter(<AppFrozenTitle />));
     expect(document.title).toBe('인스타그램 (좋아요 1)');
 
     act(() => {

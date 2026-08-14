@@ -13,7 +13,7 @@ const [firstPost] = feedPosts;
 describe('Avatar', () => {
   it('사용자 이름과 프로필 이미지를 그린다', () => {
     const html = renderToStaticMarkup(
-      <Avatar username="jaehoon" profileImageUrl="https://example.com/a.jpg" />,
+      withRouter(<Avatar username="jaehoon" profileImageUrl="https://example.com/a.jpg" />),
     );
 
     expect(html).toContain('jaehoon');
@@ -25,7 +25,7 @@ describe('Avatar', () => {
 
   it('대체 텍스트에 사용자 이름을 넣는다', () => {
     const html = renderToStaticMarkup(
-      <Avatar username="minji" profileImageUrl="https://example.com/b.jpg" />,
+      withRouter(<Avatar username="minji" profileImageUrl="https://example.com/b.jpg" />),
     );
 
     expect(html).toContain('alt="minji 프로필 사진"');
@@ -34,7 +34,7 @@ describe('Avatar', () => {
 
 describe('PostCard', () => {
   it('props 로 받은 값을 화면 문자열로 그린다', () => {
-    const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('오늘 한강 노을이');
@@ -43,7 +43,7 @@ describe('PostCard', () => {
   });
 
   it('Avatar 를 안에 품고 함께 그린다', () => {
-    const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     // E-6 에서 프로필 자리가 들여온 Avatar 로 바뀌었다. 그쪽은 사진을 받아오기 전에는
     // 대체 글자만 그리므로, 여기서는 "카드가 프로필 자리를 품는다" 만 확인한다.
@@ -53,8 +53,8 @@ describe('PostCard', () => {
 
   it('같은 컴포넌트가 다른 props 로 다른 화면을 낸다', () => {
     const [, secondPost] = feedPosts;
-    const firstHtml = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
-    const secondHtml = renderToStaticMarkup(<PostCard {...secondPost} onToggleLike={() => {}} />);
+    const firstHtml = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
+    const secondHtml = renderToStaticMarkup(withRouter(<PostCard {...secondPost} onToggleLike={() => {}} />));
 
     expect(firstHtml).toContain('jaehoon');
     expect(secondHtml).toContain('minji');

@@ -7,6 +7,7 @@ import { useToggle } from './useToggle';
 import { PostBody } from '../components/PostBody';
 import { Feed } from '../components/Feed';
 import { feedPosts } from '../data/feed';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('useToggle — 훅만 따로 돌려본다', () => {
   it('기본값은 꺼짐이고, 부를 때마다 뒤집힌다', () => {
@@ -44,7 +45,8 @@ describe('useToggle — 훅만 따로 돌려본다', () => {
 describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
   it('처음에는 앞부분만 보이고 더 보기 버튼이 붙는다', () => {
     render(
-      <PostBody
+      withRouter(<PostBody
+        id={1}
         username="jaehoon"
         profileImageUrl="/jaehoon.jpg"
         imageUrl="/post-1.jpg"
@@ -53,7 +55,7 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
         likeCount={1240}
         commentCount={32}
         onToggle={() => {}}
-      />,
+      />,)
     );
 
     expect(screen.getByText('오늘 한강 노을이...')).toBeInTheDocument();
@@ -64,7 +66,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
   it('더 보기를 누르면 전문이 나오고 버튼이 접기로 바뀐다', async () => {
     const user = userEvent.setup();
     render(
-      <PostBody
+      withRouter(<PostBody
+        id={1}
         username="jaehoon"
         profileImageUrl="/jaehoon.jpg"
         imageUrl="/post-1.jpg"
@@ -73,7 +76,7 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
         likeCount={1240}
         commentCount={32}
         onToggle={() => {}}
-      />,
+      />,)
     );
 
     await user.click(screen.getByRole('button', { name: '더 보기' }));
@@ -88,7 +91,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
 
   it('짧은 캡션에는 버튼 자체가 안 붙는다', () => {
     render(
-      <PostBody
+      withRouter(<PostBody
+        id={1}
         username="jaehoon"
         profileImageUrl="/jaehoon.jpg"
         imageUrl="/post-1.jpg"
@@ -97,7 +101,7 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
         likeCount={1240}
         commentCount={32}
         onToggle={() => {}}
-      />,
+      />,)
     );
 
     expect(screen.getByText('노을')).toBeInTheDocument();
@@ -107,7 +111,8 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
   it('캡션을 펼쳐도 좋아요는 부모 몫 그대로다', async () => {
     const user = userEvent.setup();
     render(
-      <PostBody
+      withRouter(<PostBody
+        id={1}
         username="jaehoon"
         profileImageUrl="/jaehoon.jpg"
         imageUrl="/post-1.jpg"
@@ -116,7 +121,7 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
         likeCount={1240}
         commentCount={32}
         onToggle={() => {}}
-      />,
+      />,)
     );
 
     await user.click(screen.getByRole('button', { name: '더 보기' }));
@@ -129,7 +134,7 @@ describe('PostBody — 긴 캡션을 접었다 폈다 한다', () => {
 describe('같은 훅을 쓰는 카드가 둘이어도 상태는 각자의 것이다', () => {
   it('한 카드의 캡션을 펼쳐도 다른 카드는 접힌 채로 있다', async () => {
     const user = userEvent.setup();
-    render(<Feed posts={feedPosts} onToggleLike={() => {}} />);
+    render(withRouter(<Feed posts={feedPosts} onToggleLike={() => {}} />));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
 

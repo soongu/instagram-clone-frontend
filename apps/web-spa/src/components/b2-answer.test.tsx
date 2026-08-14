@@ -9,6 +9,7 @@ import {
   AppWithFilter,
 } from '../../scratch/b2-story-answer';
 import { feedPosts } from '../data/feed';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('태그 모으기', () => {
   it('데이터에서 중복 없이 뽑아낸다', () => {
@@ -52,7 +53,7 @@ describe('게시물 걸러내기', () => {
 
 describe('걸러내기를 붙인 App', () => {
   it('처음에는 전체가 선택돼 있고 카드가 다 보인다', () => {
-    render(<AppWithFilter />);
+    render(withRouter(<AppWithFilter />));
 
     expect(screen.getByRole('button', { name: '전체' })).toHaveClass('selected');
     expect(screen.getAllByRole('article')).toHaveLength(2);
@@ -60,7 +61,7 @@ describe('걸러내기를 붙인 App', () => {
 
   it('태그를 고르면 그 태그의 게시물만 남는다', async () => {
     const user = userEvent.setup();
-    render(<AppWithFilter />);
+    render(withRouter(<AppWithFilter />));
 
     await user.click(screen.getByRole('button', { name: '#제주도' }));
 
@@ -71,7 +72,7 @@ describe('걸러내기를 붙인 App', () => {
 
   it('고른 태그 버튼만 구별되게 보인다', async () => {
     const user = userEvent.setup();
-    render(<AppWithFilter />);
+    render(withRouter(<AppWithFilter />));
 
     await user.click(screen.getByRole('button', { name: '#한강' }));
 
@@ -86,7 +87,7 @@ describe('걸러내기를 붙인 App', () => {
 
   it('전체를 다시 누르면 모두 돌아온다', async () => {
     const user = userEvent.setup();
-    render(<AppWithFilter />);
+    render(withRouter(<AppWithFilter />));
 
     await user.click(screen.getByRole('button', { name: '#한강' }));
     await user.click(screen.getByRole('button', { name: '전체' }));
@@ -96,7 +97,7 @@ describe('걸러내기를 붙인 App', () => {
 
   it('태그를 걸러내도 눌러둔 좋아요가 유지된다', async () => {
     const user = userEvent.setup();
-    render(<AppWithFilter />);
+    render(withRouter(<AppWithFilter />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));

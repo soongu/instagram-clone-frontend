@@ -63,8 +63,8 @@ describe('Step 2 — 갈리는 조건을 창에서 통으로 옮긴다', () => {
   });
 
   it('두 열로 갈리는 곳은 통을 본다', () => {
-    const feed = renderToStaticMarkup(<Feed posts={feedPosts} onToggleLike={() => {}} />);
-    const card = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const feed = renderToStaticMarkup(withRouter(<Feed posts={feedPosts} onToggleLike={() => {}} />));
+    const card = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     expect(feed).toContain('@2col:grid-cols-2');
     expect(card).toContain('@2col:mb-0');
@@ -73,8 +73,8 @@ describe('Step 2 — 갈리는 조건을 창에서 통으로 옮긴다', () => {
   // 통을 재는 상자와 폭 상한은 같은 요소가 겸할 수 없다.
   // main 이 재는 쪽을 맡았으니 상한은 카드와 폼이 각자 갖는다.
   it('한 줄짜리 폭 상한은 카드와 폼이 직접 갖는다', () => {
-    const card = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
-    const form = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
+    const card = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
+    const form = renderToStaticMarkup(withRouter(<SignUpForm onSubmit={() => {}} />));
 
     expect(card).toContain('max-w-[470px]');
     expect(form).toContain('max-w-[470px]');
@@ -89,11 +89,11 @@ describe('Step 3 — 같은 글자가 두 통에서 다르게 읽힌다', () => 
   // 미디어 쿼리로는 이 둘을 다르게 만들 방법이 없다.
   it('카드 안과 모달 안에 똑같은 글자가 들어 있다', async () => {
     const user = userEvent.setup();
-    const card = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const card = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     expect(card).toContain(넓을_때만);
 
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
     const 상자 = await screen.findByRole('dialog');
 
@@ -102,14 +102,14 @@ describe('Step 3 — 같은 글자가 두 통에서 다르게 읽힌다', () => 
 
   // 통을 선언 안 하면 카드 안쪽이 바깥 main 을 보고 갈려 버린다.
   it('카드가 스스로 통이 된다 — 안 그러면 바깥을 보고 갈린다', () => {
-    const card = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const card = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     expect(card).toContain('@container');
   });
 
   it('모달도 스스로 통이 되고, 갈릴 만큼 넓어졌다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
 
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
     const 상자 = await screen.findByRole('dialog');
@@ -120,7 +120,7 @@ describe('Step 3 — 같은 글자가 두 통에서 다르게 읽힌다', () => 
 
   it('모달 안은 통이 넓어지면 사진과 글이 나란히 선다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
 
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
     const 상자 = await screen.findByRole('dialog');
@@ -132,7 +132,7 @@ describe('Step 3 — 같은 글자가 두 통에서 다르게 읽힌다', () => 
   // 화면에서 안 보이게 하더라도 이름 자체는 남겨 둔다.
   it('화면에서 감췄어도 대화 상자 이름은 남아 있다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
 
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
     const 상자 = await screen.findByRole('dialog');
@@ -145,7 +145,7 @@ describe('Step 3 — 같은 글자가 두 통에서 다르게 읽힌다', () => 
 
 describe('Step 4 — 문자 자리에 아이콘을 놓는다', () => {
   const 더보기 = () => {
-    render(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />);
+    render(withRouter(<PostHeader username="jaehoon" profileImageUrl="/jaehoon.jpg" />));
     return screen.getByRole('button', { name: '게시물 메뉴' });
   };
 
@@ -191,7 +191,7 @@ describe('Step 4 — 문자 자리에 아이콘을 놓는다', () => {
   });
 
   it('댓글 삭제 자리도 같은 방식으로 바뀌었다', () => {
-    render(<CommentList comments={[{ id: 1, content: '좋아요!' }]} onRemove={() => {}} />);
+    render(withRouter(<CommentList comments={[{ id: 1, content: '좋아요!' }]} onRemove={() => {}} />));
     const remove = screen.getByRole('button', { name: '댓글 삭제' });
     const svg = remove.querySelector('svg');
 
@@ -209,7 +209,7 @@ describe('Step 4 — 문자 자리에 아이콘을 놓는다', () => {
 
 describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
   const 좋아요 = (liked: boolean) => {
-    render(<LikeButton liked={liked} likeCount={1240} onToggle={() => {}} />);
+    render(withRouter(<LikeButton liked={liked} likeCount={1240} onToggle={() => {}} />));
     return screen.getByRole('button', { name: '좋아요' });
   };
 
@@ -224,7 +224,7 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
   // 글자가 있을 때는 이름이 '♡ 좋아요' 에서 '♥ 좋아요 취소' 로 바뀌면서
   // 상태까지 함께 알려줬다. 아이콘만 남으면 이름이 안 바뀐다.
   it('이름은 그대로고, 눌렸다는 것은 따로 알린다', () => {
-    const { unmount } = render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+    const { unmount } = render(withRouter(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />));
 
     expect(screen.getByRole('button', { name: '좋아요' })).toHaveAttribute(
       'aria-pressed',
@@ -232,7 +232,7 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
     );
 
     unmount();
-    render(<LikeButton liked likeCount={1241} onToggle={() => {}} />);
+    render(withRouter(<LikeButton liked likeCount={1241} onToggle={() => {}} />));
 
     // 이름으로 찾는 방법이 그대로 통한다 — 바뀐 것은 눌림 표시뿐이다
     expect(screen.getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'true');
@@ -255,13 +255,13 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
   // 인스타그램에는 아이콘이 넷이지만 우리 앱에 있는 동작은 좋아요 하나다.
   // 흉내만 낸 버튼을 놓으면 낭독기 사용자에게 "누를 수 있다" 고 거짓말을 하게 된다.
   it('동작이 없는 아이콘은 줄에 놓지 않는다', () => {
-    render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+    render(withRouter(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />));
 
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 
   it('개수 줄은 그대로 남아 있다', () => {
-    render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+    render(withRouter(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />));
 
     expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
   });
@@ -276,7 +276,7 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
 
 describe('Step 6 — 누르면 반응하게', () => {
   const 하트버튼 = (liked: boolean) => {
-    render(<LikeButton liked={liked} likeCount={1240} onToggle={() => {}} />);
+    render(withRouter(<LikeButton liked={liked} likeCount={1240} onToggle={() => {}} />));
     return screen.getByRole('button', { name: '좋아요' });
   };
 
@@ -335,13 +335,13 @@ describe('Step 8 — 화면 전체를 훑는다', () => {
   // 하트(그림)는 3:1 이면 되지만 오류 글자는 4.5:1 이 필요하다.
   // 우리 빨강 하나로는 두 화면을 다 만족시킬 수 없어서 글자용을 따로 뒀다.
   it('오류 글자는 그림용 빨강이 아니라 글자용 빨강을 쓴다', () => {
-    render(<TextField id="email" label="이메일" name="email" error="이메일 형식이 아니에요" />);
+    render(withRouter(<TextField id="email" label="이메일" name="email" error="이메일 형식이 아니에요" />));
 
     expect(screen.getByText('이메일 형식이 아니에요').className).toContain('text-danger-strong');
   });
 
   it('하트는 그대로 그림용 빨강이다', () => {
-    render(<LikeButton liked likeCount={1} onToggle={() => {}} />);
+    render(withRouter(<LikeButton liked likeCount={1} onToggle={() => {}} />));
 
     const heart = screen.getByRole('button', { name: '좋아요' }).querySelector('svg');
     expect(heart?.getAttribute('class')).toContain('text-danger');
@@ -349,10 +349,10 @@ describe('Step 8 — 화면 전체를 훑는다', () => {
   });
 
   it('누를 자리가 24px 에 못 미치던 셋을 넓혔다', () => {
-    render(<CommentList comments={[{ id: 1, content: '노을 최고' }]} onRemove={() => {}} />);
+    render(withRouter(<CommentList comments={[{ id: 1, content: '노을 최고' }]} onRemove={() => {}} />));
     expect(screen.getByRole('button', { name: '댓글 삭제' }).className).toContain('p-1');
 
-    render(<CommentForm onSubmit={() => {}} />);
+    render(withRouter(<CommentForm onSubmit={() => {}} />));
     expect(screen.getByRole('button', { name: '게시' }).className).toContain('py-1');
     expect(screen.getByLabelText('댓글 입력').className).toContain('py-1');
   });
@@ -361,7 +361,7 @@ describe('Step 8 — 화면 전체를 훑는다', () => {
   // 상자 오른쪽 위 닫기 버튼과 자리를 다툰다. 그 칸만 오른쪽을 비워둔다.
   it('모달이 두 칸일 때 오른쪽 칸은 닫기 버튼 자리를 비워둔다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
 
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
     const 상자 = await screen.findByRole('dialog');

@@ -12,6 +12,7 @@ import { buttonVariants } from './ui/button';
 import { PostCard } from './PostCard';
 import { PostModal } from './PostModal';
 import { feedPosts } from '../data/feed';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 const [firstPost] = feedPosts;
 
@@ -66,7 +67,7 @@ describe('Step 2·3 — cva 가 고르고 cn 이 정리한다', () => {
 
 describe('Step 4 — 붙어 있는 표시와 없는 함수', () => {
   it('들여온 조각마다 자기 이름표를 달고 온다', () => {
-    const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     for (const 이름 of ['card', 'card-header', 'card-content', 'card-footer', 'avatar']) {
       expect(html).toContain(`data-slot="${이름}"`);
@@ -74,7 +75,7 @@ describe('Step 4 — 붙어 있는 표시와 없는 함수', () => {
   });
 
   it('부모가 자식의 이름표를 보고 자기 여백을 정한다', () => {
-    const html = renderToStaticMarkup(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     expect(html).toContain('has-data-[slot=card-footer]:pb-0');
   });
@@ -82,7 +83,7 @@ describe('Step 4 — 붙어 있는 표시와 없는 함수', () => {
 
 describe('Step 7 — 접근성이 딸려온다 (단 제목은 우리가 준다)', () => {
   it('여는 버튼은 무엇이 열릴지 미리 알린다', () => {
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
     const 트리거 = screen.getByRole('button', { name: /모두 보기/ });
 
     expect(트리거).toHaveAttribute('aria-haspopup', 'dialog');
@@ -91,7 +92,7 @@ describe('Step 7 — 접근성이 딸려온다 (단 제목은 우리가 준다)'
 
   it('열면 대화 상자로 읽히고 제목·설명이 이어진다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
 
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
 
@@ -103,7 +104,7 @@ describe('Step 7 — 접근성이 딸려온다 (단 제목은 우리가 준다)'
 
   it('Esc 로 닫히고 포커스는 눌렀던 자리로 돌아온다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
     const 트리거 = screen.getByRole('button', { name: /모두 보기/ });
 
     await user.click(트리거);
@@ -117,14 +118,14 @@ describe('Step 7 — 접근성이 딸려온다 (단 제목은 우리가 준다)'
 
 describe('우리가 고쳐 둔 곳 — add 를 다시 하면 날아가는 자리', () => {
   it('카드는 div 가 아니라 하나의 글로 읽힌다', () => {
-    render(<PostCard {...firstPost} onToggleLike={() => {}} />);
+    render(withRouter(<PostCard {...firstPost} onToggleLike={() => {}} />));
 
     expect(screen.getByRole('article')).toBeInTheDocument();
   });
 
   it('닫기 버튼을 낭독기가 우리말로 읽는다', async () => {
     const user = userEvent.setup();
-    render(<PostModal {...modalProps} />);
+    render(withRouter(<PostModal {...modalProps} />));
 
     await user.click(screen.getByRole('button', { name: /모두 보기/ }));
     await screen.findByRole('dialog');

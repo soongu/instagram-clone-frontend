@@ -11,6 +11,7 @@ import {
   AppWithSavedInCard,
   AppWithSavedMutating,
 } from '../../scratch/b3-story-answer';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('useSavedPosts', () => {
   it('처음에는 아무것도 저장돼 있지 않다', () => {
@@ -79,7 +80,7 @@ describe('useSavedPosts', () => {
 
 describe('SaveButton', () => {
   it('저장 전에는 빈 기호와 "저장" 이라는 이름을 갖는다', () => {
-    render(<SaveButton saved={false} onToggle={() => {}} />);
+    render(withRouter(<SaveButton saved={false} onToggle={() => {}} />));
 
     const button = screen.getByRole('button', { name: '저장' });
     expect(button).toHaveTextContent('⚐');
@@ -88,7 +89,7 @@ describe('SaveButton', () => {
   });
 
   it('저장 후에는 채운 기호와 "저장 취소" 라는 이름으로 바뀐다', () => {
-    render(<SaveButton saved onToggle={() => {}} />);
+    render(withRouter(<SaveButton saved onToggle={() => {}} />));
 
     const button = screen.getByRole('button', { name: '저장 취소' });
     expect(button).toHaveTextContent('⚑');
@@ -96,7 +97,7 @@ describe('SaveButton', () => {
   });
 
   it('form 안에 있어도 제출 버튼이 되지 않는다', () => {
-    render(<SaveButton saved={false} onToggle={() => {}} />);
+    render(withRouter(<SaveButton saved={false} onToggle={() => {}} />));
 
     expect(screen.getByRole('button', { name: '저장' })).toHaveAttribute(
       'type',
@@ -107,14 +108,14 @@ describe('SaveButton', () => {
 
 describe('훅을 App 에서 부른 답안', () => {
   it('처음에는 저장한 게시물이 0개다', () => {
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     expect(screen.getByText('저장한 게시물 0개')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: '저장' })).toHaveLength(2);
   });
 
   it('저장 버튼은 더보기 버튼 왼쪽에 있다', () => {
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     const [firstCard] = screen.getAllByRole('article');
     const buttons = within(firstCard).getAllByRole('button');
@@ -131,7 +132,7 @@ describe('훅을 App 에서 부른 답안', () => {
 
   it('카드에서 저장을 누르면 머리말 합계가 오른다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));
@@ -144,7 +145,7 @@ describe('훅을 App 에서 부른 답안', () => {
 
   it('두 카드를 다 저장하면 합계가 2개가 된다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     for (const button of screen.getAllByRole('button', { name: '저장' })) {
       await user.click(button);
@@ -156,7 +157,7 @@ describe('훅을 App 에서 부른 답안', () => {
 
   it('다시 누르면 합계가 도로 내려간다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));
@@ -169,7 +170,7 @@ describe('훅을 App 에서 부른 답안', () => {
 
   it('한 카드를 저장해도 다른 카드는 그대로다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));
@@ -182,7 +183,7 @@ describe('훅을 App 에서 부른 답안', () => {
 
   it('저장과 좋아요는 서로를 건드리지 않는다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSaved />);
+    render(withRouter(<AppWithSaved />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));
@@ -195,7 +196,7 @@ describe('훅을 App 에서 부른 답안', () => {
 describe('오답판 1 — 훅을 PostCard 안에서 부르면', () => {
   it('버튼 기호는 멀쩡히 바뀐다 (그래서 얼핏 맞아 보인다)', async () => {
     const user = userEvent.setup();
-    render(<AppWithSavedInCard />);
+    render(withRouter(<AppWithSavedInCard />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));
@@ -207,7 +208,7 @@ describe('오답판 1 — 훅을 PostCard 안에서 부르면', () => {
 
   it('그런데 머리말 합계가 0개에서 꿈쩍하지 않는다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSavedInCard />);
+    render(withRouter(<AppWithSavedInCard />));
 
     expect(screen.getByText('저장한 게시물 0개')).toBeInTheDocument();
 
@@ -221,7 +222,7 @@ describe('오답판 1 — 훅을 PostCard 안에서 부르면', () => {
 
   it('카드마다 목록이 따로라 한 장을 저장해도 그 카드만 1개를 안다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSavedInCard />);
+    render(withRouter(<AppWithSavedInCard />));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));
@@ -236,7 +237,7 @@ describe('오답판 1 — 훅을 PostCard 안에서 부르면', () => {
 describe('오답판 2 — 원본 배열을 그 자리에서 고치면', () => {
   it('눌러도 화면이 아예 안 바뀐다', async () => {
     const user = userEvent.setup();
-    render(<AppWithSavedMutating />);
+    render(withRouter(<AppWithSavedMutating />));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: '저장' }));

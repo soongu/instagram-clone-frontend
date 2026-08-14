@@ -25,13 +25,13 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
   });
 
   it('피드 목록은 우리 이름에서 두 열이 된다', () => {
-    const html = renderToStaticMarkup(<Feed posts={feedPosts} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<Feed posts={feedPosts} onToggleLike={() => {}} />));
 
     expect(html).toContain('class="@2col:grid @2col:grid-cols-2 @2col:gap-6"');
   });
 
   it('카드 아래 여백은 두 열이 되는 순간 gap 에게 넘긴다', () => {
-    const html = renderToStaticMarkup(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />));
 
     // E-6 에서 카드 몸통이 들여온 것으로 바뀌었다.
     // 여기서 지키려던 것은 "두 열이 되면 아래 여백을 gap 에게 넘긴다" 쪽이라 그것만 본다.
@@ -40,7 +40,7 @@ describe('Step 1 — 두 열로 갈리는 자리에 우리 이름을 준다', ()
   });
 
   it('회원가입 폼은 통이 넓어져도 따라 늘어나지 않는다', () => {
-    const html = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<SignUpForm onSubmit={() => {}} />));
 
     expect(html).toContain('p-4 max-w-[470px]');
   });
@@ -71,13 +71,13 @@ describe('Step 5·6 — 다크 값은 토큰 한 곳에서 갈린다', () => {
   });
 
   it('우리가 손으로 쓴 화면에는 여전히 dark: 가 하나도 없다', () => {
-    const form = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
+    const form = renderToStaticMarkup(withRouter(<SignUpForm onSubmit={() => {}} />));
 
     expect(form).not.toMatch(/dark:/);
   });
 
   it('카드는 다크모드 전과 똑같은 이름을 쓴다 — 값만 갈린다', () => {
-    const html = renderToStaticMarkup(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />);
+    const html = renderToStaticMarkup(withRouter(<PostCard {...feedPosts[0]} onToggleLike={() => {}} />));
 
     // 이름은 한 개다. 밝을 때와 어두울 때가 이 이름 뒤에서 갈린다.
     expect(html).toContain('bg-card');
@@ -86,8 +86,8 @@ describe('Step 5·6 — 다크 값은 토큰 한 곳에서 갈린다', () => {
   });
 
   it('보조 문구와 폼 라벨도 이름 그대로다', () => {
-    const feed = renderToStaticMarkup(<Feed posts={feedPosts} onToggleLike={() => {}} />);
-    const form = renderToStaticMarkup(<SignUpForm onSubmit={() => {}} />);
+    const feed = renderToStaticMarkup(withRouter(<Feed posts={feedPosts} onToggleLike={() => {}} />));
+    const form = renderToStaticMarkup(withRouter(<SignUpForm onSubmit={() => {}} />));
 
     expect(feed).toContain('text-faint');
     expect(form).toContain('text-subtle');

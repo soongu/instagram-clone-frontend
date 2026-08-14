@@ -5,11 +5,12 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { BrokenApp } from '../../scratch/b2-broken-app';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('그 자리에서 고치면 화면이 안 바뀐다', () => {
   it('좋아요를 눌러도 헤더 숫자도 카드 숫자도 그대로다', async () => {
     const user = userEvent.setup();
-    render(<BrokenApp />);
+    render(withRouter(<BrokenApp />));
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
 

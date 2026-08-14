@@ -1,4 +1,5 @@
 // apps/web-spa/src/components/PostBody.tsx
+import { useSearchParams } from 'react-router';
 import { LikeButton } from './LikeButton';
 import { Button } from './Button';
 import { PostModal } from './PostModal';
@@ -8,6 +9,7 @@ import { useToggle } from '../hooks/useToggle';
 const CAPTION_LIMIT = 10;
 
 interface PostBodyProps {
+  id: number;
   username: string;
   profileImageUrl: string;
   imageUrl: string;
@@ -16,13 +18,11 @@ interface PostBodyProps {
   likeCount: number;
   commentCount: number;
   onToggle: () => void;
-  // 지나가기만 한다 — 이 컴포넌트는 주소를 모른다
-  modalOpen?: boolean;
-  onModalOpenChange?: (open: boolean) => void;
 }
 
 // 사진 아래 본문 구역 — 좋아요·캡션·댓글 수가 함께 산다.
 export function PostBody({
+  id,
   username,
   profileImageUrl,
   imageUrl,
@@ -31,10 +31,13 @@ export function PostBody({
   likeCount,
   commentCount,
   onToggle,
-  modalOpen,
-  onModalOpenChange,
 }: PostBodyProps) {
   const [captionOpen, toggleCaption] = useToggle();
+
+  // 위에서 받아 넘기지 않고 여기서 직접 읽는다.
+  // 이 값은 원래 주소에 적혀 있었고, 주소는 누구나 물어볼 수 있다.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openPostId = searchParams.get('post');
   const isLong = content.length > CAPTION_LIMIT;
   const shownContent =
     isLong && !captionOpen ? `${content.slice(0, CAPTION_LIMIT).trimEnd()}...` : content;
@@ -60,8 +63,8 @@ export function PostBody({
         content={content}
         likeCount={likeCount}
         commentCount={commentCount}
-        open={modalOpen}
-        onOpenChange={onModalOpenChange}
+        open={openPostId === String(id)}
+        onOpenChange={(open) => setSearchParams(open ? { post: String(id) } : {})}
       />
     </>
   );

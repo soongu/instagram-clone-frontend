@@ -6,16 +6,17 @@ import { describe, it, expect, vi } from 'vitest';
 import { Feed } from './Feed';
 import { IndexKeyList, IdKeyList } from './KeyDemo';
 import { feedPosts } from '../data/feed';
+import { withRouter } from '../../scratch/c1-router-harness';
 
 describe('Feed — 배열을 화면으로', () => {
   it('데이터 개수만큼 카드를 그린다', () => {
-    render(<Feed posts={feedPosts} onToggleLike={() => {}} />);
+    render(withRouter(<Feed posts={feedPosts} onToggleLike={() => {}} />));
 
     expect(screen.getAllByRole('article')).toHaveLength(feedPosts.length);
   });
 
   it('각 카드가 자기 데이터를 그린다', () => {
-    render(<Feed posts={feedPosts} onToggleLike={() => {}} />);
+    render(withRouter(<Feed posts={feedPosts} onToggleLike={() => {}} />));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
     expect(firstCard).toHaveTextContent('오늘 한강 노을이');
@@ -25,7 +26,7 @@ describe('Feed — 배열을 화면으로', () => {
   it('한 카드의 좋아요를 누르면 그 게시물 id 로 부모에게 알린다', async () => {
     const onToggleLike = vi.fn();
     const user = userEvent.setup();
-    render(<Feed posts={feedPosts} onToggleLike={onToggleLike} />);
+    render(withRouter(<Feed posts={feedPosts} onToggleLike={onToggleLike} />));
 
     const [, secondCard] = screen.getAllByRole('article');
     await user.click(within(secondCard).getByRole('button', { name: /좋아요/ }));
@@ -37,7 +38,7 @@ describe('Feed — 배열을 화면으로', () => {
 describe('key 를 순서 번호로 주면 상태가 엉뚱한 항목에 남는다', () => {
   it('맨 위에 좋아요를 누르고 그 항목을 숨기면, 좋아요가 아래 항목으로 옮겨간다', async () => {
     const user = userEvent.setup();
-    render(<IndexKeyList />);
+    render(withRouter(<IndexKeyList />));
 
     const [firstRow] = screen.getAllByRole('listitem');
     expect(firstRow).toHaveTextContent('jaehoon');
@@ -57,7 +58,7 @@ describe('key 를 순서 번호로 주면 상태가 엉뚱한 항목에 남는�
 describe('key 를 id 로 주면 상태가 제 항목을 따라간다', () => {
   it('맨 위를 숨겨도 아래 항목의 좋아요는 눌리지 않은 상태 그대로다', async () => {
     const user = userEvent.setup();
-    render(<IdKeyList />);
+    render(withRouter(<IdKeyList />));
 
     const [firstRow] = screen.getAllByRole('listitem');
     await user.click(within(firstRow).getByRole('button'));
