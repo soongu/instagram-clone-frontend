@@ -51,4 +51,101 @@ export function postHandler(posts: Post[] = allPosts, delayMs = 0) {
   });
 }
 
-export const server = setupServer(feedHandler(), postHandler());
+// ── 인증 흉내 (Step 4)
+//
+// 연습용 서버는 액세스 토큰을 세 번 쓰면 만료시킨다. 테스트에서는 그 시점을
+// 우리가 정할 수 있어야 하므로 "지금 살아 있는 토큰" 을 손으로 들고 있는다.
+export const fakeAuth = {
+  liveAccessTokens: new Set<string>(),
+  issuedCount: 0,
+  refreshCount: 0,
+  refreshShouldFail: false,
+
+  reset(): void {
+    this.liveAccessTokens.clear();
+    this.issuedCount = 0;
+    this.refreshCount = 0;
+    this.refreshShouldFail = false;
+  },
+
+  issueAccess(): string {
+    this.issuedCount += 1;
+    const token = `access-${this.issuedCount}`;
+    this.liveAccessTokens.add(token);
+    return token;
+  },
+
+  expireAll(): void {
+    this.liveAccessTokens.clear();
+  },
+
+  accepts(header: string | null): boolean {
+    if (header === null || !header.startsWith('Bearer ')) return false;
+    return this.liveAccessTokens.has(header.slice('Bearer '.length));
+  },
+};
+
+export const REFRESH_TOKEN = 'refresh-1';
+
+export function authHandlers() {
+  return [
+    http.post(`${API_BASE}/auth/login`, async () => {
+      requestLog.push('POST /api/auth/login');
+      return HttpResponse.json(
+        ok({
+          accessToken: fakeAuth.issueAccess(),
+          refreshToken: REFRESH_TOKEN,
+          user: { id: 1, username: 'jaehoon', profileImageUrl: 'https://picsum.photos/seed/jaehoon/64/64' },
+        }),
+      );
+    }),
+
+    http.post(`${API_BASE}/auth/refresh`, async ({ request }) => {
+      requestLog.push('POST /api/auth/refresh');
+      fakeAuth.refreshCount += 1;
+
+      if (fakeAuth.refreshShouldFail) {
+        return HttpResponse.json(failure('리프레시 토큰이 유효하지 않습니다'), { status: 401 });
+      }
+
+      const body = (await request.json()) as { refreshToken?: string };
+      if (body.refreshToken !== REFRESH_TOKEN) {
+        return HttpResponse.json(failure('리프레시 토큰이 유효하지 않습니다'), { status: 401 });
+      }
+
+      return HttpResponse.json(ok({ accessToken: fakeAuth.issueAccess() }));
+    }),
+  ];
+}
+
+// 토큰이 있어야 되는 요청. 좋아요는 C-6 의 주제지만, 401 갱신을 재려면
+// 인증이 필요한 자리가 하나 있어야 한다.
+export function likeHandler() {
+  return http.post(`${API_BASE}/posts/:postId/like`, ({ request, params }) => {
+    requestLog.push(`POST /api/posts/${String(params.postId)}/like`);
+
+    if (!fakeAuth.accepts(request.headers.get('authorization'))) {
+      return HttpResponse.json(failure('액세스 토큰이 만료되었습니다'), { status: 401 });
+    }
+
+    return HttpResponse.json(ok({ id: Number(params.postId), liked: true, likeCount: 1241 }));
+  });
+}
+
+// 요청에 실려 온 Authorization 헤더를 그대로 되돌려주는 자리 — 헤더 부착 확인용
+export const seenAuthHeaders: (string | null)[] = [];
+
+export function echoAuthHandler() {
+  return http.get(`${API_BASE}/whoami`, ({ request }) => {
+    seenAuthHeaders.push(request.headers.get('authorization'));
+    return HttpResponse.json(ok({ authorization: request.headers.get('authorization') }));
+  });
+}
+
+export const server = setupServer(
+  feedHandler(),
+  postHandler(),
+  ...authHandlers(),
+  likeHandler(),
+  echoAuthHandler(),
+);
