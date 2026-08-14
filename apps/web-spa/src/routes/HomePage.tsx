@@ -1,9 +1,9 @@
 // apps/web-spa/src/routes/HomePage.tsx
 import { useEffect, useState } from 'react';
+import { ApiError } from '../api/client';
+import { fetchFeed } from '../api/posts';
 import { FeedSection } from '../components/FeedSection';
 import type { Post } from '../types/instagram';
-
-const FEED_URL = 'http://localhost:8090/api/posts';
 
 export function HomePage() {
   // 세 갈래를 손으로 들고 있어야 한다. 데이터·기다림·실패.
@@ -14,27 +14,21 @@ export function HomePage() {
     // 늦게 온 응답이 이미 떠난 화면을 덮어쓰지 않게 표시를 남긴다
     let cancelled = false;
 
-    fetch(FEED_URL)
-      .then((response) => response.json())
-      .then((body) => {
+    fetchFeed()
+      .then((loaded) => {
         if (cancelled) {
           return;
         }
 
-        // fetch 는 404 든 500 이든 성공으로 친다. 봉투를 열어봐야 안다.
-        if (body.success === false) {
-          setErrorMessage(body.message);
-          return;
-        }
-
-        setPosts(body.data);
+        setPosts(loaded);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) {
           return;
         }
 
-        setErrorMessage('피드를 불러오지 못했어요');
+        // 봉투를 여는 일은 인스턴스가 끝냈다. 화면은 사유만 받는다.
+        setErrorMessage(error instanceof ApiError ? error.message : '피드를 불러오지 못했어요');
       });
 
     return () => {

@@ -51,7 +51,9 @@ describe('직접 가져오는 판 — 화면이 세 갈래로 갈린다', () => 
 
     render(withRouter(<HomePage />));
 
-    expect(await screen.findByText('피드를 불러오지 못했어요')).toBeInTheDocument();
+    // Step 3 이후로는 이 말을 인스턴스가 만든다.
+    // Axios 가 주는 'Network Error' 가 화면까지 오지 않는다.
+    expect(await screen.findByText('서버에 연결할 수 없어요')).toBeInTheDocument();
   });
 });
 
