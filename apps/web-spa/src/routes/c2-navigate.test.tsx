@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './routes';
+import { withApp } from '../../scratch/c3-theme-harness';
 
 const VALID = {
   username: 'jaehoon',
@@ -14,7 +15,7 @@ const VALID = {
 
 function renderAt(entries: string[], index = entries.length - 1) {
   const router = createMemoryRouter(routes, { initialEntries: entries, initialIndex: index });
-  render(<RouterProvider router={router} />);
+  render(withApp(<RouterProvider router={router} />));
   return router;
 }
 

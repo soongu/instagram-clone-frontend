@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { AppProviders } from './AppProviders';
 import { routes } from './routes/routes';
 import './styles/globals.css';
 
@@ -16,8 +17,11 @@ if (!rootElement) {
 // 컴포넌트 안에서 만들면 다시 그려질 때마다 새 라우터가 생겨 주소 기록이 끊긴다.
 const router = createBrowserRouter(routes);
 
+// 밝기는 라우터보다 바깥에 있다. 어느 주소로 들어오든, 오류 화면이 떠도 그대로다.
 createRoot(rootElement).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   </StrictMode>,
 );

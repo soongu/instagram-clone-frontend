@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { routes } from './routes';
+import { withApp } from '../../scratch/c3-theme-harness';
 
 // 라우터가 잡은 오류를 콘솔에 흘린다. 판정과 상관없는 잡음이라 이 파일에서만 막는다.
 let consoleError: ReturnType<typeof vi.spyOn>;
@@ -17,7 +18,7 @@ afterEach(() => {
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  render(withApp(<RouterProvider router={router} />));
   return router;
 }
 

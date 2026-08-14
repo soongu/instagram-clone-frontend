@@ -6,11 +6,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from '../src/routes/routes';
+import { withApp } from './c3-theme-harness';
 
 export function pageMarkup(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
 
-  return renderToStaticMarkup(<RouterProvider router={router} />);
+  // C-3 Step 5 이후 밝기가 라우터 바깥에 있다 — 실제 main.tsx 와 같은 모양으로 그린다
+  return renderToStaticMarkup(withApp(<RouterProvider router={router} />));
 }
 
 // C-2 Step 8 에서 HomePage 가 useSearchParams 를 쓰게 됐다.

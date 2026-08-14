@@ -7,11 +7,11 @@ import { routes } from './routes';
 import { HomePage } from './HomePage';
 import { SignUpPage } from './SignUpPage';
 import { AnchorLayout } from '../../scratch/c1-anchor-nav';
-import { withTheme } from '../../scratch/c3-theme-harness';
+import { withApp, withTheme } from '../../scratch/c3-theme-harness';
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  render(withApp(<RouterProvider router={router} />));
   return router;
 }
 

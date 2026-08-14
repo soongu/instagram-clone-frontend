@@ -5,10 +5,11 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './routes';
 import { PostModal } from '../components/PostModal';
+import { withApp } from '../../scratch/c3-theme-harness';
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  render(withApp(<RouterProvider router={router} />));
   return router;
 }
 

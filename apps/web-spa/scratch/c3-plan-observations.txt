@@ -234,3 +234,43 @@ toThrow 단언을 썼는데 실패했다. 실제로 재보니:
    useContext 에는 적용되지 않는다.
 
 게이트: 82 files / 625 passed · tsc 0 · eslint 0
+
+
+[Step 5] Context 는 상태를 안 들고 있다 — Provider 위치가 범위를 정한다
+=========================================================================
+Layout 안에 Provider 를 뒀을 때 오류 화면을 재본 값 (저장된 선택 = 'dark'):
+  본문        : "없는 페이지예요404 게시물을 찾을 수 없습니다홈으로"
+  머리말      : 없음   (오류 화면이 Layout 을 통째로 대체한다 — C-2 가 말한 그대로)
+  밝기 토글   : 없음
+  주소창 색   : #fafafa   ★ 저장값이 dark 인데 밝은 값
+
+=> index.html 인라인 스크립트가 .dark 를 미리 붙여서 화면은 어두운데,
+   ThemeColorMeta 가 Layout 과 함께 사라져 주소창만 하얗다.
+   Step 1 의 버그가 다른 문으로 다시 들어온 것 — 이번 원인은 중복 상태가 아니라 범위다.
+⚠️ 이 화면을 재려면 700ms 를 기다려야 한다(postLoader 의 fetchPost 가 400ms 를 기다린다).
+   50ms 로 쟀을 때는 본문이 빈 문자열이라 "아무것도 안 뜬다" 로 오독할 뻔했다.
+
+고침: src/AppProviders.tsx 신설 -> main.tsx 에서 RouterProvider 를 감싼다.
+  <StrictMode><AppProviders><RouterProvider/></AppProviders></StrictMode>
+  Layout 은 C-2 시점 모양으로 그대로 되돌아갔다(ThemeProvider·ThemeColorMeta 둘 다 빠짐).
+
+⚠️⚠️ blast radius 이 모듈 최대 — 48건 / 14파일
+  라우터를 직접 그리던 모든 판이 Provider 없이 ThemeToggle 을 그리게 되어 던졌다.
+  => scratch/c3-theme-harness.tsx 에 withApp() 신설(실제 main.tsx 와 같은 모양) +
+     scratch/c1-router-harness.tsx 의 pageMarkup 도 withApp 으로.
+     render(<RouterProvider .../>) 12곳을 render(withApp(<RouterProvider .../>)) 로.
+  단언은 하나도 안 고쳤다 — 감싸기만 했다.
+  ⚠️ c1-link.test.tsx 의 반례 판만 withTheme(ThemeProvider 만)을 쓴다.
+     AnchorLayout 은 C-1 교안 축자 스냅샷이라 앱의 AppProviders 와 짝이 아니다.
+
+★ HTML 은 한 글자도 안 바뀌었다
+  b3-use-like-toggle 의 "첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다" 가
+  pageMarkup 을 withApp 으로 감싼 뒤에도 통과. Provider 는 출력에 안 남는다.
+
+가드 일부러 깨기: AppProviders 에서 <ThemeColorMeta /> 한 줄 제거 -> c3-provider-scope 2/4 FAIL.
+
+빌드: CSS 42,480 B (그대로 — Context 는 CSS 를 안 만든다)
+      JS  510,630 -> 511,480 B (+850 B)
+      * 510,630 은 C-3 착수 시점(= C-2 종료 상태) 값
+
+게이트: 83 files / 629 passed · tsc 0 · eslint 0 · build 성공

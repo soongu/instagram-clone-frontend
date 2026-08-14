@@ -5,7 +5,14 @@
 // c1-router-harness 의 withRouter 와 같은 성격으로, 문맥만 씌워준다.
 // 화면에는 아무것도 안 더한다.
 import { ThemeProvider } from '../src/contexts/ThemeContext';
+import { AppProviders } from '../src/AppProviders';
 
 export function withTheme(ui: React.ReactNode) {
   return <ThemeProvider>{ui}</ThemeProvider>;
+}
+
+// C-3 Step 5 에서 밝기가 Layout 밖(AppProviders)으로 올라갔다.
+// 앱을 통째로 그리는 판들은 이제 실제 main.tsx 와 같은 모양으로 감싸야 한다.
+export function withApp(ui: React.ReactNode) {
+  return <AppProviders>{ui}</AppProviders>;
 }

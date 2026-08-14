@@ -4,11 +4,12 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './routes';
 import { feedPosts } from '../data/feed';
+import { withApp } from '../../scratch/c3-theme-harness';
 
 // 한 it 안에서 두 번 render 하면 앞의 화면이 DOM 에 남는다. 주소마다 it 을 따로 둔다.
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  return render(<RouterProvider router={router} />);
+  return render(withApp(<RouterProvider router={router} />));
 }
 
 describe('C-2 Step 1 — 주소의 일부를 값으로 받는다', () => {

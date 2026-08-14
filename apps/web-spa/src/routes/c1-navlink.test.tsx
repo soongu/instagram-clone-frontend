@@ -4,10 +4,11 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './routes';
 import { endProbeRoutes } from '../../scratch/c1-navlink-end-probe';
+import { withApp } from '../../scratch/c3-theme-harness';
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  render(withApp(<RouterProvider router={router} />));
   return router;
 }
 
@@ -56,7 +57,7 @@ function probeAt(path: string) {
   // 안 치우면 같은 이름의 링크가 둘이 되어 읽는 쪽이 터진다.
   cleanup();
   const router = createMemoryRouter(endProbeRoutes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  render(withApp(<RouterProvider router={router} />));
   const read = (name: string) => screen.getByRole('link', { name }).className;
 
   return {
