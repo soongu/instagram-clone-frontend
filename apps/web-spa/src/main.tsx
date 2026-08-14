@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AppProviders } from './AppProviders';
 import { closeConfirmOnNavigate } from './lib/closeConfirmOnNavigate';
 import { routes } from './routes/routes';
@@ -26,6 +27,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <AppProviders>
       <RouterProvider router={router} />
+      {/* 창고를 들여다보는 창. 개발할 때만 붙고 배포본에는 안 들어간다.
+          AppProviders 안쪽이어야 같은 캐시를 본다. */}
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </AppProviders>
   </StrictMode>,
 );

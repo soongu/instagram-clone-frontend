@@ -32,5 +32,12 @@ export function useTagsQuery() {
 export function useLikeMutation() {
   return useMutation({
     mutationFn: likePost,
+
+    // 쓰고 나면 읽어둔 것이 낡는다.
+    // 무효화는 "지우기" 가 아니라 "다시 물어보기" 다 — 화면은 안 비고,
+    // 새 답이 오면 그때 갈린다. staleTime 이 남아 있어도 이건 나간다.
+    onSuccess: (_result, _postId, _onMutateResult, context) => {
+      void context.client.invalidateQueries({ queryKey: ['posts'] });
+    },
   });
 }
