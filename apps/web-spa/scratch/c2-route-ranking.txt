@@ -1,0 +1,26 @@
+C-2 채증 — 주소 표의 순서는 매칭에 영향을 주지 않는다 (랭킹 매칭)
+
+널리 퍼진 조언: "catch-all(*) 은 반드시 맨 끝에 둬라"
+→ React Router v5 의 <Switch> 는 먼저 맞는 것을 골랐으므로 그때는 참이었다.
+→ v6 부터 랭킹 매칭이라 배열 순서와 무관하다. 8.3.0 에서 직접 재봤다.
+
+같은 다섯 주소를, 순서만 정반대로 놓은 두 표에 넣은 결과:
+
+  최악순서  /          → (index)
+  최악순서  /explore   → explore
+  최악순서  /p/7       → p/:postId
+  최악순서  /jaehoon   → :username
+  최악순서  /a/b/c     → *
+  권장순서  /          → (index)
+  권장순서  /explore   → explore
+  권장순서  /p/7       → p/:postId
+  권장순서  /jaehoon   → :username
+  권장순서  /a/b/c     → *
+
+  최악순서 = [ *, :username, p/:postId, explore, index ]  (통설상 최악)
+  권장순서 = [ index, explore, p/:postId, :username, * ]  (통설상 권장)
+
+→ 다섯 주소 전부 같은 곳으로 갔다. 순서가 한 건도 결과를 안 바꿨다.
+→ 라우터는 구체적인 것을 먼저 본다: 정적 조각 > 동적(:) > 별표(*).
+→ 그래도 표는 구체적인 것부터 적는 편이 낫다. 동작이 아니라 읽는 사람을 위해서다.
+  react-router 8.3.0 / 2026-08-14
