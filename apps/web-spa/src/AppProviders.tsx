@@ -1,5 +1,6 @@
 // apps/web-spa/src/AppProviders.tsx
 import type { ReactNode } from 'react';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { ThemeColorMeta } from './components/ThemeColorMeta';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -13,6 +14,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <ThemeColorMeta />
       {children}
+      {/* 확인 상자는 감쌀 것이 없다. 앱에 한 번 그려두기만 하면 된다. */}
+      <ConfirmDialog />
     </ThemeProvider>
   );
 }

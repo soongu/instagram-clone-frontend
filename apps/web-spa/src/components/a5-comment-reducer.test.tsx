@@ -2,6 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
+import { withConfirm } from '../../scratch/c4-confirm-harness';
 import { PostCard } from './PostCard';
 import { CommentList } from './CommentList';
 import { feedPosts } from '../data/feed';
@@ -9,7 +10,8 @@ import { feedPosts } from '../data/feed';
 const [first] = feedPosts;
 
 function renderCard() {
-  return render(<PostCard {...first} onToggleLike={() => {}} />);
+  // C-4 Step 2 부터 확인 상자는 앱에 하나뿐이라 옆에 함께 세워준다
+  return render(withConfirm(<PostCard {...first} onToggleLike={() => {}} />));
 }
 
 async function writeComment(text: string) {
@@ -69,7 +71,7 @@ describe('댓글을 리듀서로 옮긴 뒤', () => {
   });
 
   it('지우는 함수를 안 넘기면 삭제 버튼이 아예 안 그려진다', () => {
-    render(<CommentList comments={[{ id: 1, content: '노을 최고' }]} />);
+    render(withConfirm(<CommentList comments={[{ id: 1, content: '노을 최고' }]} />));
 
     expect(screen.getByText('노을 최고')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '댓글 삭제' })).not.toBeInTheDocument();

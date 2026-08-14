@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { withConfirm } from '../../scratch/c4-confirm-harness';
+import { useConfirmStore } from '../stores/useConfirmStore';
 import { CommentList } from './CommentList';
 
 const listA = [
@@ -12,12 +14,16 @@ const listB = [
   { id: 12, content: 'B 둘째 댓글' },
 ];
 
-describe('확인 상자를 CommentList 안에 두면', () => {
+beforeEach(() => {
+  useConfirmStore.setState({ request: null });
+});
+
+describe('확인 상자를 앱에 하나만 두면', () => {
   it('X 를 눌러도 바로 안 지워지고 먼저 물어본다', async () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();
 
-    render(<CommentList comments={listA} onRemove={onRemove} />);
+    render(withConfirm(<CommentList comments={listA} onRemove={onRemove} />));
 
     await user.click(screen.getAllByRole('button', { name: '댓글 삭제' })[0]);
 
@@ -29,7 +35,7 @@ describe('확인 상자를 CommentList 안에 두면', () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();
 
-    render(<CommentList comments={listA} onRemove={onRemove} />);
+    render(withConfirm(<CommentList comments={listA} onRemove={onRemove} />));
 
     await user.click(screen.getAllByRole('button', { name: '댓글 삭제' })[1]);
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
@@ -42,10 +48,12 @@ describe('확인 상자를 CommentList 안에 두면', () => {
 
   it('닫혀 있는 동안에는 화면 어디에도 상자가 없다', () => {
     render(
-      <>
-        <CommentList comments={listA} onRemove={vi.fn()} />
-        <CommentList comments={listB} onRemove={vi.fn()} />
-      </>,
+      withConfirm(
+        <>
+          <CommentList comments={listA} onRemove={vi.fn()} />
+          <CommentList comments={listB} onRemove={vi.fn()} />
+        </>,
+      ),
     );
 
     expect(document.querySelectorAll('[data-slot="dialog-content"]')).toHaveLength(0);
@@ -58,10 +66,12 @@ describe('확인 상자를 CommentList 안에 두면', () => {
     const removeB = vi.fn();
 
     render(
-      <>
-        <CommentList comments={listA} onRemove={removeA} />
-        <CommentList comments={listB} onRemove={removeB} />
-      </>,
+      withConfirm(
+        <>
+          <CommentList comments={listA} onRemove={removeA} />
+          <CommentList comments={listB} onRemove={removeB} />
+        </>,
+      ),
     );
 
     const buttons = screen.getAllByRole('button', { name: '댓글 삭제' });
