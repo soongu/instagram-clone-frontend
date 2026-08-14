@@ -5,6 +5,7 @@ import type { postLoader } from './postLoader';
 import { postQuery } from '../queries/posts';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
+import { PostComments } from '../components/PostComments';
 import { PostHeader } from '../components/PostHeader';
 import { Section } from '../components/Section';
 
@@ -40,6 +41,7 @@ export function PostDetailPage() {
           <p className="px-3 pt-3 pb-1 text-sm font-semibold">좋아요 {post.likeCount}개</p>
           <p className="px-3 py-1 text-sm">{post.content}</p>
           <p className="px-3 pb-3 text-sm text-faint">댓글 {post.commentCount}개</p>
+          <PostComments postId={post.id} />
         </CardContent>
       </Card>
     </Section>

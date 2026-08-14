@@ -328,3 +328,29 @@ Step 6 — loader 와 useQuery 의 화해 (ensureQueryData)
         (C-2 가 c1-layout·c1-link 단언을 재조준한 선례와 같은 성격)
 
   게이트: 112 files / 833 passed · tsc 0 · eslint 0
+
+
+Step 7 — 서버가 거절한 삭제를 되돌린다 (403 + C-4 확인 상자)
+.............................................................
+
+  코드: api/comments.ts(fetchComments·deleteComment) · queries/comments.ts
+        components/PostComments.tsx (신설) · PostDetailPage 에 끼움
+  ⚠️ 카드 안의 CommentList 는 안 건드렸다 — 그건 아직 안 보낸 초안을 그리는 자리이고
+     b3·b6·c4·e3·e7·a5 8개 파일이 물고 있다. 서버 댓글은 상세 화면에 새로 붙였다.
+
+  실측
+    1번 게시물에 남이 쓴 댓글 둘(minji·seungwoo) · 2번에 내 댓글 하나(jaehoon)
+    내 댓글 삭제 -> 목록에서 사라지고 서버에서도 사라진다
+    ★ 남의 댓글 삭제(403·지연 300ms)
+        물어보자마자 목록에서 빠진다 -> 서버가 거절하면 되돌아온다
+        서버가 보낸 사유 '내가 쓴 댓글만 지울 수 있습니다' 가 화면에 뜬다
+        서버 쪽 댓글 수는 2개 그대로
+    취소를 누르면 DELETE 요청이 0건 (C-4 확인 상자가 앞에서 막는다)
+
+  좋아요와 같은 결이라는 것을 코드로 보여준다:
+    onMutate(cancel + previous + 낙관적 제거) -> onError 복원 -> onSettled 무효화
+    다른 것은 되돌릴 것이 숫자가 아니라 목록의 한 줄이라는 점뿐이다.
+
+  blast radius 0 — 앞 모듈 판을 하나도 안 건드렸다.
+
+  게이트: 113 files / 839 passed · tsc 0 · eslint 0
