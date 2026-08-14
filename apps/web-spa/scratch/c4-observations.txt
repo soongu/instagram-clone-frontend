@@ -1,0 +1,223 @@
+C-4 실측 채증 (2026-08-14)
+==========================
+
+기준선 / 최종
+-------------
+C-3 종료  : 85 files / 639 passed · tsc 0 · eslint 0 · CSS 42,480 B · JS 511,480 B
+C-4 종료  : 94 files / 681 passed · tsc 0 · eslint 0 · CSS 42,480 B(불변) · JS 513,830 B (+2,350)
+브랜치    : module-C4-zustand (module-C3-global-state 에서 분기)
+
+단계별 JS 크기
+  Step1 513,100 (zustand 아직 import 안 함)
+  Step2 513,900 / Step3 514,040 / Step4 514,150 / Step5 514,150(동일 해시 — 아래 [8])
+  Step6 513,830 / Step7·8 513,830(불변 — 새 코드가 전부 테스트·scratch)
+
+⚠️ CSS 는 모듈 내내 42,480 B 로 한 byte도 안 변했다. C-3 과 같은 이유 —
+   상태 관리는 CSS 를 만들지 않는다. (Step 1 의 확인 상자도 이미 있던 Dialog 클래스만 씀)
+
+
+[1] 시의성 (2026-08-14 npm registry 실측)
+-----------------------------------------
+zustand 5.0.15 (published 2026-08-13 — 하루 전). 커리큘럼 표와 일치.
+  ⚠️ WebSearch 결과는 "최신 5.0.14" 라고 답했다 — registry 가 정답.
+  5.0.13~5.0.15 는 전부 devtools/persist 미들웨어 버그픽스. API 변경·deprecation 0건.
+nuqs 2.9.5 — "Type-safe search params state manager for React - Like useState,
+  but stored in the URL query string". peer 에 `react-router: ^5 || ^6 || ^7 || ^8`
+  => 우리 8.3.0 과 호환. 핵심 API 는 useQueryState / useQueryStates. 이번엔 설치 안 함.
+
+zustand 패키지 실물
+  dependencies : 없음 (0개)
+  peer 4개 전부 optional (@types/react·immer·react·use-sync-external-store)
+  ⚠️ `npm ls use-sync-external-store` 는 zustand 밑에도 그것을 그린다. 그런데
+     zustand/esm/react.mjs 는 `React.useSyncExternalStore` 를 직접 쓰고 그 패키지를
+     import 하지 않는다. 트리에 보이는 것은 @base-ui/react 가 깐 것 + optional peer 가
+     이미 충족돼 그려진 것. "npm ls 에 있으니 쓴다" 는 틀린 추론.
+
+크기 실측 (rolldown 1.1.5 --minify --external react)
+  create 만            : 627 B (gzip 385 B)
+  create + useShallow  : 1,428 B (gzip 694 B)
+  원본 소스: vanilla.mjs 1,001 B · react.mjs 739 B · react/shallow.mjs 312 B
+
+
+[2] 라이브러리 본체가 30 줄 남짓 (교보재)
+------------------------------------------
+vanilla.mjs 의 전부: listeners = new Set() / setState 가 Object.is 로 비교 후
+  얕은 병합하고 listeners.forEach / getState / subscribe(추가 후 해제 함수 반환).
+react.mjs 의 전부:
+  useStore = React.useSyncExternalStore(api.subscribe, () => selector(api.getState()), ...)
+  const useBoundStore = (selector) => useStore(api, selector)
+  ★ Object.assign(useBoundStore, api)   ← "store 가 곧 훅" 의 정체
+  => 훅 함수에 getState·setState·subscribe·getInitialState 를 속성으로 붙인 것.
+     그래서 useConfirmStore 는 함수이면서 동시에 객체다.
+useShallow: useRef 에 이전 결과를 들고, shallow 비교가 같으면 이전 것을 그대로 돌려준다.
+  (useMemo/useCallback 을 안 쓴다 — selector 함수 정체성은 매 렌더 바뀌고,
+   안정적인 것은 *돌려주는 값* 이다.)
+
+
+[3] Step 1 — 지역 useState 확인 상자는 "정상 동작한다"
+------------------------------------------------------
+★ 예측이 틀렸다. "목록 둘이면 상자가 동시에 둘 열린다" 를 예상하고 toHaveLength(2) 로
+  썼는데 실제로는 1 이었다.
+  실측: buttons[0] 클릭 → 상자 열림 → buttons[2] 클릭
+        → 두 번째 클릭은 도달한다(removeB 가 11 로 불림)
+        → 첫 상자는 닫히고 두 번째가 열린다. dialog 개수는 내내 1.
+  즉 Base UI 가 모달 스택을 정리해준다. 지역 상태 판은 기능상 결함이 없다.
+  => 교안은 "이건 잘 돌아간다. 문제는 다른 데 있다" 로 가야 한다. 가짜 결함을 만들지 말 것.
+
+닫힌 상태 DOM: dialog-content 0개 · dialog-portal 0개 · body 자식 1개
+  => "카드 10장이면 상자 10개가 DOM 에 있다" 도 거짓. 열릴 때만 그려진다.
+  (렌더 트리에는 CommentList 마다 useState 가 한 벌씩 있는 것은 사실)
+
+열려 있을 때 바깥: `aria-hidden="true"` 는 붙고 `inert` 는 안 붙는다.
+  body overflow / pointerEvents 는 인라인 스타일로는 안 잡힌다(E-6 canon 과 정합).
+
+
+[4] Step 2 — create<T>()(...) 커리는 "필수" 가 아니다
+-----------------------------------------------------
+tsc 6.0.3 --strict 실측 (scratch/c4-curried-probe.ts):
+  (A) create<Counter>()((set) => ...)                 → 통과
+  (B) create<Counter>((set) => ...)   커리 없음        → ★ 통과 (에러 0)
+  (C) create<Counter>()(persist(...))                 → 통과
+  (D) create<Counter>(persist(...))   커리 없음+미들웨어 → ★ TS2345
+      "Argument of type 'StateCreator<Counter, [], [[\"zustand/persist\", Counter]]>'
+       is not assignable to parameter of type 'StateCreator<Counter, [], []>'"
+  (E) create((set) => ...) 타입 인자 없음              → TS7006 (set 안쪽 state 가 any)
+  => 정확한 규칙: **커리는 미들웨어를 얹을 때 필요하다.** 미들웨어가 없으면 둘 다 된다.
+     "커리가 필수" 로 쓰면 사실 오류.
+
+C-3 Step 1 과의 정면 대조 (같은 판에서 나란히 측정)
+  커스텀 훅 두 곳 → 쓴 쪽만 바뀌고 읽는 쪽은 '없음' 그대로
+  store 훅 두 곳  → 읽는 쪽이 즉시 같은 값을 본다
+  ★ 감싼 것이 하나도 없다. Provider 도 문맥도 없이 그냥 render.
+
+★ 위아래 관계가 사라진다: ConfirmDialog 를 <section> 안에, CommentList 를 <article> 안에
+  두고 **상자를 먼저** 그려도 동작한다. Context 라면 Provider 가 위에 있어야 한다.
+
+⚠️ 다만 "아무것도 안 늘어난다" 는 아니다 — AppProviders 에 <ConfirmDialog /> 한 줄이
+   늘었다. 늘지 않은 것은 **감싸는 Provider** 다. 교안에서 이 구분을 흐리지 말 것.
+
+
+[5] Step 3 — React 밖에서 읽고 쓰기
+-----------------------------------
+★ 진짜 버그를 먼저 찾았다: 확인 상자가 열린 채로 router.navigate('/explore') 하면
+  상자가 다음 화면까지 그대로 따라온다(dialog 살아 있음 · request 안 비워짐).
+  원인은 C-3 이 상자를 라우터 바깥(AppProviders)에 둔 것 — 그 선택의 대가다.
+
+고침: closeConfirmOnNavigate(router) — main.tsx 에서 한 번 부른다. 컴포넌트가 아니다.
+  router.subscribe(fn) 는 react-router 8.3.0 에 있다 (router.d.ts:77).
+  ⚠️ 라우터는 주소 말고도 여러 이유로 알림을 준다 → location.key 비교로 이동만 거른다.
+     가드 제거 시 revalidate() 에서도 닫혀 테스트 1건 FAIL (확인함).
+
+Context 로는 원리적으로 불가능 — 컴포넌트 밖에서 useThemeContext() 를 부르면:
+  ★ "Cannot read properties of null (reading 'useContext')"
+  우리가 던지는 "ThemeProvider 안에서 불러야 합니다" 가 아니다. 그 앞에서 막힌다.
+  => 학생이 실제로 만나면 원인을 못 찾는 종류의 메시지.
+
+subscribe 실측: ask → close 까지 ['첫 번째', null] 을 듣고, 해제 뒤 ask 는 안 들린다.
+
+
+[6] Step 4 — selector
+---------------------
+같은 판에서 통째 구독 vs 조각 구독 (렌더 횟수)
+  최초                : whole 1 / slice 1
+  request 바뀜(열기)  : whole 2 / slice 1
+  request 바뀜(닫기)  : whole 3 / slice 1
+  ask/close 를 두 번씩 더 돌려도 slice 는 계속 1
+  => 조각이 안 바뀌면 영영 안 그려진다. ask 는 store 생성 시 한 번 만들어지고 안 바뀐다.
+
+⚠️ 측정 함정: act() 없이 setState 하면 flush 가 안 돼 카운트가 낡은 값으로 읽힌다
+   (처음에 whole 3 을 기대했는데 2 가 나왔다 — 코드가 아니라 측정이 틀린 것).
+
+★ 컴파일러 대조: vite.config.ts 에서 reactCompilerPreset 을 빼고 다시 재도 **결과 동일**.
+  C-3 Step 6 은 컴파일러가 통설을 뒤집었지만 여기는 안 뒤집는다.
+  이유: 구독 자체가 다시 그리기를 부르는 것이라 메모이제이션이 끼어들 자리가 없다.
+  (측정 후 복원 · git diff 0 확인)
+
+렌더 계수는 렌더 중에 바깥 값을 건드려야 해서 react-hooks/immutability 위반 —
+  c3-rerender-scope 선례대로 eslint.config.js 에 그 파일만 예외 추가.
+
+
+[7] Step 5 — 새 참조 selector
+-----------------------------
+컴파일러 켬/끔 **양쪽 동일**:
+  던짐        : "Maximum update depth exceeded. ..."
+  console.error: "The result of getSnapshot should be cached to avoid an infinite loop"
+useShallow 로 감싸면 예외 0 · error 0 · 값이 바뀌면 정상 추적.
+
+★ 갈리는 기준은 "개수" 가 아니라 "매번 새로 만드느냐" 다 (실측 4종):
+  (a) 객체로 묶기  → 터진다
+  (e) 배열로 묶기  → 터진다 (개수와 무관)
+  (d) 계산해서 문자열 하나 → 안 터진다 (같은 글자면 같은 값)
+  (c) 조각을 따로 고르기   → 안 터진다
+  => 우리 ConfirmDialog 는 (c) 를 택했다. 그래서 useShallow 를 안 쓴다.
+     useShallow 는 "묶어야만 할 때" 의 도구지 기본값이 아니다.
+
+
+[8] Step 5 — 데모 파일은 번들에 0 B
+------------------------------------
+ConfirmBundleDemo.tsx 를 추가했는데 빌드 JS 해시·크기가 **완전히 동일**(index-DFjK-IIK.js).
+  앱 엔트리에서 아무도 import 하지 않으므로 번들러가 안 따라간다.
+  ⚠️ tsc 는 tsconfig include 가 ["src", ...] 라 src 안에 있으면 import 여부와 무관하게 본다.
+     (C-3 의 "scratch 는 import 안 되면 tsc 가 안 본다" 와 짝을 이루는 반대편 사실)
+  => 도구마다 보는 범위가 다르다: eslint ⊇ tsc(src 전부) ⊃ 번들러(import 그래프만)
+
+
+[9] Step 6 — 배달 제거의 진짜 비용
+-----------------------------------
+설계 판단: ★ PostModal 이 아니라 PostBody 가 주소를 읽는다.
+  C-2 가 "모달 자체는 여전히 주소를 모른다 / 라우터 없이 혼자 그려도 열린다" 를 학습 결론으로
+  박아뒀다(c2-modal-address.test.tsx 마지막 describe). 모달이 useSearchParams 를 부르면
+  그 결론이 거짓이 된다. => 읽는 쪽을 한 칸 위(PostBody)에 둬서 C-2 를 지켰다.
+
+없어진 props: HomePage→Feed 2개 · Feed→PostCard 2개 · PostCard→PostBody 2개 ·
+  PostBody→PostModal 2개 = 8개. 새로 내려가는 것은 `id` 1개(그 카드의 데이터라 배달이 아님).
+  HomePage 에서 useSearchParams import 자체가 사라졌다.
+
+★ blast radius 21 파일 — 이 모듈 최대.
+  테스트/스크래치 17 파일에서 render 호출 136곳 중 **123곳을 withRouter 로 감쌌다**
+  (13곳은 이미 라우터가 있어 건너뜀). 단언은 한 줄도 안 고쳤다.
+  => "PostBody 가 이제 라우터 없이는 못 산다" 가 이 리팩터링의 값이다. 공짜가 아니다.
+
+⚠️⚠️ 함정 3종 (전부 직접 밟았다)
+  (1) withRouter 를 <StrictMode> **바깥**에 씌우면 b4-answer 의 이중 실행 관찰이 깨진다
+      (리스너 2개를 기대했는데 1개). <StrictMode>{withRouter(ui)}</StrictMode> 로 고침.
+  (2) a5-toast-reset 은 호출부에 이미 withRouter 가 있었다 → 헬퍼까지 감싸 **이중 래핑**.
+      중첩 MemoryRouter 는 조용히 어긋난다.
+  (3) ★★ 테스트 681건 전부 초록인데 tsc 가 8건 잡았다 — PostBody 의 새 필수 prop `id`.
+      jsdom 에서는 id 가 undefined 라 `openPostId === String(undefined)` 가 false 로
+      떨어져 "모달이 안 열릴 뿐" 이었고, 그 판들은 모달을 안 보니 초록이었다.
+      => A-6 "번들러는 타입체크를 안 한다" 의 실전판. 테스트 초록은 타입 안전의 증거가 아니다.
+
+
+[10] Step 7 — 두 상자를 서로 반대편에 담아보면
+-----------------------------------------------
+삭제 확인을 ?confirm=3 으로:
+  · 열고 지우는 것까지는 멀쩡히 동작한다 (그래서 얼핏 되는 것처럼 보인다)
+  · 그 주소로 새로 들어오면 아무도 안 눌렀는데 "3번 댓글을 지울까요?" 가 떠 있다
+  · 링크를 받은 사람이 지우기를 누르면 실제로 지워진다
+게시물 모달을 store 로:
+  · 열어도 주소가 안 바뀐다 · 새로고침(주소만 들고 다시 그리기)하면 닫혀 있다
+  => C-2 가 살려낸 새로고침·공유·뒤로가기가 셋 다 죽는다.
+
+★ 구조적 결정타 — 주소에는 글자만 담긴다:
+  JSON.stringify(request) === '{"message":"댓글을 지울까요?"}'
+  onConfirm(함수)이 **조용히 사라진다**. 되살릴 방법이 없다.
+  반대로 게시물 번호는 String(1) === '1' 로 왕복이 완전하다.
+  => 갈리는 기준은 취향이 아니라 "그 값이 글자로 왕복되는가 + 남이 봐도 되는가".
+
+
+[11] Step 8 — 세 갈래 현재 배치 (테스트로 못 박음)
+--------------------------------------------------
+화면 안(useState/useReducer) : 캡션 펼침 · 댓글 목록 · 좋아요  → 주소 안 바뀜
+주소(useSearchParams)        : ?post=N (게시물 모달) · ?tag=… (태그 필터)
+store(Zustand)               : 삭제 확인 → 주소 안 바뀌고 store 에만 남음
+서버                          : 아직 비어 있음 — feedPosts 가 코드 안에 있다 (C-5)
+새로고침 재현: 주소에 적힌 것만 되살아난다.
+
+
+[12] 가드 — 전부 일부러 깨서 확인
+----------------------------------
+AppProviders 에서 <ConfirmDialog /> 제거      → 3건 FAIL
+closeConfirmOnNavigate 의 location.key 가드 제거 → 1건 FAIL (revalidate 에서도 닫힘)
+PostBody 가 주소를 안 읽게 (open={false})     → 11건 FAIL
+복원 후 681 passed 재확인.
