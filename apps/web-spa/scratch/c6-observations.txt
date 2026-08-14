@@ -1,0 +1,71 @@
+C-6 실측 채증 (서버 상태 ② — useMutation·낙관적 업데이트)
+=========================================================
+
+측정 환경
+  @tanstack/react-query 5.101.4 (registry latest 와 동일)
+  @tanstack/react-query-devtools 5.101.4 (C-5 준비 커밋에서 이미 devDependency)
+  axios 1.19.0 · react-router 8.3.0 · React 19.2.8 · TS 6.0.3 · Vitest 4.1.10
+  착수 시점 테스트 기준선: 104 files / 792 passed (단독 실행)
+
+
+[0] 시의성 — 뮤테이션 콜백 시그니처가 5.89.0 에서 바뀌었다
+--------------------------------------------------------
+근거: TanStack/query issue #9660 · PR #9615
+      공식 문서 optimistic-updates 예제(2026-08-14 확인)
+
+설치본 .d.ts 가 적고 있는 것:
+  mutationFn: (variables, context) => Promise<TData>
+  onMutate:   (variables, context) => TOnMutateResult
+  onSuccess:  (data, variables, onMutateResult, context)
+  onError:    (error, variables, onMutateResult, context)
+  onSettled:  (data, error, variables, onMutateResult, context)
+
+  MutationFunctionContext = { client: QueryClient; meta; mutationKey? }
+  제네릭 이름도 TContext -> TOnMutateResult 로 개명
+
+시중 자료(그리고 5.89.0 이전 문서)는 전부 3인자다:
+  onError: (err, variables, context) => ...   // 여기서 context = onMutate 반환값
+
+런타임 실측 (scratch/c6-mutation-signature-probe.test.tsx · 5/5 통과)
+  - mutationFn 이 받는 인자 개수 = 2. 두 번째의 키는 정확히
+    ['client', 'meta', 'mutationKey'] 이고 client 는 그 판의 QueryClient 와 동일 객체
+  - onMutate 의 두 번째 인자로 온 context.client.setQueryData 가 실제로 캐시를 바꾼다
+    (useQueryClient() 를 안 불러도 된다)
+  - onError 가 받는 인자 개수 = 4 · onSettled = 5
+    onError[2] = onMutate 가 돌려준 값 · onError[3].client = 그 판의 QueryClient
+  - *** 옛 3인자 형태는 그대로 동작한다 *** — 위치가 같아서 값도 같다.
+    onMutate 스냅샷 -> onError 롤백이 정상 복원됨('처음' 으로 되돌아옴)
+
+타입 실측 (scratch/c6-expected-errors.tsx)
+  npx tsc --noEmit --ignoreConfig --jsx react-jsx --strict --module esnext \
+          --moduleResolution bundler --target es2025 --skipLibCheck \
+          scratch/c6-expected-errors.tsx
+
+  ① 옛 3인자 형태 (세 번째를 context 라 명명, .previous 만 씀)  -> 0건 (통과)
+  ② 옛 이름 + 새 문서 사용법 섞기 (세 번째에 .client)          -> 2건
+       (32,7)  TS18048: 'context' is possibly 'undefined'.
+       (32,15) TS2339: Property 'client' does not exist on type 'Snapshot'.
+  ③ 새 문서 형태 (네 번째를 context 로 받아 .client)            -> 0건 (통과)
+
+  => 옛 코드는 안 터진다. 이름만 거짓말이 된다.
+     그리고 옛 이름 + 새 사용법을 섞는 순간 타입 검사가 막는다.
+     *** C-2 의 useLoaderData(any 라 안 막는다) 와 정반대 자리다. ***
+
+
+[1] 착수 전제 — 앱에 출입증을 받을 길이 없다
+--------------------------------------------
+  grep 결과: login() 은 src/api/c5-auth-interceptor.test.ts 에서만 불린다.
+  화면(*.tsx) 어디에도 호출부가 0건.
+  스텁 서버는 POST /posts/:id/like 에 토큰을 요구한다(없으면 401 '로그인이 필요합니다').
+  -> 사용자 승인(2026-08-14)으로 Layout 머리말에 출입증 버튼을 둔다.
+     진짜 로그인 화면은 G-1 의 몫이라고 교안이 명시한다.
+
+  스텁 서버 규약(C-5 에서 확인한 것 재기록)
+    지연 400ms · 좋아요는 5번에 한 번 500 · 액세스 토큰은 3회 사용 후 401
+    남의 댓글 삭제는 403 · 댓글은 post 1 에 남의 것 둘(minji·seungwoo),
+    post 2 에 내 것 하나(jaehoon = ME)
+
+
+[2] Step 별 실측
+----------------
+(작성 중)
