@@ -17,6 +17,11 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: STALE_TIME_MS,
       gcTime: GC_TIME_MS,
+
+      // 읽다가 실패하면 화면에서 처리하지 말고 위로 던진다.
+      // 라우트마다 세워둔 ErrorBoundary 가 그것을 받는다.
+      // 쓰기(뮤테이션)는 이 값을 안 따른다 — 실패해도 그 자리에서 알려야 한다.
+      throwOnError: true,
     },
   },
 });

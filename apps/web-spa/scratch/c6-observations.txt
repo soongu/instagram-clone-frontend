@@ -354,3 +354,44 @@ Step 7 — 서버가 거절한 삭제를 되돌린다 (403 + C-4 확인 상자)
   blast radius 0 — 앞 모듈 판을 하나도 안 건드렸다.
 
   게이트: 113 files / 839 passed · tsc 0 · eslint 0
+
+
+Step 8 — 읽기 실패를 화면 밖으로 (throwOnError + ErrorBoundary)
+................................................................
+
+  코드: queries/queryClient.ts 에 queries.throwOnError = true
+        HomePage·ExplorePage·PostComments 에서 실패 갈래 제거
+
+  *** throwOnError 는 런타임 갈래만 없앤다 — 타입은 안 좁힌다 ***
+    실패 갈래를 지우고 isPending 만 남겼더니 테스트는 전부 초록인데 tsc 4건:
+      HomePage.tsx(13,23)   TS2322 Type 'NoInfer<Post[]> | undefined' ...
+      ExplorePage.tsx(48,11) TS18048 'shown' is possibly 'undefined'
+      ExplorePage.tsx(52,11) TS2322
+      PostComments.tsx(30,9) TS2322 'NoInfer<Comment[]> | undefined'
+    isPending 이 false 여도 error 상태면 data 는 undefined 다.
+    위로 던지기로 한 것은 *우리 약속* 이지 타입이 아는 사실이 아니다.
+    -> isPending 대신 isSuccess 로 물으니 좁혀진다. 갈래는 오히려 둘 -> 하나로 줄었다.
+    (C-4 의 "테스트 초록은 타입 안전의 증거가 아니다" 가 그대로 재현됐다)
+
+  ⚠️ 테스트에서 setDefaultOptions 함정을 직접 밟았다
+    queryClient.setDefaultOptions({ queries: { retry: false } }) 는
+    queries 를 *통째로 갈아치운다* — throwOnError 까지 지워진다.
+    그래서 오류 화면이 안 뜨고 대신 FeedSection 의
+    'Cannot read properties of undefined (reading 'filter')' 가 떴다.
+    getDefaultOptions().queries 를 펼쳐 병합해야 한다.
+
+  실측
+    피드 500 -> 오류 화면 '문제가 생겼어요' + 서버 사유 '피드를 만들지 못했습니다'
+    오류 화면에는 머리말이 없다 (Layout 을 대신한다 — C-2·C-3 회수)
+    ★ 기본값은 실패해도 바로 포기하지 않는다 — 요청이 모두 4번(원래 1 + 재시도 3)
+    ★ 쓰기는 위로 안 던진다 — 삭제 403 은 오류 화면으로 안 넘어가고
+      그 자리에서 알림으로 뜬다. throwOnError 는 queries 에만 준 값이다.
+
+  blast radius 1건 — c5-use-query '실패하면 서버가 보낸 사유가 뜬다'
+    HomePage 를 홀로 그리면 던진 것을 받을 자리가 없다.
+    사유를 받는 자리(ErrorBoundary)까지 함께 그리도록 라우터로 감쌌다. 단언 무변경.
+    + 앱 기본 재시도(3회)를 끄지 않으면 1초 안에 안 끝나 timeout 이 난다.
+
+  번들: JS 600,622 -> 599,992 B (-630) · CSS 42,488 B 불변
+
+  게이트: 114 files / 844 passed · tsc 0 · eslint 0 · build 성공

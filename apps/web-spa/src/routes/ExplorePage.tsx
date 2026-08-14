@@ -15,7 +15,7 @@ export function ExplorePage() {
 
   // 주소에 적힌 값이 그대로 키의 일부가 된다.
   // 태그가 바뀌면 키가 바뀌고, 키가 바뀌면 새로 물어본다.
-  const { data: shown, isPending, error } = useFeedQuery(tag ?? undefined);
+  const { data: shown, isSuccess } = useFeedQuery(tag ?? undefined);
   const { data: tags = [] } = useTagsQuery();
 
   return (
@@ -43,9 +43,7 @@ export function ExplorePage() {
         ))}
       </div>
 
-      {error !== null ? (
-        <p className="text-sm text-danger-strong">게시물을 불러오지 못했어요</p>
-      ) : isPending ? (
+      {!isSuccess ? (
         <p className="text-sm text-faint">게시물을 불러오는 중이에요…</p>
       ) : shown.length === 0 ? (
         <p className="text-sm text-faint">이 태그를 붙인 게시물이 없습니다.</p>

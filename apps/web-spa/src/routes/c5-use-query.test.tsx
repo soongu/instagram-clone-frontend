@@ -5,9 +5,13 @@
 import { StrictMode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { HomePage } from './HomePage';
+import { routes } from './routes';
+import { withApp } from '../../scratch/c3-theme-harness';
+import { queryClient } from '../queries/queryClient';
 import { withRouter } from '../../scratch/c1-router-harness';
 import { withQuery, freshQueryClient } from '../../scratch/c5-query-harness';
 import {
@@ -39,6 +43,9 @@ describe('세 갈래는 그대로인데 손으로 든 것이 없다', () => {
     expect(await screen.findAllByRole('article')).toHaveLength(allPosts.length);
   });
 
+  // C-6 Step 8 에서 실패 처리가 화면 밖(ErrorBoundary)으로 옮겨갔다.
+  // 지키는 것은 "서버가 보낸 사유가 학생 눈에 보인다" 이므로, 그 사유를 받는
+  // 자리까지 함께 그려서 견준다. 단언은 그대로다.
   it('실패하면 서버가 보낸 사유가 뜬다', async () => {
     server.use(
       http.get(`${API_BASE}/posts`, () =>
@@ -46,9 +53,17 @@ describe('세 갈래는 그대로인데 손으로 든 것이 없다', () => {
       ),
     );
 
-    render(withQuery(withRouter(<HomePage />)));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // 앱 기본값은 실패하면 세 번 더 물어본다. 여기서 보려는 건 그게 아니라 사유다.
+    queryClient.clear();
+    queryClient.setDefaultOptions({
+      queries: { ...queryClient.getDefaultOptions().queries, retry: false },
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+    render(withApp(<RouterProvider router={router} />));
 
     expect(await screen.findByText('피드를 만들지 못했습니다')).toBeInTheDocument();
+    consoleError.mockRestore();
   });
 
   it('화면에 useState 도 useEffect 도 없다', async () => {
