@@ -14,21 +14,21 @@ function Reader() {
   const theme = useThemeContext();
   seenValues.push(theme);
 
-  return <p data-testid="reader">{theme.resolved}</p>;
+  return <p>{`읽음 ${theme.resolved}`}</p>;
 }
 
 // Provider 아래에 있지만 Context 를 안 읽는 쪽
 function Bystander() {
   counts.bystander += 1;
 
-  return <p data-testid="bystander">안 읽음</p>;
+  return <p>안 읽음</p>;
 }
 
 // Provider 바깥
 function Outside() {
   counts.outside += 1;
 
-  return <p data-testid="outside">바깥</p>;
+  return <p>바깥</p>;
 }
 
 function Harness() {
@@ -40,7 +40,7 @@ function Harness() {
       <button type="button" onClick={() => setTick(tick + 1)}>
         바깥에서 다시 그리기
       </button>
-      <span data-testid="tick">{tick}</span>
+      <span>{`다시 그린 횟수 ${tick}`}</span>
       <ThemeProvider>
         <ThemeToggle />
         <Reader />
@@ -68,7 +68,7 @@ describe('값이 바뀌면 누가 다시 그려지나', () => {
 
     await user.click(screen.getByRole('button', { name: '어둡게' }));
 
-    expect(screen.getByTestId('reader')).toHaveTextContent('dark');
+    expect(screen.getByText('읽음 dark')).toBeInTheDocument();
 
     // 읽는 쪽만 늘어난다
     expect(counts.reader).toBe(before.reader + 1);
@@ -86,7 +86,7 @@ describe('값이 바뀌면 누가 다시 그려지나', () => {
 
     await user.click(screen.getByRole('button', { name: '바깥에서 다시 그리기' }));
 
-    expect(screen.getByTestId('tick')).toHaveTextContent('1');
+    expect(screen.getByText('다시 그린 횟수 1')).toBeInTheDocument();
 
     // 컴파일러가 켜져 있으면 하나도 안 그려진다.
     // props 가 그대로인 자식 엘리먼트를 컴파일러가 붙들고 있기 때문이다.

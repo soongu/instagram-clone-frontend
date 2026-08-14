@@ -14,23 +14,23 @@ export function LabelProvider({ label, children }: { label: string; children: Re
 // (a) use — 조건 안에서 불러도 된다. 공식이 그렇게 정했다.
 export function ReadWithUse({ show }: { show: boolean }) {
   if (!show) {
-    return <p data-testid="a">안 읽음</p>;
+    return <p>(a) 안 읽음</p>;
   }
 
   const label = use(LabelContext);
 
-  return <p data-testid="a">{label ?? '없음'}</p>;
+  return <p>(a) {label ?? '없음'}</p>;
 }
 
 // (b) useContext — 같은 자리인데 훅이라서 규칙을 받는다.
 export function ReadWithUseContext({ show }: { show: boolean }) {
   if (!show) {
-    return <p data-testid="b">안 읽음</p>;
+    return <p>(b) 안 읽음</p>;
   }
 
   const label = useContext(LabelContext);
 
-  return <p data-testid="b">{label ?? '없음'}</p>;
+  return <p>(b) {label ?? '없음'}</p>;
 }
 
 // (c) 앞에 진짜 훅을 하나 두고, 조건부 useContext 를 그 뒤에 놓는다.
@@ -39,12 +39,12 @@ export function ReadWithUseContextAfterState({ show }: { show: boolean }) {
   const [mounted] = useState('붙어있음');
 
   if (!show) {
-    return <p data-testid="c">{`안 읽음(${mounted})`}</p>;
+    return <p>{`(c) 안 읽음 ${mounted}`}</p>;
   }
 
   const label = useContext(LabelContext);
 
-  return <p data-testid="c">{`${label ?? '없음'}(${mounted})`}</p>;
+  return <p>{`(c) ${label ?? '없음'} ${mounted}`}</p>;
 }
 
 // (d) 대조군 — 같은 자리에 진짜 훅을 넣으면 어떻게 되는지.
@@ -52,12 +52,12 @@ export function ReadWithConditionalState({ show }: { show: boolean }) {
   const [mounted] = useState('붙어있음');
 
   if (!show) {
-    return <p data-testid="d">{`안 읽음(${mounted})`}</p>;
+    return <p>{`(d) 안 읽음 ${mounted}`}</p>;
   }
 
   const [extra] = useState('하나 더');
 
-  return <p data-testid="d">{`${extra}(${mounted})`}</p>;
+  return <p>{`(d) ${extra} ${mounted}`}</p>;
 }
 
 // (e) 조건부 useContext 를 진짜 훅 두 개 사이에 끼운다.
@@ -72,5 +72,5 @@ export function SandwichedUseContext({ show }: { show: boolean }) {
 
   const [last] = useState('뒤');
 
-  return <p data-testid="e">{`${first}/${last}`}</p>;
+  return <p>{`(e) ${first}/${last}`}</p>;
 }
