@@ -1,9 +1,21 @@
 // apps/web-spa/src/routes/c2-not-found.test.tsx
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { routes } from './routes';
 import { withApp } from '../../scratch/c3-theme-harness';
+import { queryClient } from '../queries/queryClient';
+import { server } from '../../scratch/c5-server-harness';
+
+// C-5 Step 7 이후 탐색 화면이 게시물을 서버에서 받는다.
+// 그 화면을 지나는 판들은 서버가 켜져 있어야 돌고, 캐시는 판마다 비워야 한다.
+beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
+afterEach(() => {
+  server.resetHandlers();
+  queryClient.clear();
+});
+afterAll(() => server.close());
+
 
 let consoleError: ReturnType<typeof vi.spyOn>;
 
