@@ -51,6 +51,13 @@ eslint (eslint-plugin-react-hooks 7.1.1, flat.recommended):
   tsc --noEmit : 0건 (양쪽 다 통과 — 타입은 이 차이를 모른다)
   vite build   : 성공 (React Compiler 1.0 이 for 안의 use 를 그대로 통과시킴)
 
+  ⚠️⚠️ 위 tsc 수치는 처음에 scratch/ 에서 재서 무효였다 — tsconfig.json 의
+       include 가 ["src","vite.config.ts","vitest.config.ts"] 라 scratch 는
+       tsc 가 아예 안 본다. 파일을 src/ 로 옮겨 다시 쟀고 결과는 같았다(0건).
+       eslint 는 scratch 도 보므로 린트 수치는 처음부터 유효했다.
+       => 도구마다 보는 범위가 다르다. "tsc 0건" 을 적기 전에 그 파일이
+          include 안에 있는지부터 확인할 것.
+
 => 이름이 use 로 시작하는데 훅이 아니다. B-3 에서 박은 "훅은 조건·반복 안에서 못 부른다"
    가 이 한 API 에서만 깨진다. 그리고 그것을 알려주는 것은 타입도 컴파일러도 아닌 린트뿐.
 
@@ -152,3 +159,33 @@ ThemeToggle·ThemeColorMeta 가 useThemeContext() 로 전환. Provider 는 Layou
        ★ Context 자체는 값을 안 들고 있다 (Step 5 의 의존성 주입 근거)
 
 게이트: 80 files / 617 passed · tsc 0 · eslint 0 (기준선 77/608)
+
+
+[Step 3] 기본값 대신 null, 그리고 던지는 훅
+---------------------------------------------
+createContext<ThemeContextValue | null>(null) + useThemeContext 가 null 이면 throw.
+
+Red 의 모습이 그대로 주장이었다:
+  기본값이 있을 때  -> expect(() => render(<Reader />)).toThrow() 가 실패
+                      ("expected [Function] to throw an error" — 안 던진다)
+  null + 던지는 훅  -> 'useThemeContext 는 ThemeProvider 안에서 불러야 합니다'
+
+⚠️⚠️ 던지는 훅이 곧바로 실제 누락 하나를 찾아냈다 (연출이 아니라 사고였다)
+  scratch/c1-anchor-nav.tsx 의 AnchorLayout(C-1 Step 6 교안 코드 스냅샷)에는
+  ThemeToggle 은 있는데 Provider 가 없다. 기본값이 있던 Step 2 까지는
+  "죽은 토글" 을 그리며 테스트가 초록으로 통과하고 있었다.
+  Step 3 로 바꾸자마자 c1-link.test.tsx 2건이 FAIL —
+  React Router 기본 에러 화면에 우리 메시지가 그대로 떴다.
+  => AnchorLayout 은 교안 축자 스냅샷이라 손대지 않고, 테스트 쪽에서
+     withTheme() 로 문맥만 씌웠다(withRouter 선례 · E-7 "교안은 그 시점의 코드" 원칙).
+
+[Step 3 채증] 던지는 훅의 타입 효과 (src/ 안에서 측정)
+--------------------------------------------------------
+  const { resolved } = useContext(Ctx);   // Ctx: Context<Value | null>
+    -> error TS2339: Property 'resolved' does not exist on type 'Value | null'.
+  const { resolved } = useCtx();          // null 이면 throw 하는 훅 경유
+    -> 0건
+=> 던지는 훅 안에서 if 한 번으로 좁혀두면, 쓰는 쪽 열 곳이 null 검사를 안 해도 된다.
+   A-2 의 좁히기가 "런타임 가드 + 타입 좁히기" 로 동시에 값을 하는 자리.
+
+게이트: 81 files / 620 passed · tsc 0 · eslint 0

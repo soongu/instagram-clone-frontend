@@ -7,6 +7,7 @@ import { routes } from './routes';
 import { HomePage } from './HomePage';
 import { SignUpPage } from './SignUpPage';
 import { AnchorLayout } from '../../scratch/c1-anchor-nav';
+import { withTheme } from '../../scratch/c3-theme-harness';
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -15,6 +16,10 @@ function renderAt(path: string) {
 }
 
 // 같은 라우트 표에 껍데기만 <a> 판으로 갈아끼운다 — 갈리는 것이 그것 하나뿐이게
+//
+// AnchorLayout 은 C-1 Step 6 교안 코드의 스냅샷이라 손대지 않는다.
+// 그때는 ThemeToggle 이 자기 상태를 들고 있어서 Provider 가 필요 없었는데,
+// C-3 Step 3 이후로는 밖에서 넣어줘야 한다 — 여기서 문맥만 씌운다.
 function renderAnchorAt(path: string) {
   const router = createMemoryRouter(
     [
@@ -29,7 +34,7 @@ function renderAnchorAt(path: string) {
     ],
     { initialEntries: [path] },
   );
-  render(<RouterProvider router={router} />);
+  render(withTheme(<RouterProvider router={router} />));
   return router;
 }
 
