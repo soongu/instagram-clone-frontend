@@ -62,19 +62,6 @@ describe('무효화 = 다시 물어보기', () => {
     await expect.poll(() => feedRequests().length).toBe(2);
   });
 
-  it('실패하면 안 물어본다 — onSuccess 라서', async () => {
-    const user = userEvent.setup();
-    await login('jaehoon');
-    fakeDb.likeFailEvery = 1;
-
-    render(withQuery(withRouter(<HomePage />)));
-    const hearts = await screen.findAllByRole('button', { name: '좋아요' });
-
-    await user.click(hearts[0]);
-    await expect.poll(() => requestLog.filter((e) => e.endsWith('/like')).length).toBe(1);
-
-    expect(feedRequests()).toHaveLength(1);
-  });
 });
 
 // Step 3 이 이것을 고친다. 고친 뒤에도 "그때 무슨 일이 있었는지" 를 계속 재려면

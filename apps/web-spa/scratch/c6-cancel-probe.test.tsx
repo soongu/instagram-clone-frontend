@@ -91,3 +91,81 @@ describe('cancelQueries 가 무엇을 막나', () => {
     expect(seen.length).toBeGreaterThan(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────
+// onError 롤백이 실제로 무엇을 하나 (Step 5)
+//
+// onSettled 무효화가 있으면 어차피 서버 값으로 맞춰진다.
+// 그러면 롤백은 무슨 값을 하나? — *언제* 되돌아오느냐가 갈린다.
+function RollbackProbe({ rollback }: { rollback: boolean }) {
+  const { data } = useQuery({ queryKey: ['posts'], queryFn: () => fetchFeed() });
+  const like = useMutation({
+    mutationFn: likePost,
+    onMutate: async (postId, context) => {
+      await context.client.cancelQueries({ queryKey: ['posts'] });
+      const previous = context.client.getQueryData<Post[]>(['posts']);
+      context.client.setQueryData<Post[]>(['posts'], (current) =>
+        current === undefined ? current : toggleLike(current, postId),
+      );
+      return { previous };
+    },
+    onError: (_error, _postId, onMutateResult, context) => {
+      if (rollback && onMutateResult?.previous !== undefined) {
+        context.client.setQueryData(['posts'], onMutateResult.previous);
+      }
+    },
+    onSettled: (_r, _e, _v, _o, context) => {
+      void context.client.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
+
+  if (data === undefined) return <p>불러오는 중</p>;
+
+  return (
+    <div>
+      <p>{data[0].likeCount}</p>
+      <button onClick={() => like.mutate(1)}>좋아요</button>
+    </div>
+  );
+}
+
+async function observeRollback(rollback: boolean) {
+  const user = userEvent.setup();
+  await login('jaehoon');
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } });
+  fakeDb.likeFailEvery = 1;
+  // 좋아요는 200ms 만에 거절당하고, 피드는 800ms 나 걸린다
+  server.use(feedFromDb(800), likeToggleHandler(200));
+
+  render(
+    <QueryClientProvider client={client}>
+      <RollbackProbe rollback={rollback} />
+    </QueryClientProvider>,
+  );
+  await screen.findByText('1240');
+
+  await user.click(screen.getByRole('button', { name: '좋아요' }));
+
+  const timeline: string[] = [];
+  for (let i = 0; i < 30; i += 1) {
+    const value = client.getQueryData<Post[]>(['posts'])?.[0].likeCount;
+    const last = timeline.at(-1)?.split('@')[0];
+    if (value !== undefined && last !== String(value)) timeline.push(`${value}@${i * 50}ms`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  return timeline;
+}
+
+describe('onError 롤백이 하는 일', () => {
+  it('롤백 있음', async () => {
+    console.log('[롤백 있음]', JSON.stringify(await observeRollback(true)));
+    expect(true).toBe(true);
+  });
+
+  it('롤백 없음', async () => {
+    console.log('[롤백 없음]', JSON.stringify(await observeRollback(false)));
+    expect(true).toBe(true);
+  });
+});

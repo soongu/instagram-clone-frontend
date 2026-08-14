@@ -255,3 +255,34 @@ Step 4 — 기다리지 않고 먼저 바꾼다 (onMutate + setQueryData + cance
     Step 3 테스트 파일에서 그 판을 뺐다(그 시점 코드는 Step 3 커밋에 남아 있다).
 
   게이트: 110 files / 819 passed · tsc 0 · eslint 0
+
+
+Step 5 — 거절당하면 되돌린다 (이전 값 보관 + onError + onSettled)
+..................................................................
+
+  코드: onMutate 가 getQueryData 로 previous 를 챙겨 { previous } 를 돌려준다
+        onError 가 그 세 번째 인자로 setQueryData 복원
+        onSuccess -> onSettled 로 교체
+
+  *** 또 가짜 성과를 쓸 뻔했다 — onError 를 통째로 빼도 5건 전부 통과했다 ***
+    onSettled 무효화가 어차피 서버 값으로 맞춰주기 때문이다.
+    => 갈리는 것은 "되돌아오느냐" 가 아니라 "언제 되돌아오느냐" 였다.
+
+  시간축 실측 (scratch/c6-cancel-probe.test.tsx · 좋아요 200ms 거절 · 피드 800ms)
+      롤백 있음: 1241@0ms -> 1240@200ms     (거절당한 그 순간)
+      롤백 없음: 1241@0ms -> 1240@1000ms    (피드를 다시 받아온 뒤)
+    *** 800ms 차이. 그동안 사용자는 좋아요가 눌린 줄 안다. ***
+    상시 테스트를 "거절 직후 500ms 안에 1240" 으로 고치니
+    onError 제거 시 실패한다(expected 1241 to be 1240).
+
+  onSettled 인 이유 — 실측 2건
+    ① 실패해도 GET /api/posts 가 1 -> 2 (Step 2 의 onSuccess 판은 1 이었다)
+    ② 되돌린 값이 틀렸어도 서버가 바로잡는다
+       우리 요청은 거절당했는데 그사이 다른 사람들이 눌러 진짜 값이 1300 인 판:
+       롤백만 하면 1240 인데, 무효화가 뒤따라서 화면이 1300 으로 맞는다.
+
+  ⚠️ Step 2 의 관찰 하나가 뒤집혔다
+    "실패하면 안 물어본다 — onSuccess 라서" 는 onSettled 로 바꾸는 순간 거짓이 된다.
+    Step 2 테스트 파일에서 그 판을 뺐다(그 시점 코드는 Step 2 커밋에 남아 있다).
+
+  게이트: 111 files / 826 passed · tsc 0 · eslint 0

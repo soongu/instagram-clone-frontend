@@ -42,16 +42,32 @@ export function useLikeMutation() {
       // 우리가 방금 바꾼 것을 옛 값으로 덮어쓴다.
       await context.client.cancelQueries({ queryKey: feedKey() });
 
+      // 바꾸기 전 모습을 챙겨둔다. 서버가 거절하면 이걸로 되돌린다.
+      const previous = context.client.getQueryData<Post[]>(feedKey());
+
       // B-2 에서 만든 그 함수다. 창고 안의 배열에도 똑같이 쓴다.
-      context.client.setQueryData<Post[]>(feedKey(), (previous) =>
-        previous === undefined ? previous : toggleLike(previous, postId),
+      context.client.setQueryData<Post[]>(feedKey(), (current) =>
+        current === undefined ? current : toggleLike(current, postId),
       );
+
+      // 여기서 돌려준 것이 아래 콜백들의 세 번째 인자로 온다.
+      return { previous };
+    },
+
+    // 거절당하면 챙겨둔 모습으로 되돌린다. 화면은 눌리기 전으로 돌아간다.
+    onError: (_error, _postId, onMutateResult, context) => {
+      if (onMutateResult?.previous !== undefined) {
+        context.client.setQueryData(feedKey(), onMutateResult.previous);
+      }
     },
 
     // 쓰고 나면 읽어둔 것이 낡는다.
     // 무효화는 "지우기" 가 아니라 "다시 물어보기" 다 — 화면은 안 비고,
     // 새 답이 오면 그때 갈린다. staleTime 이 남아 있어도 이건 나간다.
-    onSuccess: (_result, _postId, _onMutateResult, context) => {
+    //
+    // onSuccess 가 아니라 onSettled 인 이유: 실패했을 때도 서버에 진짜
+    // 무슨 일이 있었는지 물어봐야 한다. 되돌린 값이 맞다는 보장이 없다.
+    onSettled: (_result, _error, _postId, _onMutateResult, context) => {
       void context.client.invalidateQueries({ queryKey: ['posts'] });
     },
   });
