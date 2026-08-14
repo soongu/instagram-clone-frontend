@@ -135,8 +135,141 @@ C-5 관찰 채증 — 서버 상태 ① (Axios·useQuery 로 가져온다)
      => 게이트 수치는 반드시 단독 실행으로 잰다.
 
 
-5. Step 1 게이트
+5. Step 2 실측 — fetch 와 Axios 가 404 에서 갈린다
 ----------------------------------------------------------------
-  npm test (단독)  96 files / 703 passed   (C-4: 95 / 692)
+  검증 파일: src/api/c5-fetch-vs-axios.test.ts (10건 통과)
+
+  fetch  404 에 reject 하지 않는다 (catch 가 안 불린다)
+         response.ok=false · response.status=404 두 값으로만 갈린다
+         본문을 읽으려면 await 이 한 번 더
+         연결 자체가 안 될 때만 던진다
+  Axios  AxiosError 로 던진다. error.response.status=404 ·
+         error.response.data.message 에 서버가 보낸 사유
+         성공 응답은 body 를 이미 풀어서 준다 (await 한 번)
+  validateStatus 기본값 실측: 200 true · 299 true · 300 false ·
+         404 false · 500 false
+
+
+6. Step 3 실측 — 단일 인스턴스와 봉투 벗기기
+----------------------------------------------------------------
+  검증 파일: src/api/c5-client.test.ts (12건 통과)
+
+  ⚠️⚠️ 초안이 화면에 영어를 내보낼 뻔했다 —
+     연결 실패 시 AxiosError.message 는 'Network Error' 다.
+     `envelope?.message ?? error.message` 로 쓰면 그 영어가 화면에 뜬다.
+     error.response 가 undefined 인 갈래를 따로 두고 우리 말로 갈아치웠다.
+     (테스트가 'Network Error' 를 기대값과 대조해 잡아냈다)
+
+  · 200 인데 success:false 인 응답도 ApiError 로 만든다(status 200)
+  · 404·500 은 봉투의 message 를 그대로 든다
+  · 화면 소스에서 success·.json()·주소가 전부 사라진 것을 소스 대조로 확인
+
+
+7. Step 4 실측 — 인터셉터 둘
+----------------------------------------------------------------
+  검증 파일: src/api/c5-auth-interceptor.test.ts (14건 통과)
+
+  · 토큰 없으면 헤더 없음 / 로그인 후 모든 요청에 Bearer
+  · 401 → 갱신 → 재시도. 요청 순서 실측:
+      POST /api/posts/1/like → POST /api/auth/refresh → POST /api/posts/1/like
+  · 갱신된 토큰이 저장돼 다음 요청부터 그것이 붙는다(access-1 → access-2)
+  · ★ 동시 5요청이 만료를 만나도 갱신은 1번 (refreshCount === 1)
+  · 갱신 실패 시 ApiError('다시 로그인해주세요', 401) + 토큰 삭제
+
+  ★ 가드를 일부러 깨서 확인 (2건 전부 하중을 받고 있었다):
+    (a) `refreshing ??=` 묶기 제거 → 동시 5요청에 갱신 5번 (기대 1 → 실측 5)
+    (b) `config.retried` 표시 제거 → ⚠️⚠️⚠️ 무한 재시도로 vitest 워커가 죽는다
+        ("Error: Worker exited unexpectedly"). 브라우저 탭이 느려지는 게 아니라
+        프로세스가 통째로 사망 — 교안·답안에 이 표현을 그대로 실었다
+
+
+8. Step 5 실측 — 서버 값은 낡는다
+----------------------------------------------------------------
+  검증 파일: src/routes/c5-stale-server-state.test.tsx (6건 통과)
+
+  · 서버 값이 1240 → 1241 로 바뀌어도 이미 그려진 화면은 1240 그대로
+  · 60초를 흘려보내도 GET /api/posts 는 1번뿐 (다시 물어볼 이유가 코드에 없다)
+  · 먼저 연 화면 1240 · 나중에 연 화면 1241 이 한 문서에 공존
+  · 대조: 캡션 펼침은 서버가 뭘 하든 그대로 / 좋아요는 새로 그리면 서버 값으로 복귀
+
+
+9. Step 6 실측 — useQuery 로 넘어간 뒤 (Step 1 과 같은 지표)
+----------------------------------------------------------------
+  검증 파일: src/routes/c5-use-query.test.tsx (11건 통과)
+
+    재본 것                         Step 1     Step 6
+    ─────────────────────────────────────────────────
+    화면 하나를 열 때 요청 수        2          1
+    같은 피드를 두 곳에서 그릴 때    2          1
+    늦게 온 데이터가 화면에          안 들어감   들어감
+    떠났다 돌아왔을 때              처음부터    기다림 없음
+
+  · HomePage 소스에 useState·useEffect·cancelled 가 0건인 것을 소스 대조로 확인
+  · Step 1~5 판은 scratch/c5-effect-fetch-before.tsx 로 박제(a5-toast-before 선례)
+  · blast radius 0 — withApp 이 이미 AppProviders 를 씌우고 있어서
+
+
+10. Step 7 실측 — queryKey
+----------------------------------------------------------------
+  검증 파일: src/routes/c5-query-key.test.tsx (12건 통과)
+
+  · 연습용 서버 ?tag=카페 → 4장(dahye·jiwon·hyunwoo·eunbi) · /api/tags → 8종
+  · 태그를 누를 때마다 새 키 → 요청이 하나씩:
+      GET /api/posts → ?tag=카페 → ?tag=한강
+  · 캐시에 태그별로 따로: feedKey() 10장 · feedKey('카페') 4장 · feedKey('한강') undefined
+  · 태그 목록은 다른 키라서 태그를 바꿔도 1번만 받는다
+
+  ⚠️⚠️ 예측이 틀렸다 — "이미 본 태그로 돌아가면 요청이 안 나간다" 가 거짓.
+     화면은 기다림 없이 즉시 채워지지만 요청은 그대로 나간다(2건).
+     staleTime 기본값이 0 이라 받아둔 것을 곧바로 낡은 것으로 보기 때문.
+     => 테스트를 사실대로 둘로 쪼개고(화면 / 요청), 그것이 Step 8 의 존재 이유가 됐다.
+
+  · 반례(scratch/c5-fixed-key-probe.tsx): 키에 tag 를 안 넣으면 카페(4장) 자리에
+    전체(10장)가 그대로 뜬다
+
+
+11. Step 8 실측 — staleTime · gcTime
+----------------------------------------------------------------
+  검증 파일: src/queries/c5-stale-gc-time.test.tsx (8건 통과)
+
+  전체 → 카페 → 전체 → 카페 (5초 안)
+    staleTime 0       요청 2번
+    staleTime 3_000   요청 0번
+    staleTime 30_000  요청 0번
+    staleTime 60_000  요청 0번
+  · 30초가 지난 뒤 같은 동작 → 다시 1번 나간다
+  · gcTime 1초 + 화면 떠남 → 1.5초 뒤 getQueryData 가 undefined
+  · ★ 두 시간은 서로를 안 본다: staleTime 0 + gcTime 5분에서 60초를 흘려도
+    캐시에 그대로 남아 있다(낡음 ≠ 삭제)
+
+  blast radius 3파일 — c2-loader·c2-not-found·c4-state-split 이 탐색 화면을
+  지나므로 서버를 붙이고 판마다 queryClient.clear()
+
+
+12. 과제 예시답안 검증
+----------------------------------------------------------------
+  scratch/c5-story-answer.tsx + src/routes/c5-answer.test.tsx (16건 통과)
+
+  · 과제1 postKey(id) = ['posts','detail',{id}] · /p/999 는 서버 사유 표시 ·
+    재방문 시 로딩 화면 0건 · 반례(키 고정)는 2번을 열어도 1번이 그대로
+  · 과제2 refetch + isFetching. 다시 받는 동안 목록 유지 · 버튼 잠김
+    (isPending 으로 잠그면 영영 안 잠긴다 — 데이터가 이미 있으므로 false)
+  · 과제3 staleTime 0/3초/60초 = 2/0/0 요청 · gcTime 1초면 2초 뒤 삭제
+  · 과제4 맨 axios 로 부르면 봉투가 그대로 온다(Array.isArray false) ·
+    토큰 없이 좋아요는 401
+  · 과제5 경매 최고가가 "이 도구가 아닌 것" — 물어봐야만 아는 방식의 한계
+
+
+13. 최종 게이트
+----------------------------------------------------------------
+  npm test (단독)  104 files / 792 passed   (C-4: 95 / 692)
   tsc --noEmit     0
   eslint           0
+  build            성공
+  CSS  42,480 B 불변 (데이터 계층은 CSS 를 안 만든다 — C-3·C-4 와 같은 이유)
+  JS   513,830 → 598,150 B (+84,320 · axios 1.19.0 + @tanstack/react-query 5.101.4)
+  grep-check C5    FAIL 0 / WARN 0
+
+  ⚠️⚠️⚠️ 측정 방법 주의 — 전체 테스트를 두 개 동시에 돌리면 거짓 실패가 쏟아진다.
+     같은 코드에서 동시 실행 48건 실패 / 단독 실행 1건 실패를 겪었다.
+     게이트 수치는 반드시 단독 실행으로 잰다.
