@@ -158,11 +158,22 @@ const routes = [
     },
   },
 
-  // 피드 — 인증이 없어도 볼 수 있다.
+  // 피드 — 인증이 없어도 볼 수 있다. tag 가 붙으면 그것만 골라 준다.
   {
     method: 'GET',
     match: (path) => path === '/api/posts',
-    handle: async (_req, res) => ok(res, posts),
+    handle: async (req, res) => {
+      const tag = new URL(req.url ?? '/', `http://localhost:${PORT}`).searchParams.get('tag');
+      if (tag === null) return ok(res, posts);
+      return ok(res, posts.filter((post) => post.hashtagNames.includes(tag)));
+    },
+  },
+
+  // 태그 목록 — 화면이 게시물에서 뽑아 쓰지 않게 서버가 준다.
+  {
+    method: 'GET',
+    match: (path) => path === '/api/tags',
+    handle: async (_req, res) => ok(res, [...new Set(posts.flatMap((post) => post.hashtagNames))]),
   },
 
   // 게시물 하나 — 없는 번호면 404 에 봉투를 실어 보낸다.

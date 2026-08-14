@@ -1,12 +1,9 @@
 // apps/web-spa/src/routes/ExplorePage.tsx
 import { Link, useSearchParams } from 'react-router';
-import { allPosts } from '../data/feed';
 import { List } from '../components/List';
 import { Section } from '../components/Section';
 import { Button } from '../components/ui/button';
-
-// 태그 목록은 데이터에서 뽑는다. 손으로 적어두면 게시물이 늘 때마다 어긋난다.
-const allTags = [...new Set(allPosts.flatMap((post) => post.hashtagNames))];
+import { useFeedQuery, useTagsQuery } from '../queries/posts';
 
 export function ExplorePage() {
   // 모양은 useState 와 똑같다 — 값 하나와 그 값을 바꾸는 함수 하나.
@@ -15,7 +12,11 @@ export function ExplorePage() {
 
   // 없으면 null 이다. undefined 가 아니라 null 이라는 것을 기억해 두자.
   const tag = searchParams.get('tag');
-  const shown = tag === null ? allPosts : allPosts.filter((post) => post.hashtagNames.includes(tag));
+
+  // 주소에 적힌 값이 그대로 키의 일부가 된다.
+  // 태그가 바뀌면 키가 바뀌고, 키가 바뀌면 새로 물어본다.
+  const { data: shown, isPending, error } = useFeedQuery(tag ?? undefined);
+  const { data: tags = [] } = useTagsQuery();
 
   return (
     <Section title="탐색">
@@ -29,7 +30,7 @@ export function ExplorePage() {
         >
           전체
         </Button>
-        {allTags.map((name) => (
+        {tags.map((name) => (
           <Button
             key={name}
             variant={tag === name ? 'default' : 'outline'}
@@ -42,7 +43,11 @@ export function ExplorePage() {
         ))}
       </div>
 
-      {shown.length === 0 ? (
+      {error !== null ? (
+        <p className="text-sm text-danger-strong">게시물을 불러오지 못했어요</p>
+      ) : isPending ? (
+        <p className="text-sm text-faint">게시물을 불러오는 중이에요…</p>
+      ) : shown.length === 0 ? (
         <p className="text-sm text-faint">이 태그를 붙인 게시물이 없습니다.</p>
       ) : (
         <List

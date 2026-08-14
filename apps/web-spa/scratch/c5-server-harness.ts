@@ -32,10 +32,21 @@ export function resetRequestLog(): void {
 }
 
 export function feedHandler(posts: Post[] = allPosts, delayMs = 0) {
-  return http.get(`${API_BASE}/posts`, async () => {
-    requestLog.push('GET /api/posts');
+  return http.get(`${API_BASE}/posts`, async ({ request }) => {
+    const tag = new URL(request.url).searchParams.get('tag');
+    requestLog.push(tag === null ? 'GET /api/posts' : `GET /api/posts?tag=${tag}`);
     if (delayMs > 0) await delay(delayMs);
-    return HttpResponse.json(ok(posts));
+
+    const shown = tag === null ? posts : posts.filter((post) => post.hashtagNames.includes(tag));
+
+    return HttpResponse.json(ok(shown));
+  });
+}
+
+export function tagsHandler(posts: Post[] = allPosts) {
+  return http.get(`${API_BASE}/tags`, () => {
+    requestLog.push('GET /api/tags');
+    return HttpResponse.json(ok([...new Set(posts.flatMap((post) => post.hashtagNames))]));
   });
 }
 
@@ -144,6 +155,7 @@ export function echoAuthHandler() {
 
 export const server = setupServer(
   feedHandler(),
+  tagsHandler(),
   postHandler(),
   ...authHandlers(),
   likeHandler(),
