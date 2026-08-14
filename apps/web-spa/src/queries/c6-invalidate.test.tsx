@@ -7,6 +7,7 @@ import type { Post } from '../types/instagram';
 import { HomePage } from '../routes/HomePage';
 import { withRouter } from '../../scratch/c1-router-harness';
 import { withQuery, freshQueryClient } from '../../scratch/c5-query-harness';
+import { HomePageBeforeSingleTruth } from '../../scratch/c6-feed-section-before';
 import { server, requestLog, resetRequestLog, fakeAuth } from '../../scratch/c5-server-harness';
 import { c6Handlers, fakeDb } from '../../scratch/c6-server-harness';
 import { login } from '../api/auth';
@@ -76,13 +77,15 @@ describe('무효화 = 다시 물어보기', () => {
   });
 });
 
-describe('★ 무효화를 했는데 화면이 안 바뀐다', () => {
+// Step 3 이 이것을 고친다. 고친 뒤에도 "그때 무슨 일이 있었는지" 를 계속 재려면
+// 그 시점 화면이 남아 있어야 한다.
+describe('★ 무효화를 했는데 화면이 안 바뀐다 (Step 3 이전)', () => {
   it('캐시에는 새 숫자가 들어왔는데 화면은 옛 숫자를 들고 있다', async () => {
     const user = userEvent.setup();
     await login('jaehoon');
 
     const client = freshQueryClient();
-    render(withQuery(withRouter(<HomePage />), client));
+    render(withQuery(withRouter(<HomePageBeforeSingleTruth />), client));
     const hearts = await screen.findAllByRole('button', { name: '좋아요' });
 
     // 화면이 처음 받은 숫자

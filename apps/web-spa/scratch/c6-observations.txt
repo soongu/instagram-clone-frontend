@@ -165,3 +165,57 @@ Step 2 — 쓰고 나면 읽어둔 것이 낡는다 (invalidateQueries + DevTool
        인용하지는 않으므로 보류.
 
   게이트: 107 files / 809 passed · tsc 0 · eslint 0 · build 성공
+
+
+Step 3 — 진실이 둘이면 하나는 거짓말 (사본을 걷어낸다)
+.......................................................
+
+  결정: 박제 후 전환 (사용자 승인 2026-08-14)
+    scratch/c6-feed-section-before.tsx 에 FeedSectionBeforeServer 를 두고,
+    지역 동작을 단언하던 판들이 그것을 보게 했다. *단언은 한 줄도 안 고쳤다.*
+
+  코드: components/FeedSection.tsx — useFeed/useReducer 제거.
+        posts 는 props(창고) 그대로 · likedCount 도 props 에서 셈 ·
+        좋아요는 likeMutation.mutate 만 · 알림만 useState 로 남김
+        lib/feed-state.ts — likeToastMessage()/allSeenToastMessage() 순수 추출
+        (feedReducer 출력 불변. a5-feed-state·a5-answer 그대로 통과)
+
+  ★ Step 2 에서 갈렸던 숫자가 맞는다
+    같은 시나리오(1240 -> 다른 사람들이 눌러 1300 -> 우리가 누름 -> 서버 1301)
+      Step 2: 캐시 1301 / 화면 1241
+      Step 3: 캐시 1301 / 화면 1301   ('좋아요 1241개' 는 화면에 없음)
+
+  ★ 서버가 거절하면 화면도 안 바뀐다 (likeFailEvery=1 -> 500)
+    숫자가 1240 그대로. 혼자 앞서가지 않는다.
+    => 이것이 Step 4(낙관적 업데이트)의 반대 극단이다. 0.4초 동안 아무 반응이 없다.
+
+  blast radius — 9건 / 8파일 (단언 무변경)
+    박제로 옮긴 것:
+      b2-lifting   describe('HomePage — 상태를 끌어올린 뒤') 4건
+      b4-toast     describe('HomePage 의 탭 제목') 1건
+      a4-typing    describe('PostCard — 이미지 더블클릭으로 좋아요') 2건
+      e7-visual-polish '누르면 같은 이름의 버튼이 눌린 상태로' 1건
+      b3-use-like-toggle '좋아요를 누르면 머리말 숫자가' 1건
+      c5-effect-fetch  describe('가져온 뒤에 넘기는 자리 — 초기값은 한 번만 읽힌다') 2건
+      c6-invalidate    Step 2 의 버그 관찰 1건 -> HomePageBeforeSingleTruth
+    살아 있는 화면에 그대로 둔 것:
+      b4-toast 의 알림 2건 (알림은 여전히 지역이라 진짜로 통과한다)
+      a4-typing·e7 의 마크업 판들 (첫 렌더 결과가 같다)
+
+  *** C-5 의 박제가 미완성이었다 ***
+    scratch/c5-effect-fetch-before.tsx 가 *살아 있는* FeedSection 을 그리고 있었다.
+    그래서 C-6 이 FeedSection 을 바꾸자 C-5 Step 1 의 교보재
+    ("나중에 도착한 배열을 다시 넘겨도 화면은 안 바뀐다")가 깨졌다.
+    박제는 자기가 재는 성질을 가진 컴포넌트까지 함께 얼려야 한다.
+    -> c5-effect-fetch-before 가 FeedSectionBeforeServer 를 그리게 고쳤다.
+
+  ⚠️ 헛통과 발견
+    b2-lifting 의 '한 번 더 누르면 헤더도 함께 되돌아온다'·'한 카드를 눌러도
+    다른 카드는 그대로다' 는 사본을 걷어낸 뒤에도 *통과했다* — 아무 일도 안 일어나는데
+    기대값이 우연히 같아서다. describe 를 통째로 박제로 옮겨 실제로 재게 했다.
+    (C-1 canon 의 "없는 것을 지우고 없다고 단언" 과 같은 계열)
+
+  번들: JS 601,448 -> 600,622 B (-826 · 살아 있는 경로에서 useFeed 가 빠졌다)
+        CSS 42,488 B 불변
+
+  게이트: 108 files / 814 passed · tsc 0 · eslint 0 · build 성공

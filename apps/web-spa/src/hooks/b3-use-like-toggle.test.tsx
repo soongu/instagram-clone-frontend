@@ -6,9 +6,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { toB3Classes, b3BridgeHits, toVisibleText } from '../../scratch/e2-b3-class-bridge';
 import { describe, it, expect } from 'vitest';
 import { feedPosts } from '../data/feed';
-import { FeedSection } from '../components/FeedSection';
 import { homeMarkup, withRouter } from '../../scratch/c1-router-harness';
 import { withQuery } from '../../scratch/c5-query-harness';
+import { FeedSectionBeforeServer } from '../../scratch/c6-feed-section-before';
 import { AppBeforeHook } from '../../scratch/b3-lecture-snapshots';
 import { useLikeToggle } from './useLikeToggle';
 
@@ -102,9 +102,12 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
     expect(toVisibleText(after)).toBe(toVisibleText(toB3Classes(before)));
   });
 
+  // C-6 Step 3 에서 살아 있는 화면은 좋아요를 서버에 맡겼다.
+  // B-3 이 주장한 것은 "훅이 그 상태를 들고 있어도 화면이 그대로다" 라서
+  // 그 시절 컴포넌트로 견준다.
   it('좋아요를 누르면 머리말 숫자가 함께 올라간다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
 

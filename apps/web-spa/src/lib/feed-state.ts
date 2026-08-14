@@ -25,6 +25,18 @@ export function createFeedState(posts: Post[]): FeedState {
   return { posts, toast: null };
 }
 
+// 누르기 전의 게시물을 받아 무슨 말을 띄울지 정한다.
+// 좋아요를 누가 들고 있든 문구는 같으므로 따로 떼어 둔다.
+export function likeToastMessage(post: Post): string {
+  return post.liked
+    ? `${post.username}님의 게시물 좋아요를 취소했습니다`
+    : `${post.username}님의 게시물을 좋아합니다`;
+}
+
+export function allSeenToastMessage(posts: Post[]): string {
+  return `게시물을 모두 확인했습니다 · 좋아요 ${countLiked(posts)}개`;
+}
+
 function countLiked(posts: Post[]): number {
   return posts.filter((post) => post.liked).length;
 }
@@ -40,18 +52,14 @@ export function feedReducer(state: FeedState, action: FeedAction): FeedState {
 
       return {
         posts: toggleLike(state.posts, action.id),
-        toast: {
-          message: target.liked
-            ? `${target.username}님의 게시물 좋아요를 취소했습니다`
-            : `${target.username}님의 게시물을 좋아합니다`,
-        },
+        toast: { message: likeToastMessage(target) },
       };
     }
 
     case 'reachBottom':
       return {
         ...state,
-        toast: { message: `게시물을 모두 확인했습니다 · 좋아요 ${countLiked(state.posts)}개` },
+        toast: { message: allSeenToastMessage(state.posts) },
       };
 
     case 'dismissToast':

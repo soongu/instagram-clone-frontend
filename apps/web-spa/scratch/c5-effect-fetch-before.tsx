@@ -6,7 +6,10 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../src/api/client';
 import { fetchFeed } from '../src/api/posts';
-import { FeedSection } from '../src/components/FeedSection';
+// ⚠️ 살아 있는 FeedSection 이 아니라 그 시절 것을 그린다.
+// C-6 Step 3 에서 화면이 사본을 안 들게 바뀌었는데, 이 박제가 재는 것은
+// "초기값은 한 번만 읽힌다" 라 사본을 드는 쪽이어야 성립한다.
+import { FeedSectionBeforeServer as FeedSection } from './c6-feed-section-before';
 import type { Post } from '../src/types/instagram';
 
 export function HomePageByEffect() {

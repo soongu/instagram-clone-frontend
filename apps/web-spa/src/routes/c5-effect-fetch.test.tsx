@@ -4,7 +4,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { HomePageByEffect } from '../../scratch/c5-effect-fetch-before';
-import { FeedSection } from '../components/FeedSection';
+// C-6 Step 3 에서 살아 있는 FeedSection 은 사본을 안 든다.
+// 이 아래가 재는 것은 그 사본의 성질이라 그 시절 것으로 견준다.
+import { FeedSectionBeforeServer as FeedSection } from '../../scratch/c6-feed-section-before';
 import { withRouter } from '../../scratch/c1-router-harness';
 import { withQuery } from '../../scratch/c5-query-harness';
 import { server, API_BASE, ok, failure, requestLog, resetRequestLog } from '../../scratch/c5-server-harness';

@@ -4,12 +4,12 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { feedPosts } from '../data/feed';
-import { FeedSection } from './FeedSection';
 import { LikeButton } from './LikeButton';
 import { toggleLike, toggleLikeInPlace } from '../lib/likes';
 import type { Post } from '../types/instagram';
 import { withRouter } from '../../scratch/c1-router-harness';
 import { withQuery } from '../../scratch/c5-query-harness';
+import { FeedSectionBeforeServer } from '../../scratch/c6-feed-section-before';
 
 function samplePosts(): Post[] {
   return feedPosts.map((post) => ({ ...post }));
@@ -37,9 +37,11 @@ describe('LikeButton — 제어 컴포넌트가 된 뒤', () => {
   });
 });
 
+// C-6 Step 3 에서 살아 있는 화면은 좋아요를 서버에 맡겼다.
+// 이 아래가 재는 것은 "화면이 자기 안에서 바꾼다" 라서 그 시절 컴포넌트로 견준다.
 describe('HomePage — 상태를 끌어올린 뒤', () => {
   it('헤더가 좋아요 누른 게시물 수를 센다', () => {
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     // 초기 데이터에서 liked 가 true 인 건 minji 하나
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
@@ -47,7 +49,7 @@ describe('HomePage — 상태를 끌어올린 뒤', () => {
 
   it('카드에서 누른 좋아요가 헤더 숫자까지 올라온다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
@@ -58,7 +60,7 @@ describe('HomePage — 상태를 끌어올린 뒤', () => {
 
   it('한 번 더 누르면 헤더도 함께 되돌아온다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
@@ -70,7 +72,7 @@ describe('HomePage — 상태를 끌어올린 뒤', () => {
 
   it('한 카드를 눌러도 다른 카드는 그대로다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));

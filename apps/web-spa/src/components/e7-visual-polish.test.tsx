@@ -13,6 +13,7 @@ import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { homeMarkup, withRouter } from '../../scratch/c1-router-harness';
 import { withQuery } from '../../scratch/c5-query-harness';
+import { FeedSectionBeforeServer } from '../../scratch/c6-feed-section-before';
 import { Feed } from './Feed';
 import { PostCard } from './PostCard';
 import { PostHeader } from './PostHeader';
@@ -243,9 +244,11 @@ describe('Step 5 — 좋아요 줄을 인스타그램처럼', () => {
     expect(좋아요(true).querySelector('svg')?.getAttribute('class')).toContain('fill-current');
   });
 
+  // C-6 Step 3 에서 살아 있는 화면은 좋아요를 서버에 맡겼다.
+  // E-7 이 재는 것은 눌린 표시가 바뀌는 모습이라 그 시절 컴포넌트로 견준다.
   it('누르면 같은 이름의 버튼이 눌린 상태로 바뀐다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
     const 첫카드 = screen.getAllByRole('listitem')[0];
 
     await user.click(within(첫카드).getByRole('button', { name: '좋아요', pressed: false }));

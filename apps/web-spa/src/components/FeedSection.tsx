@@ -1,7 +1,9 @@
 // apps/web-spa/src/components/FeedSection.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { Post } from '../types/instagram';
-import { useFeed } from '../hooks/useFeed';
+import type { FeedToast } from '../lib/feed-state';
+import { allSeenToastMessage, likeToastMessage } from '../lib/feed-state';
+import { findById } from '../lib/collections';
 import { useScrollRestore } from '../hooks/useScrollRestore';
 import { useLikeMutation } from '../queries/posts';
 import { Feed } from './Feed';
@@ -17,18 +19,31 @@ interface FeedSectionProps {
 
 // 게시물을 이미 손에 쥔 다음부터의 일만 맡는다.
 // 가져오는 일은 이 컴포넌트를 그리는 쪽이 한다.
-export function FeedSection({ posts: initialPosts }: FeedSectionProps) {
-  const { posts, likedCount, toast, toggleLike, reachBottom, dismissToast } = useFeed(initialPosts);
+//
+// 좋아요는 더 이상 여기 상태가 아니다. 우리가 그리는 posts 는 창고에 있는 것
+// 그대로이고, 누르면 서버에 보낸다. 화면이 따로 세지 않으니 틀릴 일도 없다.
+export function FeedSection({ posts }: FeedSectionProps) {
   const likeMutation = useLikeMutation();
 
-  // 한 번 누르면 두 곳에 알린다 — 화면과 서버.
+  // 알림은 이 화면에만 있다가 사라지는 것이라 여기 그대로 둔다.
+  const [toast, setToast] = useState<FeedToast | null>(null);
+
+  // 세는 것도 넘겨받은 것에서 센다. 따로 들고 있는 숫자가 없다.
+  const likedCount = posts.filter((post) => post.liked).length;
+
   function handleToggleLike(id: number) {
-    toggleLike(id);
+    const target = findById(posts, id);
+
+    if (!target) {
+      return;
+    }
+
+    setToast({ message: likeToastMessage(target) });
     likeMutation.mutate(id);
   }
 
   // 피드 끝에 닿으면 여기까지 봤다고 알려준다
-  useScrollRestore(reachBottom);
+  useScrollRestore(() => setToast({ message: allSeenToastMessage(posts) }));
 
   // 브라우저 탭 제목은 React 가 그리는 화면 밖에 있다. 직접 맞춰줘야 한다.
   useEffect(() => {
@@ -41,10 +56,10 @@ export function FeedSection({ posts: initialPosts }: FeedSectionProps) {
       return;
     }
 
-    const timerId = setTimeout(dismissToast, TOAST_DURATION);
+    const timerId = setTimeout(() => setToast(null), TOAST_DURATION);
 
     return () => clearTimeout(timerId);
-  }, [toast, dismissToast]);
+  }, [toast]);
 
   return (
     <>

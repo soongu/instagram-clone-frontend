@@ -11,6 +11,7 @@ import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
 import { withQuery } from '../../scratch/c5-query-harness';
+import { FeedSectionBeforeServer } from '../../scratch/c6-feed-section-before';
 
 describe('CommentInput — ref 를 props 로 받는다', () => {
   it('부모가 넘긴 ref 가 실제 input DOM 노드를 가리킨다', () => {
@@ -102,10 +103,12 @@ describe('Section — children 을 명시로 받는다', () => {
   });
 });
 
+// C-6 Step 3 에서 살아 있는 화면은 좋아요를 서버에 맡겼다.
+// 이 아래가 재는 것은 "화면이 자기 안에서 바꾼다" 라서 그 시절 컴포넌트로 견준다.
 describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
   it('이미지를 더블클릭하면 좋아요가 켜진다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     expect(within(firstCard).getByRole('button', { name: '좋아요', pressed: false })).toBeInTheDocument();
@@ -119,7 +122,7 @@ describe('PostCard — 이미지 더블클릭으로 좋아요', () => {
 
   it('버튼으로 누른 것과 같은 상태를 공유한다', async () => {
     const user = userEvent.setup();
-    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
+    render(withQuery(withRouter(<FeedSectionBeforeServer posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.dblClick(within(firstCard).getByRole('img', { name: /게시물/ }));
