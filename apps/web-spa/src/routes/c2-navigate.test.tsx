@@ -2,9 +2,29 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { routesWithFeed } from '../../scratch/c1-router-harness';
 import { withApp } from '../../scratch/c3-theme-harness';
+import { server, resetRequestLog, fakeAuth } from '../../scratch/c5-server-harness';
+import { c6Handlers, fakeDb } from '../../scratch/c6-server-harness';
+import { queryClient } from '../queries/queryClient';
+
+// C-6 Step 6 부터 /p/:postId 가 진짜 서버에 붙는다(C-2 시절의 흉내 함수가 아니다).
+// 보던 것은 그대로 두고 서버만 붙인다.
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+
+beforeEach(() => {
+  server.use(...c6Handlers());
+  resetRequestLog();
+  fakeAuth.reset();
+  fakeDb.reset();
+  // 앱이 함께 쓰는 창고라 판마다 비운다
+  queryClient.clear();
+});
+
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
 
 const VALID = {
   username: 'jaehoon',

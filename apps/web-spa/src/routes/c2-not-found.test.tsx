@@ -90,7 +90,10 @@ describe('C-2 Step 7 — 화면에서 갈래가 하나 더 사라졌다', () => 
   it('사람이 읽을 말은 본문에 담는다 — statusText 에는 한글이 안 들어간다', async () => {
     const source = await import('./postLoader.ts?raw');
 
-    expect(source.default).toMatch(/new Response\('게시물을 찾을 수 없습니다'/);
+    // C-6 에서 그 문구의 출처가 서버로 옮겨갔다(error.message).
+    // 지키는 것은 문구가 아니라 "어디에 담느냐" 다 — 본문이지 statusText 가 아니다.
+    expect(source.default).toMatch(/new Response\(error\.message/);
     expect(source.default).toMatch(/status: 404/);
+    expect(source.default).not.toMatch(/statusText/);
   });
 });

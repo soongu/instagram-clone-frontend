@@ -1,6 +1,8 @@
 // apps/web-spa/src/routes/postLoader.ts
 import type { LoaderFunctionArgs } from 'react-router';
-import { fetchPost } from '../data/feed';
+import { ApiError } from '../api/client';
+import { queryClient } from '../queries/queryClient';
+import { postQuery } from '../queries/posts';
 
 // 컴포넌트 바깥이다. 화면을 그리기 전에 라우터가 이 함수를 먼저 부른다.
 // 훅이 아니라 그냥 함수라서, 주소에서 뽑은 값도 인자로 받는다.
@@ -13,17 +15,19 @@ export async function postLoader({ params }: LoaderFunctionArgs) {
     throw new Error(`게시물 번호가 아닙니다: ${params.postId}`);
   }
 
-  const post = await fetchPost(id);
+  try {
+    // "창고에 있으면 그걸 쓰고, 없으면 받아서 채워라."
+    // 두 가지를 한 번에 한다 — 창고를 채우고, 그 값을 돌려준다.
+    const post = await queryClient.ensureQueryData(postQuery(id));
 
-  // 주소는 표에 있는데 그 데이터가 없는 경우다. 이건 오류라기보다 상태라서
-  // 번호를 붙여 던진다 — 받는 쪽이 404 인지 아닌지 구별할 수 있게.
-  //
-  // 사람이 읽을 말은 본문에 담는다. statusText 는 HTTP reason phrase 라
-  // Latin-1 만 받아서, 한글을 넣으면 만드는 순간 TypeError 로 터진다.
-  if (post === undefined) {
-    throw new Response('게시물을 찾을 수 없습니다', { status: 404 });
+    return { post };
+  } catch (error) {
+    // 없는 번호면 서버가 404 와 사유를 함께 보낸다.
+    // 그것을 라우터가 아는 모양(Response)으로 바꿔 던진다.
+    if (error instanceof ApiError && error.status === 404) {
+      throw new Response(error.message, { status: 404 });
+    }
+
+    throw error;
   }
-
-  // 여기까지 왔으면 post 는 반드시 있다. 화면이 없음을 신경 쓸 일이 없어졌다.
-  return { post };
 }

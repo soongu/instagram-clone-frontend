@@ -7,6 +7,7 @@ import { routesWithFeed } from '../../scratch/c1-router-harness';
 import { withApp } from '../../scratch/c3-theme-harness';
 import { queryClient } from '../queries/queryClient';
 import { server } from '../../scratch/c5-server-harness';
+import { postFromDb } from '../../scratch/c6-server-harness';
 
 // C-5 Step 7 이후 탐색 화면이 게시물을 서버에서 받는다.
 // 그 화면을 지나는 판들은 서버가 켜져 있어야 돌고, 캐시는 판마다 비워야 한다.
@@ -44,6 +45,10 @@ describe('C-2 Step 5 — 뜨기 전에 부른다', () => {
   });
 
   it('가는 중에는 앞 화면이 그대로 남아 있다', async () => {
+    // C-2 시절 흉내 함수는 400ms 를 기다렸다. 진짜 서버는 그만큼 안 걸릴 수도 있어서
+    // "가는 중" 이라는 순간을 보려면 여기서 지연을 준다.
+    server.use(postFromDb(300));
+
     renderAt('/explore');
     await screen.findByRole('list', { name: '탐색 목록' });
 

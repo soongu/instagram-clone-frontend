@@ -1,7 +1,7 @@
 // apps/web-spa/src/queries/posts.ts
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery } from '@tanstack/react-query';
 import type { Post } from '../types/instagram';
-import { fetchFeed, fetchTags, likePost } from '../api/posts';
+import { fetchFeed, fetchPostById, fetchTags, likePost } from '../api/posts';
 import { toggleLike } from '../lib/likes';
 
 // 키는 이 데이터의 이름이다. 캐시에서 이 이름으로 찾는다.
@@ -13,6 +13,15 @@ export function feedKey(tag?: string) {
 }
 
 export const tagsKey = ['tags'] as const;
+
+// 키와 부를 함수를 한 덩어리로 묶어 이름을 붙인다.
+// 화면도 loader 도 이 하나를 가져다 쓴다 — 키가 어긋날 자리가 없어진다.
+export function postQuery(id: number) {
+  return queryOptions({
+    queryKey: ['posts', id],
+    queryFn: () => fetchPostById(id),
+  });
+}
 
 export function useFeedQuery(tag?: string) {
   return useQuery({

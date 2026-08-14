@@ -286,3 +286,45 @@ Step 5 — 거절당하면 되돌린다 (이전 값 보관 + onError + onSettled
     Step 2 테스트 파일에서 그 판을 뺐다(그 시점 코드는 Step 2 커밋에 남아 있다).
 
   게이트: 111 files / 826 passed · tsc 0 · eslint 0
+
+
+Step 6 — loader 와 useQuery 의 화해 (ensureQueryData)
+.......................................................
+
+  코드: queries/posts.ts 에 postQuery(id) = queryOptions({ queryKey:['posts',id], queryFn })
+        routes/postLoader.ts — 흉내 함수 fetchPost 를 버리고
+          queryClient.ensureQueryData(postQuery(id)) 로 창고를 채우고 그 값을 돌려준다
+          ApiError(404) 를 new Response(error.message, {status:404}) 로 바꿔 던진다
+        routes/PostDetailPage.tsx — useLoaderData 를 initialData 로 주고 useQuery 로 읽는다
+
+  *** 초안이 C-2 의 학습 결론 두 개를 거짓으로 만들었다 ***
+    처음에는 loader 가 null 을 돌려주고 화면이 useQuery 만 쓰게 했다. 그러자
+      ① c2-loader "useLoaderData 에 무엇을 담았는지 알려준다 — 안 알려주면 any 다"
+         -> PostDetailPage 에서 useLoaderData 가 통째로 사라져 거짓
+      ② c2-not-found "상세는 이제 못 찾은 경우를 신경 쓰지 않는다"(소스에 undefined 0건)
+         -> useQuery 의 data 가 Post|undefined 라 if (post === undefined) 가 생겨 거짓
+    => loader 가 값을 돌려주고 그것을 initialData 로 건네는 모양으로 고쳤다.
+       initialData 가 있으면 data 타입이 non-undefined 라 갈래가 안 생긴다.
+       C-4 의 "읽는 쪽을 PostBody 로 내렸다" 와 같은 성격의 판단.
+
+  실측
+    /p/1 첫 화면부터 게시물이 들어 있다 ("불러오는 중" 0건)
+    GET /api/posts/1 은 한 번만 나간다 (loader 가 채운 것을 화면이 그대로 읽는다)
+    ★ 이미 받아둔 게시물이면 요청이 아예 안 나간다 (ensureQueryData 가 캐시를 존중)
+    없는 번호(/p/999) -> 서버 사유가 404 화면에 "404 게시물을 찾을 수 없습니다"
+    번호가 아닌 주소(/p/abc) -> loader 가 먼저 막아 요청 0건
+
+  blast radius — 11건 / 6파일 (C-2·C-3 판)
+    (a) 서버를 붙였다: c2-error-boundary · c2-navigate · c2-post-detail · c3-provider-scope
+        (/p/:postId 가 이제 진짜 서버에 붙는다. 보던 것은 그대로)
+    (b) 타이밍: c2-loader '가는 중에는 앞 화면이 그대로 남아 있다'
+        *** C-2 의 흉내 함수는 400ms 를 기다렸는데 진짜 서버 하네스는 0ms 다. ***
+        "가는 중" 이라는 순간 자체가 사라져 실패했다 -> postFromDb(300) 으로 지연을 준다.
+        단언 무변경.
+    (c) 단언 재조준 1건: c2-not-found 의
+        toMatch(/new Response\('게시물을 찾을 수 없습니다'/) -> /new Response\(error\.message/
+        + not.toMatch(/statusText/) 를 추가해 더 강하게.
+        한글 문구의 출처가 클라이언트 리터럴에서 서버로 옮겨갔기 때문이다.
+        (C-2 가 c1-layout·c1-link 단언을 재조준한 선례와 같은 성격)
+
+  게이트: 112 files / 833 passed · tsc 0 · eslint 0

@@ -1,9 +1,29 @@
 // apps/web-spa/src/routes/c2-error-boundary.test.tsx
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { routes } from './routes';
 import { withApp } from '../../scratch/c3-theme-harness';
+import { server, resetRequestLog, fakeAuth } from '../../scratch/c5-server-harness';
+import { c6Handlers, fakeDb } from '../../scratch/c6-server-harness';
+import { queryClient } from '../queries/queryClient';
+
+// C-6 Step 6 부터 /p/:postId 가 진짜 서버에 붙는다(C-2 시절의 흉내 함수가 아니다).
+// 보던 것은 그대로 두고 서버만 붙인다.
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+
+beforeEach(() => {
+  server.use(...c6Handlers());
+  resetRequestLog();
+  fakeAuth.reset();
+  fakeDb.reset();
+  // 앱이 함께 쓰는 창고라 판마다 비운다
+  queryClient.clear();
+});
+
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
 
 // 라우터가 잡은 오류를 콘솔에 흘린다. 판정과 상관없는 잡음이라 이 파일에서만 막는다.
 let consoleError: ReturnType<typeof vi.spyOn>;
