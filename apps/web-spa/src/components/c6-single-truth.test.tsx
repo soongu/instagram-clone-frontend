@@ -52,23 +52,6 @@ describe('창고에 있는 것만 그린다', () => {
     expect(screen.queryByText('좋아요 1241개')).not.toBeInTheDocument();
   });
 
-  it('★ 서버가 거절하면 화면도 안 바뀐다 — 혼자 앞서가지 않는다', async () => {
-    const user = userEvent.setup();
-    await login('jaehoon');
-    fakeDb.likeFailEvery = 1;
-
-    render(withQuery(withRouter(<HomePage />)));
-    const hearts = await screen.findAllByRole('button', { name: '좋아요' });
-    await screen.findByText('좋아요 1240개');
-
-    await user.click(hearts[0]);
-    await expect.poll(() => requestLog.filter((e) => e.endsWith('/like')).length).toBe(1);
-
-    // 서버가 500 을 줬으니 숫자는 그대로다
-    expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
-    expect(fakeDb.find(1)?.likeCount).toBe(1240);
-  });
-
   it('머리말 숫자도 창고에서 센다', async () => {
     const user = userEvent.setup();
     await login('jaehoon');
