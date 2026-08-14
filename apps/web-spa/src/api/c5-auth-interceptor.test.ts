@@ -184,8 +184,10 @@ describe('화면에는 Authorization 을 적는 곳이 없다', () => {
   it('HomePage·posts.ts 어디에도 토큰 이야기가 없다', async () => {
     const home = await import('../routes/HomePage.tsx?raw');
     const posts = await import('./posts.ts?raw');
+    const query = await import('../queries/posts.ts?raw');
 
-    expect(home.default).not.toMatch(/Authorization|Bearer|token/i);
-    expect(posts.default).not.toMatch(/Authorization|Bearer|token/i);
+    for (const source of [home.default, posts.default, query.default]) {
+      expect(source).not.toMatch(/Authorization|Bearer|token/i);
+    }
   });
 });

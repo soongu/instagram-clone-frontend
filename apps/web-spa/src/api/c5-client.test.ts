@@ -86,21 +86,27 @@ describe('실패는 ApiError 하나로 모인다', () => {
 });
 
 describe('화면에서 봉투를 여는 코드가 사라졌다', () => {
-  it('HomePage 소스에 success 도 .json 도 fetch 도 없다', async () => {
-    const source = await import('../routes/HomePage.tsx?raw');
+  it('화면과 그 훅 어디에도 success 도 .json 도 없다', async () => {
+    const home = await import('../routes/HomePage.tsx?raw');
+    const query = await import('../queries/posts.ts?raw');
 
-    expect(source.default).not.toMatch(/success/);
-    expect(source.default).not.toMatch(/\.json\(\)/);
-    expect(source.default).not.toMatch(/fetch\(/);
-    expect(source.default).toMatch(/fetchFeed\(\)/);
+    for (const source of [home.default, query.default]) {
+      expect(source).not.toMatch(/success/);
+      expect(source).not.toMatch(/\.json\(\)/);
+    }
+
+    // 부르는 일은 api 층에 남아 있다
+    expect(query.default).toMatch(/fetchFeed/);
   });
 
   it('주소를 아는 곳은 client.ts 하나뿐이다', async () => {
     const home = await import('../routes/HomePage.tsx?raw');
     const posts = await import('./posts.ts?raw');
+    const query = await import('../queries/posts.ts?raw');
 
-    expect(home.default).not.toMatch(/localhost:8090/);
-    expect(posts.default).not.toMatch(/localhost:8090/);
+    for (const source of [home.default, posts.default, query.default]) {
+      expect(source).not.toMatch(/localhost:8090/);
+    }
   });
 });
 

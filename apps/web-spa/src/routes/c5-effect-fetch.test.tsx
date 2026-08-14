@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { HomePage } from './HomePage';
+import { HomePageByEffect } from '../../scratch/c5-effect-fetch-before';
 import { FeedSection } from '../components/FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
 import { server, API_BASE, ok, failure, requestLog, resetRequestLog } from '../../scratch/c5-server-harness';
@@ -18,7 +18,7 @@ afterAll(() => server.close());
 
 describe('직접 가져오는 판 — 화면이 세 갈래로 갈린다', () => {
   it('처음 뜨는 화면에는 게시물이 한 장도 없다', () => {
-    const html = renderToStaticMarkup(withRouter(<HomePage />));
+    const html = renderToStaticMarkup(withRouter(<HomePageByEffect />));
 
     expect(html).toContain('피드를 불러오는 중이에요');
     expect(html).not.toContain('jaehoon');
@@ -26,7 +26,7 @@ describe('직접 가져오는 판 — 화면이 세 갈래로 갈린다', () => 
   });
 
   it('응답이 오면 서버가 준 열 장이 뜬다', async () => {
-    render(withRouter(<HomePage />));
+    render(withRouter(<HomePageByEffect />));
 
     // 캡션은 열 글자에서 잘리므로(B-3) 글자 대신 카드로 기다린다
     expect(await screen.findAllByRole('article')).toHaveLength(allPosts.length);
@@ -40,7 +40,7 @@ describe('직접 가져오는 판 — 화면이 세 갈래로 갈린다', () => 
       ),
     );
 
-    render(withRouter(<HomePage />));
+    render(withRouter(<HomePageByEffect />));
 
     expect(await screen.findByText('피드를 만들지 못했습니다')).toBeInTheDocument();
     expect(screen.queryAllByRole('article')).toHaveLength(0);
@@ -49,7 +49,7 @@ describe('직접 가져오는 판 — 화면이 세 갈래로 갈린다', () => 
   it('연결 자체가 안 되면 우리가 쓴 말이 뜬다', async () => {
     server.use(http.get(`${API_BASE}/posts`, () => HttpResponse.error()));
 
-    render(withRouter(<HomePage />));
+    render(withRouter(<HomePageByEffect />));
 
     // Step 3 이후로는 이 말을 인스턴스가 만든다.
     // Axios 가 주는 'Network Error' 가 화면까지 오지 않는다.
@@ -59,7 +59,7 @@ describe('직접 가져오는 판 — 화면이 세 갈래로 갈린다', () => 
 
 describe('직접 가져오는 판 — 요청이 몇 번 나가나', () => {
   it('StrictMode 에서는 화면 하나를 여는데 요청이 두 번 나간다', async () => {
-    render(<StrictMode>{withRouter(<HomePage />)}</StrictMode>);
+    render(<StrictMode>{withRouter(<HomePageByEffect />)}</StrictMode>);
 
     await screen.findAllByRole('article');
 
@@ -69,8 +69,8 @@ describe('직접 가져오는 판 — 요청이 몇 번 나가나', () => {
   it('같은 피드를 두 곳에서 그리면 요청도 두 번이다', async () => {
     render(
       <>
-        {withRouter(<HomePage />)}
-        {withRouter(<HomePage />)}
+        {withRouter(<HomePageByEffect />)}
+        {withRouter(<HomePageByEffect />)}
       </>,
     );
 
