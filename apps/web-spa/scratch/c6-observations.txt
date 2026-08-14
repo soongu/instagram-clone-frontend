@@ -395,3 +395,29 @@ Step 8 — 읽기 실패를 화면 밖으로 (throwOnError + ErrorBoundary)
   번들: JS 600,622 -> 599,992 B (-630) · CSS 42,488 B 불변
 
   게이트: 114 files / 844 passed · tsc 0 · eslint 0 · build 성공
+
+
+[3] 과제 예시답안 검증 (scratch/c6-story-answer.tsx + src/routes/c6-answer.test.tsx · 11/11)
+--------------------------------------------------------------------------------------------
+
+  과제 1 — 상세에서도 좋아요
+    *** 또 예측이 틀렸다 ***
+    "홈에서 누르면 무효화가 ['posts',1] 도 잡으니 상세가 따라 바뀐다" 로 단언을 썼는데 실패.
+    무효화는 *지금 아무도 안 보는 것* 을 다시 안 물어본다. 낡음 표시(isInvalidated)만 붙인다.
+      invalidateQueries 직후 getQueryData(['posts',1]) = 1240 (요청 0번)
+      getQueryState(['posts',1]).isInvalidated = true
+      그 뒤 상세로 들어가는 순간 다시 물어봐서 1241 로 맞춰진다
+    => 답안이 "넓게 잡아도 생각만큼 안 비싸다"(주제 2)의 근거가 됐다.
+
+    ★ 답의 핵심: 상세에서 누르면 즉시 안 바뀐다
+      낙관적 갱신이 setQueryData(feedKey()) = ['posts'] 만 고친다.
+      상세가 보는 것은 ['posts', 1] — 다른 칸이다.
+      실측: 누른 직후 ['posts']=1241 / ['posts',1]=1240
+
+  과제 4 — 무효화 범위 실측 (창고에 ['posts'] · ['posts',{tag:'한강'}] · ['posts',1])
+      ① { queryKey: ['posts'] }                -> 셋 다 잡힘
+      ② { queryKey: feedKey() }                -> ①과 완전히 같음 (feedKey() === ['posts'])
+      ③ { queryKey: ['posts'], exact: true }   -> ['posts'] 하나만
+    ②가 ①과 같다는 것이 이 과제의 함정이다.
+
+  게이트: 115 files / 855 passed · tsc 0 · eslint 0 · build 성공
