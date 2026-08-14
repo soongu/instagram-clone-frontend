@@ -5,6 +5,7 @@ import { List } from './List';
 import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 
 const comments = [
   { id: 1, content: '노을 최고' },
@@ -53,14 +54,14 @@ describe('List — 담긴 것이 무엇이든 같은 방식으로 그린다', ()
 
 describe('List 로 바꾼 뒤에도 화면은 그대로다', () => {
   it('피드에 게시물 두 장이 그대로 뜬다', () => {
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     expect(screen.getByText('오늘 한강 노을이...')).toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(2);
   });
 
   it('피드가 목록으로 그려지고, 각 게시물이 한 줄씩 차지한다', () => {
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     const feedList = screen.getByRole('list', { name: '피드 목록' });
     expect(within(feedList).getAllByRole('article')).toHaveLength(2);

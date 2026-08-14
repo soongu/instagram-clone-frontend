@@ -1,5 +1,6 @@
 // apps/web-spa/src/routes/Layout.tsx
 import { NavLink, Outlet } from 'react-router';
+import { SignInButton } from '../components/SignInButton';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 // NavLink 는 자기가 가리키는 주소에 와 있는지를 알려준다.
@@ -26,6 +27,7 @@ export function Layout() {
             회원가입
           </NavLink>
         </nav>
+        <SignInButton />
         <ThemeToggle />
       </header>
       <Outlet />

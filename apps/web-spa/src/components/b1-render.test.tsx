@@ -7,6 +7,7 @@ import { PostCard } from './PostCard';
 import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 
 const [firstPost] = feedPosts;
 
@@ -64,7 +65,7 @@ describe('PostCard', () => {
 
 describe('HomePage', () => {
   it('카드 두 장을 나란히 그린다', () => {
-    const html = renderToStaticMarkup(withRouter(<FeedSection posts={feedPosts} />));
+    const html = renderToStaticMarkup(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     expect(html).toContain('jaehoon');
     expect(html).toContain('minji');

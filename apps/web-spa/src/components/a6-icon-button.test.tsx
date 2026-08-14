@@ -6,6 +6,7 @@ import { IconButton } from './IconButton';
 import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 
 describe('IconButton — Button 이 받는 것을 그대로 받는다', () => {
   it('읽어줄 이름으로 찾을 수 있다', () => {
@@ -51,7 +52,7 @@ describe('IconButton — Button 이 받는 것을 그대로 받는다', () => {
 
 describe('아이콘 버튼으로 바꾼 뒤에도 화면은 그대로다', () => {
   it('게시물 메뉴 버튼이 이름 그대로 남아 있다', () => {
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     expect(screen.getAllByRole('button', { name: '게시물 메뉴' })).toHaveLength(2);
   });

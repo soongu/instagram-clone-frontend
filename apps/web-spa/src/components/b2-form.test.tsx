@@ -7,6 +7,7 @@ import { CommentForm } from './CommentForm';
 import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 
 describe('CommentForm — 입력값도 상태다', () => {
   it('빈 칸으로 시작하고 게시 버튼은 눌리지 않는다', () => {
@@ -59,7 +60,7 @@ describe('CommentForm — 입력값도 상태다', () => {
 describe('카드에 붙인 댓글 폼', () => {
   it('게시한 댓글이 목록에 쌓이고 댓글 수도 함께 오른다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     expect(firstCard).toHaveTextContent('댓글 32개 모두 보기');
@@ -73,7 +74,7 @@ describe('카드에 붙인 댓글 폼', () => {
 
   it('한 카드에 단 댓글이 다른 카드에는 안 보인다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
     await user.type(within(firstCard).getByLabelText('댓글 입력'), '노을 최고');

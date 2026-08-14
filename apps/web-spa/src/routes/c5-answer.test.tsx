@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
-import { http, HttpResponse } from 'msw';
 import {
   AnswerPostDetail,
   AnswerFeedWithRefresh,

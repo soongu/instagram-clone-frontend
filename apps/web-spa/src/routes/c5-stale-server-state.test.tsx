@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { HomePageByEffect } from '../../scratch/c5-effect-fetch-before';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 import { server, feedHandler, requestLog, resetRequestLog } from '../../scratch/c5-server-harness';
 import { allPosts } from '../data/feed';
 import type { Post } from '../types/instagram';
@@ -23,13 +24,13 @@ const FIRST_POST = allPosts[0];
 
 describe('한 번 가져온 값은 그 순간의 사진이다', () => {
   it('처음 그린 화면에는 그때의 숫자가 들어 있다', async () => {
-    render(withRouter(<HomePageByEffect />));
+    render(withQuery(withRouter(<HomePageByEffect />)));
 
     expect(await screen.findByText(`좋아요 ${FIRST_POST.likeCount}개`)).toBeInTheDocument();
   });
 
   it('★ 서버 값이 바뀌어도 이미 그려진 화면은 옛 숫자를 그대로 들고 있다', async () => {
-    render(withRouter(<HomePageByEffect />));
+    render(withQuery(withRouter(<HomePageByEffect />)));
     await screen.findByText(`좋아요 ${FIRST_POST.likeCount}개`);
 
     // 다른 사람이 좋아요를 눌렀다
@@ -44,7 +45,7 @@ describe('한 번 가져온 값은 그 순간의 사진이다', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     try {
-      render(withRouter(<HomePageByEffect />));
+      render(withQuery(withRouter(<HomePageByEffect />)));
       await screen.findByText(`좋아요 ${FIRST_POST.likeCount}개`);
 
       await vi.advanceTimersByTimeAsync(60_000);
@@ -59,14 +60,14 @@ describe('한 번 가져온 값은 그 순간의 사진이다', () => {
 describe('두 화면이 서로 다른 숫자를 보여준다', () => {
   it('★ 먼저 열어둔 화면과 나중에 연 화면의 좋아요 개수가 갈린다', async () => {
     // 먼저 연 화면
-    const first = render(withRouter(<HomePageByEffect />));
+    const first = render(withQuery(withRouter(<HomePageByEffect />)));
     await screen.findByText(`좋아요 ${FIRST_POST.likeCount}개`);
 
     // 그사이 서버 값이 올랐다
     server.use(feedHandler(withLikeCount(FIRST_POST.id, FIRST_POST.likeCount + 1)));
 
     // 나중에 연 화면 (다른 탭을 새로 연 것과 같다)
-    const second = render(withRouter(<HomePageByEffect />), { container: document.body.appendChild(document.createElement('div')) });
+    const second = render(withQuery(withRouter(<HomePageByEffect />)), { container: document.body.appendChild(document.createElement('div')) });
     await screen.findByText(`좋아요 ${FIRST_POST.likeCount + 1}개`);
 
     expect(screen.getByText(`좋아요 ${FIRST_POST.likeCount}개`)).toBeInTheDocument();
@@ -80,7 +81,7 @@ describe('두 화면이 서로 다른 숫자를 보여준다', () => {
 describe('화면 안 값은 성질이 다르다 — 우리가 바꿀 때만 바뀐다', () => {
   it('캡션을 펼친 상태는 서버가 무엇을 하든 그대로다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<HomePageByEffect />));
+    render(withQuery(withRouter(<HomePageByEffect />)));
     await screen.findAllByRole('article');
 
     const [firstMore] = screen.getAllByRole('button', { name: '더 보기' });
@@ -95,7 +96,7 @@ describe('화면 안 값은 성질이 다르다 — 우리가 바꿀 때만 바�
 
   it('좋아요 버튼을 눌러 바꾼 화면은 새로 그리면 서버 값으로 돌아간다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<HomePageByEffect />));
+    render(withQuery(withRouter(<HomePageByEffect />)));
     await screen.findAllByRole('article');
 
     await user.click(screen.getAllByRole('button', { name: '좋아요' })[0]);
@@ -103,7 +104,7 @@ describe('화면 안 값은 성질이 다르다 — 우리가 바꿀 때만 바�
 
     // 화면을 새로 여는 것 = 서버에 다시 물어보는 것
     cleanup();
-    render(withRouter(<HomePageByEffect />));
+    render(withQuery(withRouter(<HomePageByEffect />)));
 
     // 우리가 누른 것은 서버에 안 갔으므로 사라진다 (쓰기는 다음 시간)
     expect(await screen.findByText(`좋아요 ${FIRST_POST.likeCount}개`)).toBeInTheDocument();

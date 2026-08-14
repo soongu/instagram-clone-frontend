@@ -9,6 +9,7 @@ import { LikeButton } from './LikeButton';
 import { toggleLike, toggleLikeInPlace } from '../lib/likes';
 import type { Post } from '../types/instagram';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 
 function samplePosts(): Post[] {
   return feedPosts.map((post) => ({ ...post }));
@@ -38,7 +39,7 @@ describe('LikeButton — 제어 컴포넌트가 된 뒤', () => {
 
 describe('HomePage — 상태를 끌어올린 뒤', () => {
   it('헤더가 좋아요 누른 게시물 수를 센다', () => {
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     // 초기 데이터에서 liked 가 true 인 건 minji 하나
     expect(screen.getByText('좋아요 누른 게시물 1개')).toBeInTheDocument();
@@ -46,7 +47,7 @@ describe('HomePage — 상태를 끌어올린 뒤', () => {
 
   it('카드에서 누른 좋아요가 헤더 숫자까지 올라온다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
@@ -57,7 +58,7 @@ describe('HomePage — 상태를 끌어올린 뒤', () => {
 
   it('한 번 더 누르면 헤더도 함께 되돌아온다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     const [firstCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));
@@ -69,7 +70,7 @@ describe('HomePage — 상태를 끌어올린 뒤', () => {
 
   it('한 카드를 눌러도 다른 카드는 그대로다', async () => {
     const user = userEvent.setup();
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
 
     const [firstCard, secondCard] = screen.getAllByRole('article');
     await user.click(within(firstCard).getByRole('button', { name: /좋아요/ }));

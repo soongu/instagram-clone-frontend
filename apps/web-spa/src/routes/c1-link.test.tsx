@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routesWithFeed } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 import { FeedSection } from '../components/FeedSection';
 import { feedPosts } from '../data/feed';
 import { SignUpPage } from './SignUpPage';
@@ -35,7 +36,7 @@ function renderAnchorAt(path: string) {
     ],
     { initialEntries: [path] },
   );
-  render(withTheme(<RouterProvider router={router} />));
+  render(withQuery(withTheme(<RouterProvider router={router} />)));
   return router;
 }
 

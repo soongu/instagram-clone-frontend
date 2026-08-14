@@ -68,4 +68,53 @@ C-6 실측 채증 (서버 상태 ② — useMutation·낙관적 업데이트)
 
 [2] Step 별 실측
 ----------------
-(작성 중)
+
+Step 1 — 좋아요를 서버에 보낸다 (useMutation)
+............................................
+
+  코드: api/posts.ts likePost() · queries/posts.ts useLikeMutation()
+        components/SignInButton.tsx (신설) · routes/Layout.tsx · components/FeedSection.tsx
+
+  *** 예측이 틀렸다 — StrictMode 에서 useQuery 는 두 번 안 나간다 ***
+    같은 StrictMode 판에서
+      effect+fetch 박제(HomePageByEffect) : GET /api/posts 2번
+      useQuery(HomePage)                  : GET /api/posts 1번
+    도구가 같은 키로 겹친 요청을 하나로 합친다.
+    처음에 "읽기도 두 번" 으로 단언을 썼다가 1 이 나와서 실측대로 고쳤다.
+    -> 교안에서 이 대비가 오히려 더 좋아졌다: 읽기는 합쳐주고 쓰기는 안 합쳐준다.
+
+  쓰기는 누른 만큼 나간다
+    하트 두 번 클릭 -> POST 2번 -> 서버 likeCount 1240 -> 1241 -> 1240, liked false
+    (뮤테이션에는 키가 없다. 합칠 근거가 없다.)
+
+  출입증 없이 누르면
+    POST 는 나가고 401 이 온다. 갱신할 리프레시 토큰도 없어 실패로 끝난다.
+    서버 상태는 그대로(liked false / 1240). 화면만 혼자 바뀌어 있다.
+
+  서버가 기억한다
+    로그인 후 하트 -> fakeDb 의 1번 글이 liked true / 1241 로 바뀐다.
+    캐시를 안 거치고 fetchFeed() 로 다시 물어봐도 1241 이 온다.
+
+  blast radius — 12 파일 44 자리 (단언 무변경)
+    원인은 하나: FeedSection 이 useLikeMutation 을 부르면서 QueryClient 문맥을 요구한다.
+    withQuery(withRouter(...)) 로 감싸기만 했다.
+    a4-typing 3 · a5-toast-reset 2 · a6-icon-button 1 · a6-list 2 · b1-render 1 ·
+    b2-form 2 · b2-lifting 4 · b4-toast 3 · e4-dark-mode 2 · e7-visual-polish 6 ·
+    b3-use-like-toggle 1 · c5-effect-fetch 10 · c5-stale-server-state 8 · c1-link 1
+    (+ a5-toast-reset 의 liveMsAfterSecondToast 헬퍼 안쪽 1자리는 정규식이 못 잡아 손으로)
+    ⚠️ C-4 함정 ① 회피 — StrictMode 판은 <StrictMode>{withQuery(...)}</StrictMode> 로
+       안쪽에 넣었다(바깥에 씌우면 이중 실행 관찰이 깨진다).
+
+  *** 모듈 간 불변식이 또 걸렸다 ***
+    b3-use-like-toggle 의 "첫 화면 HTML 이 옮기기 전과 글자 하나 안 다르다" 가
+    머리말에 붙은 '로그인' 때문에 깨졌다. 이 판은 이미 E-5(밝기)·C-1(메뉴)이
+    같은 이유로 withoutThemeToggle·withoutSiteNav 를 두고 있었다.
+    같은 idiom 으로 withoutSignIn 을 추가하고 not.toContain('로그인') 가드를 붙였다.
+    단언 본체는 그대로.
+
+  *** C-5 에서 넘어온 결함 1건 (내가 만든 게 아니다) ***
+    src/routes/c5-answer.test.tsx:8 의 import { http, HttpResponse } 가 미사용.
+    eslint 2건(@typescript-eslint/no-unused-vars). 워킹트리 diff 0 = 커밋된 상태 그대로였다.
+    => C-5 canon 의 "eslint 0" 기록이 실제와 안 맞았다. 이번에 제거.
+
+  게이트: 106 files / 805 passed · tsc 0 · eslint 0 (전부 단독 실행)

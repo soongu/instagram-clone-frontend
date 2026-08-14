@@ -1,6 +1,6 @@
 // apps/web-spa/src/queries/posts.ts
-import { useQuery } from '@tanstack/react-query';
-import { fetchFeed, fetchTags } from '../api/posts';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { fetchFeed, fetchTags, likePost } from '../api/posts';
 
 // 키는 이 데이터의 이름이다. 캐시에서 이 이름으로 찾는다.
 //
@@ -23,5 +23,14 @@ export function useTagsQuery() {
   return useQuery({
     queryKey: tagsKey,
     queryFn: fetchTags,
+  });
+}
+
+// 읽기와 쓰기는 성질이 다르다. 읽기는 화면이 뜨면 알아서 나가지만
+// 쓰기는 사람이 누를 때만 나가야 하고, 두 번 누르면 두 번 나가야 한다.
+// 그래서 키도 없고, 부르는 함수(mutate)가 따로 있다.
+export function useLikeMutation() {
+  return useMutation({
+    mutationFn: likePost,
   });
 }

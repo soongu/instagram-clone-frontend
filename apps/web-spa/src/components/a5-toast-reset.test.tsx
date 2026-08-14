@@ -6,6 +6,7 @@ import { feedPosts } from '../data/feed';
 import { FeedSection } from './FeedSection';
 import { AppStringToast } from '../../scratch/a5-toast-before';
 import { withRouter } from '../../scratch/c1-router-harness';
+import { withQuery } from '../../scratch/c5-query-harness';
 
 // jsdom 은 실제로 스크롤되지 않으니 위치를 직접 세팅하고 이벤트만 쏜다
 function scrollToBottom() {
@@ -72,7 +73,7 @@ describe('같은 문구가 연달아 뜰 때', () => {
   });
 
   it('리듀서로 옮긴 판 — 두 번째 알림이 3 초를 온전히 채운다', () => {
-    render(withRouter(<FeedSection posts={feedPosts} />));
+    render(withQuery(withRouter(<FeedSection posts={feedPosts} />)));
     const result = reachBottomTwice();
 
     expect(result.firstMessage).toBe('게시물을 모두 확인했습니다 · 좋아요 1개');
@@ -104,7 +105,7 @@ describe('두 번째 알림이 화면에 머문 시간을 정확히 재면', () 
   });
 
   function liveMsAfterSecondToast(ui: React.ReactElement) {
-    render(withRouter(ui));
+    render(withQuery(withRouter(ui)));
     scrollToBottom();
     act(() => {
       vi.advanceTimersByTime(2000);
