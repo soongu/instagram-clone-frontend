@@ -1,5 +1,6 @@
 // apps/web-spa/src/routes/Layout.tsx
 import { NavLink, Outlet } from 'react-router';
+import { ThemeColorMeta } from '../components/ThemeColorMeta';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 // NavLink 는 자기가 가리키는 주소에 와 있는지를 알려준다.
@@ -13,6 +14,7 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 export function Layout() {
   return (
     <main className="@container mx-auto max-w-[996px] py-4 sm:px-4">
+      <ThemeColorMeta />
       <header className="mb-4 flex items-baseline justify-between">
         <h1 className="mb-4 text-2xl font-bold">인스타그램</h1>
         <nav aria-label="주요 메뉴" className="flex gap-3 text-sm">

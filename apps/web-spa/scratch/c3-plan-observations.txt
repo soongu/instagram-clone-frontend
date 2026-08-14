@@ -1,0 +1,105 @@
+C-3 계획 단계 사전 실측 (2026-08-14)
+====================================
+
+기준선
+------
+npm test (repo root) : 77 files / 608 passed
+tsc --noEmit         : 0
+vite build           : 성공 · CSS 42,480 B · JS 510,630 B
+                       ("index-CcLV_-HA.css 42.48 kB / index-C13SWGkS.js 510.63 kB" 표시값)
+브랜치               : module-C3-global-state (module-C2-loader 09dd17c 에서 분기)
+
+⚠️ 이 빌드 수치에는 scratch/c3-probe-use-conditional.tsx 가 섞여 있지 않다(scratch 는
+   엔트리에서 안 닿음). E-7 최종은 CSS 42,114 / JS 408,739 였는데 지금 JS 가 510,630 인
+   것은 C-1·C-2 에서 react-router 가 들어왔기 때문. C-2 종료 시점 값과 대조 필요.
+
+
+[1] 커스텀 훅은 상태를 공유하지 않는다 — 그런데 화면은 멀쩡해 보인다
+--------------------------------------------------------------------
+probe: scratch/c3-probe-hook-not-shared.test.tsx
+<ThemeToggle /> 와 useTheme() 을 부르는 <ThemeLabel /> 을 나란히 렌더한 뒤
+'어둡게' 버튼을 누름.
+
+  ThemeToggle 의 aria-pressed  : '어둡게' = true   (바뀜)
+  ThemeLabel 의 글자           : 'system/light'    (★ 안 바뀜)
+  document.documentElement.dark: true              (★ 화면은 어두워짐)
+  localStorage['ig-theme']     : 'dark'            (저장도 됨)
+
+=> 진실이 셋으로 갈렸다: useState 두 벌 + DOM 한 벌.
+   useTheme() 을 두 번 부르면 useState 가 각각 생기고, 둘 중 하나만 갱신된다.
+   그런데 applyResolvedTheme 이 쓰는 documentElement 와 localStorage 는 한 벌뿐이라
+   갱신된 쪽의 결과가 화면 전체에 반영된다.
+   => 화면은 정상으로 보이고, 틀린 것은 "지금 밝기" 를 읽는다고 만든 컴포넌트의 글자뿐.
+   => 훅은 로직을 공유하지 상태를 공유하지 않는다. Context 가 필요한 이유가 여기서 생긴다.
+
+⚠️ 안 갱신된 쪽 effect 는 deps(resolved)가 안 바뀌어 재실행되지 않는다. 그래서 지금은
+   덮어쓰기가 안 일어난다 — 안정적인 게 아니라 우연히 안 부딪히는 것.
+   교안에서 "둘이 싸운다" 로 쓰면 사실 오류. 정확히는 "한쪽이 모른다".
+
+
+[2] use(Context) 는 훅 규칙을 안 받는다 — 같은 파일 한 줄 차이로 갈린다
+------------------------------------------------------------------------
+probe: scratch/c3-probe-use-conditional.tsx
+eslint (eslint-plugin-react-hooks 7.1.1, flat.recommended):
+
+  if (show) { const v = use(ProbeContext); ... }        -> 통과 (0건)
+  if (show) { const v = useContext(ProbeContext); ... } -> error react-hooks/rules-of-hooks
+       "React Hook \"useContext\" is called conditionally. React Hooks must be called in
+        the exact same order in every component render."
+  for (...) { out.push(use(ProbeContext) ?? ''); }      -> 통과 (0건)
+
+  tsc --noEmit : 0건 (양쪽 다 통과 — 타입은 이 차이를 모른다)
+  vite build   : 성공 (React Compiler 1.0 이 for 안의 use 를 그대로 통과시킴)
+
+=> 이름이 use 로 시작하는데 훅이 아니다. B-3 에서 박은 "훅은 조건·반복 안에서 못 부른다"
+   가 이 한 API 에서만 깨진다. 그리고 그것을 알려주는 것은 타입도 컴파일러도 아닌 린트뿐.
+
+공식 근거 (react.dev/reference/react/use):
+  "While useContext must be called at the top level of your component, use can be called
+   inside conditionals like if and loops like for."
+  caveat: "Reading context with use is not supported in Server Components." (D 카테고리 예고)
+
+
+[3] React 19 Context provider 문법
+----------------------------------
+react.dev/reference/react/createContext:
+  "SomeContext.Provider is a legacy way to provide the context value before React 19."
+  "Starting in React 19, you can render <SomeContext> as a provider."
+react.dev/blog/2024/12/05/react-19:
+  "New Context providers can use <Context> and we will be publishing a codemod to convert
+   existing providers. In future versions we will deprecate <Context.Provider>."
+
+⚠️ 정확한 서술: `.Provider` 는 **아직 deprecated 가 아니다**. 문서가 "React 19 이전의
+   옛 방식" 이라 부르고, 블로그가 "앞으로 deprecate 할 예정" 이라고 공지한 상태.
+   교안에 "사라졌다 / deprecated 됐다" 로 쓰면 사실 오류.
+   (C-1 의 errorElement 와 정확히 같은 성격의 함정 — 문서에서 내려간 것 != 없어진 것)
+
+실측 (probe: scratch/c3-probe-provider-syntax.tsx — 두 문법을 한 파일에 나란히):
+  <ProbeContext.Provider value="dark">  -> eslint 0건 · tsc 0건
+  <ProbeContext value="dark">           -> eslint 0건 · tsc 0건
+=> 둘 다 아무도 안 잡는다. 우리 설정에는 .Provider 를 잡는 규칙이 없다
+   (그 규칙은 eslint-react 의 no-context-provider 이고 우리는 eslint-plugin-react-hooks 만 쓴다).
+   학생이 옛 문법을 검색해서 베껴 와도 도구가 알려주지 않는다 — 말해줘야만 아는 자리.
+
+
+[4] 버전 (npm view, 2026-08-14)
+-------------------------------
+  zustand      5.0.15   (커리큘럼 표기 5.0.14 — 갱신 필요) · 미설치
+  nuqs         2.9.5    (커리큘럼 표기 2.x) · 미설치
+  react        19.2.8   (코드베이스 일치)
+  react-router 8.3.0    (코드베이스 일치)
+
+
+[5] 배달 문제 실물 (C-2 가 남긴 것)
+------------------------------------
+  HomePage  -> Feed          : openPostId, onOpenPost
+  Feed      -> PostCard      : modalOpen, onModalOpenChange
+  PostCard  -> PostBody      : modalOpen, onModalOpenChange
+  PostBody  -> PostModal     : open, onOpenChange
+  가운데 셋(Feed·PostCard·PostBody)은 값을 읽지 않고 넘기기만 한다.
+  PostBody.tsx 에 이미 주석이 박혀 있다: "지나가기만 한다 — 이 컴포넌트는 주소를 모른다"
+
+⚠️ 그런데 이 값의 출처는 useSearchParams 다. 즉 주소에 있는 값이라
+   PostModal 이 직접 useSearchParams() 를 부르면 배달 자체가 없어진다.
+   => "전역 상태가 필요하다" 의 예시로 이걸 쓰면 틀린다. Context/Zustand 가 아니라
+      URL 이 이미 답인 경우다. 이 어긋남을 정면으로 다뤄야 C-2 를 부정하지 않는다.

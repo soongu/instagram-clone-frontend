@@ -8,6 +8,16 @@ export type ResolvedTheme = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'ig-theme';
 
+/**
+ * 휴대폰 브라우저가 주소창을 칠할 색. `--color-canvas` 와 같은 값이어야 한다.
+ * 주소창은 CSS 가 닿지 않는 곳이라 값을 여기 한 번 더 적는다 —
+ * 토큰을 바꾸면 이쪽도 함께 바꿔야 한다(index.html 의 첫 표시 붙이기와 같은 사정).
+ */
+export const THEME_COLOR: Record<ResolvedTheme, string> = {
+  light: '#fafafa',
+  dark: '#000000',
+};
+
 const CHOICES: readonly ThemeChoice[] = ['light', 'dark', 'system'];
 
 /** 저장소에서 온 값은 사용자가 손으로 고쳐 넣을 수 있으니 좁히고 나서 쓴다. */
