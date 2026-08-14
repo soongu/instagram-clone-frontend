@@ -52,8 +52,10 @@ eslint (eslint-plugin-react-hooks 7.1.1, flat.recommended):
   vite build   : 성공 (React Compiler 1.0 이 for 안의 use 를 그대로 통과시킴)
 
   ⚠️⚠️ 위 tsc 수치는 처음에 scratch/ 에서 재서 무효였다 — tsconfig.json 의
-       include 가 ["src","vite.config.ts","vitest.config.ts"] 라 scratch 는
-       tsc 가 아예 안 본다. 파일을 src/ 로 옮겨 다시 쟀고 결과는 같았다(0건).
+       include 가 ["src","vite.config.ts","vitest.config.ts"] 라, scratch 파일은
+       **src 쪽에서 아무도 import 하지 않으면** tsc 가 안 본다.
+       (import 되면 그래프를 따라가 검사한다 — b6-story-answer 가 그 경우다.)
+       홀로 둔 probe 는 그래서 안 잡혔다. src/ 로 옮겨 다시 쟀고 결과는 같았다(0건).
        eslint 는 scratch 도 보므로 린트 수치는 처음부터 유효했다.
        => 도구마다 보는 범위가 다르다. "tsc 0건" 을 적기 전에 그 파일이
           include 안에 있는지부터 확인할 것.
@@ -310,3 +312,26 @@ Layout 안에 Provider 를 뒀을 때 오류 화면을 재본 값 (저장된 선
 
 게이트: 84 files / 632 passed · tsc 0 · eslint 0 · build 성공
         CSS 42,480 B · JS 511,480 B
+
+
+[과제 정답 실측]
+================
+[탐구] 2. 던지는 if 를 지우고 tsc  -> 6건 / 4파일
+   src/components/ThemeColorMeta.tsx(10,11) TS2339  'resolved' does not exist on ... | null
+   src/components/ThemeColorMeta.tsx(16,36) TS7053  index type Record<ResolvedTheme,string> (any 전염)
+   src/components/ThemeToggle.tsx(13,11)    TS2339  'choice'
+   src/components/ThemeToggle.tsx(13,19)    TS2339  'select'
+   (+ 검증용 파일 2건 — 학생 코드베이스에는 없다. 학생 기준은 2파일 4건)
+   ★ 한 자리를 안 막으면 같은 파일에서 오류가 둘로 번진다(TS2339 -> any -> TS7053)
+
+[탐구] 4. Layout 렌더 횟수 (Layout 을 세는 판으로 갈아끼워 측정)
+   밝기 변경  1 -> 1     Layout 은 Context 를 안 읽는다. 읽는 것은 그 안의 ThemeToggle.
+   주소 이동  1 -> 1     C-1 의 "갈리는 것은 Outlet 자리 하나뿐" 이 그대로 확인된다.
+
+[과제 예시답안] scratch/c3-story-answer.tsx + src/components/c3-answer.test.tsx (6/6 통과)
+   과제1 SessionProvider·useSession·AuthorName — props 로 세션을 안 넘기고 판별
+   과제2 ErrorBoundaryWithToggle — 오류 화면에서 밝기 변경 + 주소창 색까지 닿음
+   ⚠️ 과제2 확인 판을 처음에 Component 에서 Response 를 던지게 짰더니 화면이 안 잡혔다.
+      우리 앱과 같은 모양(loader 가 던진다)으로 바꾸니 통과. 던지는 위치가 결과를 가른다.
+
+게이트: 85 files / 638 passed · tsc 0 · eslint 0
