@@ -63,6 +63,68 @@ describe('무엇을 구독하느냐가 다시 그리는 횟수를 정한다', ()
     expect(counts.slice).toBe(1);
   });
 
+  it('열고 닫기를 세 번 반복하면 통째는 일곱, 조각은 하나다', () => {
+    render(
+      <>
+        <WholeStoreAsker />
+        <SliceAsker />
+      </>,
+    );
+
+    for (let i = 0; i < 3; i += 1) {
+      act(() => {
+        useConfirmStore.getState().ask(`${i}번을 지울까요?`, () => {});
+      });
+      act(() => {
+        useConfirmStore.getState().close();
+      });
+    }
+
+    expect(counts).toEqual({ whole: 7, slice: 1 });
+  });
+
+  it('열 장이면 통째는 열 개가 함께 그려지고 조각은 한 개도 안 그려진다', () => {
+    const ten = Array.from({ length: 10 }, (_, index) => index);
+
+    render(
+      <>
+        {ten.map((index) => (
+          <WholeStoreAsker key={index} />
+        ))}
+      </>,
+    );
+    expect(counts.whole).toBe(10);
+
+    act(() => {
+      useConfirmStore.getState().ask('열기', () => {});
+    });
+    expect(counts.whole).toBe(20);
+
+    act(() => {
+      useConfirmStore.getState().close();
+    });
+    expect(counts.whole).toBe(30);
+
+    counts.slice = 0;
+    render(
+      <>
+        {ten.map((index) => (
+          <SliceAsker key={index} />
+        ))}
+      </>,
+    );
+    expect(counts.slice).toBe(10);
+
+    act(() => {
+      useConfirmStore.getState().ask('열기', () => {});
+    });
+    act(() => {
+      useConfirmStore.getState().close();
+    });
+
+    expect(counts.slice).toBe(10);
+  });
+
   it('조각으로 구독한 쪽은 그 조각이 안 바뀌는 한 영영 안 그려진다', () => {
     render(<SliceAsker />);
 
