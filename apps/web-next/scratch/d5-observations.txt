@@ -85,3 +85,118 @@ D-5 채증 — 데이터 페칭 & 캐싱 ① (무엇을 굳히고 무엇을 흘�
 
   ★★ usePathname 은 / 에서는 안 막히고 /[username] 에서만 막힌다.
      주소를 빌드 때 아느냐가 갈랐다. (같은 컴포넌트 · 다른 판정)
+
+
+5. 세 갈래를 실제로 골라본 결과
+====================================================================
+
+  [stream]  / 의 <FeedList/> 를 <Suspense> 로 감쌈        → / 통과
+  [block]   /[username]/layout.tsx 에 instant = false     → /[username] 통과
+  [cache]   lib/api.ts 의 fetchProfile·findProfile        → Step 4
+
+  ★ 라우트 표가 통째로 바뀐다 — ƒ(Dynamic) 기호가 사라졌다
+
+    D-4 끝:  ○ /        ƒ /[username]     ○ /explore
+    D-5 끝:  ◐ /        ◐ /[username]     ○ /explore
+
+    ○  (Static)             prerendered as static content
+    ◐  (Partial Prerender)  prerendered as static HTML with
+                            dynamic server-streamed content
+
+
+6. 박제가 풀린 것 — 홈
+====================================================================
+
+                         D-4 (박제)        D-5 (스트림)
+  홈 1회당 stub 요청       0 건             1 건 (매번)
+  api-stub 끄고 /          200 + 게시물     200 + 뼈대만
+                           그대로 뜸        ("피드를 불러오는 중" 1건 /
+                                            "한강 노을이 미쳤다" 0건)
+  첫 바이트                2.5ms            20.8ms
+  전체                     2.5ms            463ms
+
+  ★ 서버를 꺼도 200 이 나가는 것은 그대로다 — 껍데기는 이미 정적이라
+    상태 코드가 응답 맨 앞에 나가버린다. D-4 Step 7 과 같은 법칙.
+
+
+7. 'use cache' 실측 — 캐시는 맞는데 화면은 안 빨라진다
+====================================================================
+
+  fetchProfile 만 캐시했을 때 (/jaehoon)
+    회 1: stub 4건   users/jaehoon 이 2번   ← 캐시가 요청 메모이제이션을
+    회 2: stub 3건   users/jaehoon 이 1번      깨서 오히려 1건 늘었다
+    회 3: stub 3건                              (캐시는 격리된 스코프에서 돈다)
+
+  findProfile 까지 캐시했을 때 (최종 · HEAD 47c4455)
+    회 1: stub 4건  첫바이트 5.4ms   전체 1,226ms
+    회 2: stub 2건  첫바이트 3.4ms   전체 1,211ms   ← posts·tags 만 남음
+    회 3: stub 2건  첫바이트 2.8ms   전체 1,210ms
+    /minji: stub 4건                              ← 캐시 키가 username 으로 갈린다
+
+  ★★ 전체 시간은 1.21s 그대로다. 병목이 게시물·태그(400ms·1,200ms)라서
+     굳힌 쪽이 애초에 병목이 아니었다. 줄어든 것은 서버가 받는 요청 수뿐.
+     (D-3 과제 2 · D-4 Step 7 의 "안 줄어드는 것이 정답" 계열)
+
+
+8. ⚠️⚠️⚠️ D-4 가 산 404 를 D-5 가 되팔았다
+====================================================================
+
+                       D-4 끝          D-5 끝
+  /jaehoon 첫 바이트     408ms           5.4ms
+  /zzzzz 상태 코드       404             200        ← 되돌아갔다
+
+  /zzzzz 응답 헤더:  HTTP/1.1 200 OK
+                     x-nextjs-postponed: 1
+                     x-nextjs-stale-time: 300
+
+  본문에는 다 들어 있다:
+    "NEXT_HTTP_ERROR_FALLBACK;404" 다이제스트 · noindex
+    "없는 주소예요" / "주소를 다시 확인해주세요." / "피드로 돌아가기"
+
+  ★ 화면은 정상이고 상태 코드만 200 이다. 껍데기가 먼저 나가버려
+    그 뒤에 상태 코드를 못 바꾼다 — D-4 Step 7 이 발견한 그 법칙이
+    이번엔 Cache Components 를 켜는 것만으로 재발했다.
+
+  ★★ 이것이 D-4 Step 7 의 거래를 정확히 뒤집는다.
+     D-4: 401ms 를 내고 404 를 샀다.
+     D-5: 그 404 를 되팔아 401ms 를 돌려받았다.
+     → 껍데기를 넓혀 둘 다 갖는 방법은 다음 회차 소관.
+
+  참고: /zzzzz 첫 방문 stub 4건 — layout 이 notFound() 를 부르는 동안
+        page 의 세 요청도 이미 출발해 있다.
+
+
+9. Step 5 실험 — 예측 가능한 값 / 절대 안 굳는 값
+====================================================================
+
+  /explore 는 cacheComponents 를 켜도 아무 에러가 없다 (파일 상수).
+  거기에 Math.random() 을 넣으면:
+
+    exit 1
+    Error: Route "/explore": Next.js encountered the unstable value
+           `Math.random()` while prerendering.
+    Ways to fix this:
+      - [dynamic] Render at request time by adding a dynamic data access
+                  (e.g. `await connection()`) before this call
+      - [cache]   Prerender and cache the value with "use cache"
+      - [client]  Render the value on the client with "use client"
+
+  ★ Step 2 의 세 갈래([stream]/[cache]/[block]) 와 다른 세 갈래가 나온다.
+    Next 는 막을 때마다 그 자리에 맞는 선택지를 준다.
+
+  await connection() + <Suspense> 로 풀면 exit 0 이고
+  /explore 가 ○ → ◐ 로 옮겨간다. (실험 후 원복 — 탐색은 굳어도 되는 화면)
+
+
+10. 최종 게이트 (HEAD 47c4455)
+====================================================================
+  web-next  build 0 · tsc --noEmit 0 · eslint 0
+  web-spa   무변경 (git diff 빈 출력)
+  라우트 표  ◐ /  ·  ◐ /[username]  ·  ○ /explore
+
+  주소별 최종 실측
+    /          200  첫바이트 20.8ms  전체 463ms   stub 1건(매번)
+    /explore   200  첫바이트  5.3ms  전체 5.3ms   stub 0건
+    /jaehoon   200  첫바이트  5.4ms  전체 1,226ms stub 4건 → 이후 2건
+    /zzzzz     200  첫바이트  2.7ms  전체 416ms   stub 4건
+
