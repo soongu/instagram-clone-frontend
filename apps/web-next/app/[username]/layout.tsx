@@ -7,6 +7,10 @@ import { findProfile } from '@/lib/api';
 //
 // 여기서 서버에 물어보는 것은 딱 하나 — 이 사람이 있는가.
 // 껍데기가 무언가를 기다리는 동안에는 아래쪽 loading.tsx 도 못 나간다.
+// 이 주소는 아직 정적 껍데기를 못 만든다 — 기다렸다 내보내는 것을 허용한다.
+// 왜 못 만드는지, 어떻게 넓히는지는 다음 시간에 다룬다.
+export const instant = false;
+
 export default async function ProfileLayout({ children, params }: LayoutProps<'/[username]'>) {
   const { username } = await params;
 
