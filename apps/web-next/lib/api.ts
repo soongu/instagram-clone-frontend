@@ -43,6 +43,26 @@ export function fetchProfile(username: string): Promise<Profile> {
   return get<Profile>(`/users/${encodeURIComponent(username)}`);
 }
 
+/** 없는 사람이면 예외 대신 null 을 준다 — 없는 것과 못 가져온 것은 다르게 다뤄야 한다. */
+export async function findProfile(username: string): Promise<Profile | null> {
+  const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`);
+
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`서버가 ${response.status} 로 답했습니다 (프로필)`);
+  }
+
+  const envelope: ApiEnvelope<Profile> = await response.json();
+
+  if (!envelope.success || envelope.data === null) {
+    throw new Error(envelope.message ?? '프로필을 받지 못했습니다');
+  }
+
+  return envelope.data;
+}
+
 export function fetchPostsByUsername(username: string): Promise<Post[]> {
   return get<Post[]>(`/posts?username=${encodeURIComponent(username)}`);
 }

@@ -5,7 +5,7 @@
 export default function ProfileLoading() {
   return (
     <>
-      <p className="mb-4 text-sm text-black/40">팔로워 세는 중…</p>
+      <p className="mb-4 text-sm text-black/40">게시물 세는 중…</p>
       <ul className="grid grid-cols-3 gap-2">
         {[0, 1, 2].map((slot) => (
           <li key={slot} className="aspect-square animate-pulse rounded bg-black/5" />
