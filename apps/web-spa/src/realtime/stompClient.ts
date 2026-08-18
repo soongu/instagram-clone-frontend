@@ -7,6 +7,14 @@ export const BROKER_URL = 'ws://localhost:8090/ws';
 // 우리가 듣는 곳. /topic 은 여럿에게 뿌리는 자리라는 뜻이다.
 export const POSTS_TOPIC = '/topic/posts';
 
+// 나에게만 오는 곳. 앞의 /user 는 목적지 이름의 일부가 아니라
+// "이 줄에서 나에게 온 것만 달라" 는 표시다. 누구에게 갈지는 서버가 정한다.
+export const DM_QUEUE = '/user/queue/dm';
+
+// 우리가 서버로 보내는 곳. /app 으로 시작하는 것은 브로커가 아니라
+// 서버의 처리 코드가 받는다 (백엔드의 @MessageMapping).
+export const DM_SEND = '/app/dm.send';
+
 export function createStompClient(overrides: Partial<StompConfig> = {}): Client {
   return new Client({
     brokerURL: BROKER_URL,

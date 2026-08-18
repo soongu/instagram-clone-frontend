@@ -5,6 +5,7 @@ import { Layout } from './Layout';
 import { HomePage } from './HomePage';
 import { PostDetailPage } from './PostDetailPage';
 import { ExplorePage } from './ExplorePage';
+import { DmPage } from './DmPage';
 import { postLoader } from './postLoader';
 import { RootErrorBoundary } from './RootErrorBoundary';
 import { NotFoundPage } from './NotFoundPage';
@@ -33,6 +34,8 @@ export const routes: RouteObject[] = [
       // loader 는 Component 와 나란히 선다. 라우터가 loader 를 먼저 부르고,
       // 그것이 끝난 뒤에야 Component 를 그린다.
       { path: 'p/:postId', loader: postLoader, Component: PostDetailPage },
+      // 대화방도 같은 모양이다. 방이 몇 개든 이 표는 한 줄이다.
+      { path: 'dm/:conversationId', Component: DmPage },
       // 별표는 아무도 안 맡은 주소를 받는다. 맨 끝에 둬야 위의 주소들을 안 가로챈다.
       { path: '*', Component: NotFoundPage },
     ],

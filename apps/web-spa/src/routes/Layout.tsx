@@ -28,6 +28,9 @@ export function Layout() {
           <NavLink to="/signup" className={navLinkClass}>
             회원가입
           </NavLink>
+          <NavLink to="/dm/1" className={navLinkClass}>
+            쪽지
+          </NavLink>
         </nav>
         <ConnectionIndicator />
         <SignInButton />
