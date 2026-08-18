@@ -6,6 +6,7 @@ import { RouterProvider } from 'react-router/dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AppProviders } from './AppProviders';
 import { closeConfirmOnNavigate } from './lib/closeConfirmOnNavigate';
+import { RealtimeBridge } from './realtime/RealtimeBridge';
 import { routes } from './routes/routes';
 import './styles/globals.css';
 
@@ -26,6 +27,9 @@ closeConfirmOnNavigate(router);
 createRoot(rootElement).render(
   <StrictMode>
     <AppProviders>
+      {/* 통로도 라우터·캐시와 같은 자리다. 앱에 한 번만 열고, 어느 화면에 있든 열려 있다.
+          캐시에 얹어야 하니 AppProviders 안쪽이어야 한다. */}
+      <RealtimeBridge />
       <RouterProvider router={router} />
       {/* 창고를 들여다보는 창. 개발할 때만 붙고 배포본에는 안 들어간다.
           AppProviders 안쪽이어야 같은 캐시를 본다. */}

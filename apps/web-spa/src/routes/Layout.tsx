@@ -1,6 +1,7 @@
 // apps/web-spa/src/routes/Layout.tsx
 import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router';
+import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { SignInButton } from '../components/SignInButton';
 import { ThemeToggle } from '../components/ThemeToggle';
 
@@ -28,6 +29,7 @@ export function Layout() {
             회원가입
           </NavLink>
         </nav>
+        <ConnectionIndicator />
         <SignInButton />
         <ThemeToggle />
       </header>

@@ -129,3 +129,72 @@ Vitest 판(src/queries/c8-polling.test.tsx · 3/3):
   - ★ 남이 바꾼 것을 아는 데 간격만큼 늦는다
   - 간격을 줄이면 빨리 알지만 요청이 그만큼 늘어난다
   가드 확인: refetchInterval 을 끄면 3건 전부 FAIL ✅
+
+
+[7] Step 3~8 코드 — 실측·사고
+------------------------------------------------------------
+Step 3 (날 WebSocket): 스텁에 /ws-raw(에코) 신설. 데모는 src/components/RawSocketDemo.tsx
+  (RefVsStateDemo·KeyDemo 선례대로 scratch 아님 — 교안이 경로를 달아야 한다).
+  보여줄 것: 서버가 먼저 말을 걸 수 있다 / 오는 것은 문자열 하나뿐이라
+  좋아요 소식과 쪽지를 가려낼 방법이 없다 → STOMP 가 이미 정해둔 규칙.
+
+Step 5 어디에 두나: main.tsx 안, AppProviders 자식으로.
+  ⚠️ 처음에 AppProviders 안에 넣었다가 되돌렸다 — withApp 을 쓰는 기존 판들이
+  전부 진짜 WebSocket 을 열려고 든다. C-5 의 "네트워크를 안 보는 판에
+  네트워크를 얹지 않는다"(MSW 전역 실패) 와 똑같은 함정.
+
+★★ [8] C-7 회수가 실측으로 잡혔다 — eslint 가 곧 컴파일러였다 (재현)
+------------------------------------------------------------
+client.onConnect = () => {...} 로 대입했더니 eslint react-hooks/immutability:
+  "Modifying a variable defined outside a component or hook is not allowed"
+
+C-7 Step 4 가 말한 그대로인지 컴파일러로 직접 확인했다
+(node scratch/c7-compile-out.mjs --summary):
+  대입 형태            → 건너뜀 (캐시 0칸, 파일 통째로 포기)
+  client.configure({}) → 캐시 4칸
+
+  ConnectionIndicator 캐시 5칸 · RawSocketDemo 캐시 14칸
+
+→ 라이브러리가 configure 를 열어둔 이유가 여기서 만난다. 대입 대신 configure.
+   ★ C-7 의 "규칙을 지키는 것과 빠른 것은 따로가 아니다" 가 C-8 코드에서 재현됐다.
+
+[9] Step 8 백오프 실측 (src/realtime/c8-stomp-connect.test.tsx)
+------------------------------------------------------------
+붙어보려 한 시각 사이의 간격: 552 → 1002 → 2002 → 4003 ms
+  (reconnectDelay 500 · reconnectTimeMode EXPONENTIAL · maxReconnectDelay 30초)
+가드 확인: LINEAR 로 바꾸면 2건 FAIL ✅
+
+⚠️ 시의성 — 지수 백오프는 손으로 짤 필요가 없다.
+  @stomp/stompjs 7.x 에 reconnectTimeMode(LINEAR|EXPONENTIAL) · maxReconnectDelay 내장.
+  기본값은 reconnectDelay 5000 · LINEAR · maxReconnectDelay 15분.
+  커리큘럼의 "재연결(지수 백오프)" 를 손수 구현으로 읽으면 시대착오가 된다.
+
+[10] blast radius — 3건, 전부 내가 만든 것
+------------------------------------------------------------
+①·② c6-throw-on-error · c6-delete-rollback: "Found multiple elements with role status"
+   원인: ConnectionIndicator 에 role="status" 를 달았다. 토스트가 이미 쓰는 역할이다.
+   고침: 표시에서 role 을 뺐다(단언 무변경). 늘 떠 있는 표시는 "방금 일어난 일" 이 아니다.
+③ b3-use-like-toggle "첫 화면 HTML 이 글자 하나 안 다르다":
+   머리말에 표시가 붙어 보이는 글자가 늘었다.
+   고침: withoutConnectionIndicator 스트리퍼 추가 — C-1(주요 메뉴)·C-6(로그인) 선례 그대로.
+   스트리퍼가 실제로 걸렸는지 확인하는 단언도 함께(안 걸리면 비교가 아무것도 증명 못 함).
+
+[11] 게이트 수치 (단독 실행)
+------------------------------------------------------------
+npm test   125 files / 901 passed   (C-7: 121 / 877)
+tsc        0
+eslint     0   (단 configure 로 고치기 전에는 immutability 1건 — 위 [8])
+build      성공
+
+번들:
+  JS  index  499,920 → 524,641 B  (+24,721 · @stomp/stompjs)
+      SignUpPage 100,007 B 그대로 (C-7 이 쪼개둔 것)
+  CSS        42,488 → 43,421 B    (+933 · 연결 표시의 점 색깔 세 개 + size-2·gap-1.5)
+      ★ C-3~C-7 은 내내 CSS 가 안 움직였는데(로직은 CSS 를 안 만든다) 이번엔 움직였다.
+        머리말에 눈에 보이는 것을 하나 더 그렸기 때문 — C-6 의 +8 B(로그인 버튼) 와 같은 이유.
+
+⚠️⚠️ C-7 이 없앤 500 kB 경고가 되돌아왔다.
+  C-7 은 회원가입을 lazy 로 떼어내 499.92 kB 로 내려 경고를 없앴다.
+  실시간 라이브러리가 +24.72 kB 를 얹어 524.64 kB 가 되면서 경고가 다시 뜬다.
+  → 교안에서 정직하게 짚는다. 얻은 것(폴링 요청이 사라짐)과 낸 값(첫 화면에 25 kB)을
+    나란히 놓는 자리다. C-7 의 "재보기 전에는 어느 쪽이 큰지 모른다" 와 이어진다.

@@ -47,6 +47,8 @@ export interface FakeBroker {
   readonly sent: ParsedFrame[];
   readonly subscriptions: string[];
   readonly openCount: number;
+  /** 성공·실패를 가리지 않고 "붙어보려 한" 시각. 백오프 간격을 재는 데 쓴다. */
+  readonly attemptTimes: number[];
   readonly connectHeaders: Record<string, string>[];
 }
 
@@ -56,6 +58,7 @@ export function createFakeBroker(): FakeBroker {
   const connectHeaders: Record<string, string>[] = [];
   let openCount = 0;
   let refusals = 0;
+  const attemptTimes: number[] = [];
   let messageId = 0;
 
   class FakeSocket implements IStompSocket {
@@ -69,6 +72,7 @@ export function createFakeBroker(): FakeBroker {
     subscriptions = new Map<string, string>();
 
     constructor() {
+      attemptTimes.push(Date.now());
       // 실제 연결처럼 한 박자 뒤에 열린다.
       setTimeout(() => {
         if (refusals > 0) {
@@ -156,6 +160,9 @@ export function createFakeBroker(): FakeBroker {
     },
     get openCount() {
       return openCount;
+    },
+    get attemptTimes() {
+      return attemptTimes;
     },
     get connectHeaders() {
       return connectHeaders;

@@ -14,6 +14,7 @@
 import { createServer } from 'node:http';
 
 import { createStompBroker } from './stomp.mjs';
+import { upgradeToWebSocket } from './websocket.mjs';
 
 const PORT = Number(process.env.PORT ?? 8090);
 
@@ -318,6 +319,20 @@ const server = createServer(async (req, res) => {
 // 업그레이드 요청은 보통 요청과 다른 문으로 들어온다.
 server.on('upgrade', (req, socket) => {
   const path = new URL(req.url ?? '/', `http://localhost:${PORT}`).pathname;
+
+  // 규약이 아무것도 없는 날 통로. 보낸 것을 그대로 돌려주기만 한다.
+  // STOMP 가 무엇을 해주는지 대조해 보려고 열어둔다.
+  if (path === '/ws-raw') {
+    let connection = null;
+    connection = upgradeToWebSocket(req, socket, {
+      onMessage: (text) => connection?.send(`서버가 받은 것: ${text}`),
+      onClose: () => {},
+    });
+    // 서버도 먼저 말할 수 있다는 것을 보여준다.
+    setTimeout(() => connection?.send('서버가 먼저 보내는 인사'), 300);
+    return;
+  }
+
   if (path !== '/ws') {
     socket.end('HTTP/1.1 404 Not Found\r\n\r\n');
     return;
