@@ -1,6 +1,6 @@
-// apps/web-spa/scratch/c7-effect-dep-demo.tsx
+// apps/web-spa/src/components/LikedSyncDemo.tsx
 //
-// C-7 Step 5 — 컴파일러가 해결해주지 않는 한 가지.
+// 컴파일러가 대신 해주지 않는 한 가지를 눈으로 보는 화면이다.
 //
 // 컴파일러는 "값이 그대로면 지난번 것을 돌려준다" 로 렌더를 아낀다.
 // 그런데 그 판단 기준은 신원(===)이다. 서버에서 같은 내용을 다시 받아오면
@@ -9,7 +9,7 @@
 //
 // 아래 둘은 화면이 똑같다. 갈리는 것은 effect 가 몇 번 도느냐뿐이다.
 import { useEffect, useMemo } from 'react';
-import type { Post } from '../src/types/instagram';
+import type { Post } from '../types/instagram';
 
 interface DemoProps {
   posts: Post[];

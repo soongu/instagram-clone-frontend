@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { useState } from 'react';
-import { LikedSyncByCompiler, LikedSyncByUseMemo } from '../../scratch/c7-effect-dep-demo';
+import { LikedSyncByCompiler, LikedSyncByUseMemo } from './LikedSyncDemo';
 import { allPosts } from '../data/feed';
 import type { Post } from '../types/instagram';
 
