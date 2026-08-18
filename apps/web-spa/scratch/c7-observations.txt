@@ -1,0 +1,194 @@
+C-7 (React Compiler 시대의 성능 — 측정 먼저) 실측 기록
+====================================================
+
+[착수 전제 확인]  2026-08-18
+- 컴파일러가 vitest 에서도 돈다: String(LikeButton) 이
+  `const $ = (0,__vite_ssr_import_0__.c)(11)` — 11칸 캐시로 컴파일됨.
+  (vitest.config.ts 가 vite.config.ts 를 mergeConfig 로 그대로 물려받는다)
+- 컴파일 결과물 직접 추출 가능: @babel/core + reactCompilerPreset().preset
+- 현재 번들: 단일 청크 index-*.js 599,993 B / CSS 42,488 B — 분할 0건
+
+[버전]  전부 npm registry 로 확인 (WebSearch 아님)
+- react / react-dom          19.2.8   (latest · React 20 없음)
+- babel-plugin-react-compiler 1.0.0   (latest stable · v1.0 = 2025-10-07)
+- eslint-plugin-react-hooks   7.1.1   (latest · 설치본 일치)
+- @vitejs/plugin-react        6.0.4   (registry 6.0.5 — patch 뒤짐)
+- eslint-plugin-react-hooks 규칙 29종 실측:
+  capitalized-calls component-hook-factories config error-boundaries
+  exhaustive-deps exhaustive-effect-dependencies fbt gating globals hooks
+  immutability incompatible-library invariant memo-dependencies
+  memoized-effect-dependencies no-deriving-state-in-effects
+  preserve-manual-memoization purity refs rule-suppression rules-of-hooks
+  set-state-in-effect set-state-in-render static-components syntax todo
+  unsupported-syntax use-memo void-use-memo
+
+
+[측정 1] 컴파일된 코드 실물 — LikeButton 축약판
+------------------------------------------------
+입력:
+  export function LikeButton({ liked, count, onToggle }) {
+    const label = liked ? '좋아요 취소' : '좋아요';
+    return <button onClick={onToggle} aria-label={label}>{count}</button>;
+  }
+
+출력 (babel + reactCompilerPreset):
+  import { c as _c } from "react/compiler-runtime";
+  export function LikeButton(t0) {
+    const $ = _c(4);
+    const { liked, count, onToggle } = t0;
+    const label = liked ? "좋아요 취소" : "좋아요";
+    let t1;
+    if ($[0] !== count || $[1] !== label || $[2] !== onToggle) {
+      t1 = <button onClick={onToggle} aria-label={label}>{count}</button>;
+      $[0] = count; $[1] = label; $[2] = onToggle; $[3] = t1;
+    } else { t1 = $[3]; }
+    return t1;
+  }
+
+- 캐시 칸 4개 = 비교할 값 3개 + 결과 1개
+- 앱의 진짜 LikeButton 은 _c(11)
+
+
+[측정 2] 형제 자식 재렌더 — PostBody 의 캡션 펼치기
+---------------------------------------------------
+scratch/c7-render-count-probe.test.tsx
+캡션 "더 보기" 클릭 후 LikeButton / PostModal 이 다시 그려진 횟수
+
+  컴파일러 끔 : like 1 · modal 1
+  컴파일러 켬 : like 0 · modal 0      <-- 자동 메모이제이션이 실제로 일한 자리
+
+★ 모달은 닫혀 있는데도 다시 그려진다(끔). 캡션과 아무 상관 없는 형제다.
+
+
+[측정 3] ★★ 이 모듈의 척추 — 2x2 (FeedSection 토스트)
+-------------------------------------------------------
+scratch/c7-feed-render-probe.test.tsx
+하트 1회 클릭 -> 토스트가 뜨는 동안 PostCard 3장이 다시 그려진 횟수
+
+                              컴파일러 끔   컴파일러 켬
+  const likeMutation = ...        6            6
+  const { mutate } = ...          6            0
+
+- 컴파일러만으로는 안 된다. 구조분해만으로도 안 된다. 둘이 만나야 0.
+- 원인 (scratch/c7-identity-probe.test.tsx 로 확정):
+    useLikeMutation() 결과 객체 : 렌더 2회에 distinct 2  (매번 새 객체)
+    그 .mutate                  : 렌더 2회에 distinct 1  (안 바뀜)
+  handleToggleLike 가 객체를 통째로 붙잡으면 의존성이 매 렌더 바뀌어
+  컴파일러가 정직하게 다시 만든다. 컴파일러 잘못이 아니다.
+
+- vite.config.ts 는 매 측정 후 복원 · git diff --stat 출력 0 확인
+
+
+[측정 4] 컴파일러가 통째로 건너뛰는 파일
+------------------------------------------
+node scratch/c7-compile-out.mjs --summary <파일들>
+
+  건너뜀        src/components/ClickCounter.tsx
+  건너뜀        src/components/RefVsStateDemo.tsx
+  캐시 11칸     src/components/LikeButton.tsx
+  캐시 36칸     src/components/PostBody.tsx
+  캐시 24칸     src/components/FeedSection.tsx
+  캐시 34칸     src/components/PostCard.tsx
+  캐시 3칸      src/routes/HomePage.tsx
+
+★ 건너뛴 두 파일 = eslint.config.js 에서 규칙을 꺼둔 바로 그 두 파일이다.
+  컴파일러가 뱉은 에러 category 를 직접 받아보면:
+
+  ClickCounter    category "Immutability"
+                  "Cannot reassign variable after render completes"
+                  -> eslint 규칙 react-hooks/immutability (B-2 에서 학생이 본 그 에러)
+  RefVsStateDemo  category "Refs"
+                  "Cannot access refs during render"
+                  -> eslint 규칙 react-hooks/refs (A-5 에서 학생이 본 그 에러)
+
+  즉 그 린트 에러는 처음부터 컴파일러의 판정이었다.
+  "규칙을 어기면 컴파일러가 그 파일을 최적화하지 않는다" 가 눈에 보이는 자리.
+
+
+[측정 5] 번들 — React.lazy 로 회원가입 화면 분리
+--------------------------------------------------
+전 (단일 청크):
+  index-DoaYSZ9-.js     599.99 kB  gzip 192.12 kB
+  + 빌드가 스스로 경고: "Some chunks are larger than 500 kB ...
+     Consider: Using dynamic import() to code-split the application"
+
+후 (routes.ts 에서 lazy + Layout 의 Outlet 을 Suspense 로 감쌈):
+  index-Dl8QvvZs.js     499.92 kB  gzip 161.70 kB
+  SignUpPage-DDjaqBIR.js 100.00 kB  gzip  30.19 kB
+  -> 첫 로드에서 100.00 kB (gzip 30.42 kB) 가 빠졌다
+  -> 500 kB 경고도 사라졌다
+
+  빠진 것의 정체: react-hook-form + zod + @hookform/resolvers (B-5·B-6 에서 깔았다)
+  회원가입은 처음 오는 사람만 보는 화면이다.
+
+  이름 붙은 내보내기라 default 로 갈아 끼워 건네야 한다:
+    lazy(() => import('./SignUpPage').then((m) => ({ default: m.SignUpPage })))
+
+
+[측정 6] 손으로 써야 하는 한 자리 — effect 의존성
+--------------------------------------------------
+공식 가이드(react.dev/learn/react-compiler/introduction)가 지목하는 탈출구는
+"메모된 값이 effect 의존성으로 쓰일 때 — effect 가 뜻 없이 반복되지 않게" 하나다.
+정확한 통제가 필요한 자리에만 useMemo / useCallback 을 쓴다.
+
+scratch/c7-effect-dep-demo.tsx + src/components/c7-escape-hatch.test.tsx
+같은 내용을 세 번 다시 받아오는 동안 effect 가 돈 횟수:
+
+  컴파일러에게 맡김 (파생 배열이 posts 신원을 따라감)   4번
+  useMemo 로 기준을 우리가 정함 (내용 키)              1번
+  -> 좋아요 목록은 처음부터 끝까지 한 번도 안 바뀌었다(distinct 1)
+
+  진짜로 내용이 바뀌면 useMemo 쪽도 다시 돈다(1 -> 2). 멈춰 세운 게 아니다.
+
+★ 컴파일러의 기준은 신원(===)이고, effect 가 알고 싶은 것은 "뜻이 바뀌었나" 다.
+  둘이 어긋나는 자리에서만 손으로 쓴다.
+
+
+[React.lazy 도입으로 깨진 판 — 타이밍만 고침, 단언 무변경]
+------------------------------------------------------------
+7건 / 4파일. 전부 "회원가입 화면이 아직 안 도착했는데 동기로 찾은" 것.
+  c1-routes-split  1건  getByRole -> findByRole
+  c1-layout        1건  getByRole -> findByRole
+  c1-link          1건  getByRole -> findByRole
+  c2-navigate      4건  fillAndSubmit 헬퍼에 findByLabelText 한 줄 추가(1곳 고쳐 4건 해결)
+
+⚠️ jsdom 에서는 클릭을 await 하는 순간 청크가 이미 도착해 있다.
+   대기 화면(Suspense fallback)이 관측되는 것은 "동기로 그린 직후" 뿐이다.
+   또 lazy 는 받아온 모듈을 기억하므로 한 파일에서 처음 그릴 때만 대기가 보인다.
+
+⚠️ act() 밖의 raw DOM .click() 은 상태 갱신을 안 일으킨다(effect 1번만 세짐).
+   fireEvent.click 으로 교체 — C-4 의 "코드가 아니라 측정이 틀렸다" 재현.
+
+
+[C-6 에 잠복해 있던 간헐 실패 1건 — C-7 이 드러냈다]
+--------------------------------------------------------
+c6-optimistic.test.tsx "서버 답이 오면 서버 값으로 맞춰진다"
+전체 실행 4회 중 2회 실패(1280ms). 단독 실행은 늘 통과.
+
+원인: 서버 지연이 400ms 인데 낙관적 값(1241) 단언이 기다리지 않고 그 자리에서 본다.
+      판이 5개 늘어 컴퓨터가 바빠지자 클릭 한 번이 400ms 를 넘겨,
+      서버 답(1301)이 먼저 도착해 1241 을 못 보는 일이 생겼다.
+⚠️⚠️ 첫 고침이 틀렸다 — 400 -> 1200 으로 올렸더니 단독 실행에서도 깨졌다.
+   뒤따르는 findByText 의 기본 대기가 1초라 1200ms 지연을 못 기다리고 판이
+   중간에 죽었고, 그 사이 서버가 fakeDb 를 1301 로 고쳐 놓아 ★ 다음 판의
+   "좋아요 1240개" 까지 못 찾게 됐다(판 하나가 다음 판을 오염시켰다).
+
+고침(최종): likeToggleHandler(400) -> (700) + 뒤의 findByText 에 timeout 5000.
+   창을 넓히면 뒤의 기다림도 같이 넓혀야 한다. 단언은 한 글자도 안 고쳤다.
+
+★ 배운 것 두 개
+  1) 전체 실행에서만 깨지는 판은 코드가 아니라 시간을 의심한다.
+     (C-5 "게이트 수치는 단독 실행으로" 와 같은 계열, 방향만 반대 —
+      그때는 측정이 틀렸고 이번엔 테스트가 재는 여유가 좁았다)
+  2) 지연을 올릴 때는 그 뒤의 모든 기다림 한도를 함께 본다.
+     안 그러면 판이 중간에 죽으면서 흉내 서버의 상태를 더럽힌 채 끝난다.
+
+
+[가드 확인 — 일부러 깨서 봤다]
+--------------------------------
+src/components/c7-auto-memo.test.tsx 를 컴파일러 끈 채로 실행:
+  3건 중 2건 FAIL (첫 그림 판만 통과)
+-> 이 판은 컴파일러가 켜져 있어야만 초록이다. 켬/끔을 실제로 가른다.
+vite.config.ts 는 매번 복원 · git diff --stat 출력 0
+
+
