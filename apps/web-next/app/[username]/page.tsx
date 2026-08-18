@@ -1,4 +1,5 @@
 // apps/web-next/app/[username]/page.tsx
+import { loadFollowerCount } from '@/lib/follower-stats';
 import { postsByUsername } from '@/lib/posts';
 
 // 대괄호 칸의 값은 props.params 로 들어온다.
@@ -6,15 +7,19 @@ import { postsByUsername } from '@/lib/posts';
 export default async function ProfilePage({ params }: PageProps<'/[username]'>) {
   const { username } = await params;
   const posts = postsByUsername(username);
+  const followerCount = loadFollowerCount(username);
 
   return (
-    <ul className="grid grid-cols-3 gap-2">
-      {posts.map((post) => (
-        <li key={post.id} className="aspect-square rounded bg-black/5 p-3 text-sm">
-          <p>{post.content}</p>
-          <p className="mt-1 text-black/60">좋아요 {post.likeCount}</p>
-        </li>
-      ))}
-    </ul>
+    <>
+      <p className="mb-4 text-sm text-black/60">팔로워 {followerCount}</p>
+      <ul className="grid grid-cols-3 gap-2">
+        {posts.map((post) => (
+          <li key={post.id} className="aspect-square rounded bg-black/5 p-3 text-sm">
+            <p>{post.content}</p>
+            <p className="mt-1 text-black/60">좋아요 {post.likeCount}</p>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
