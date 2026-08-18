@@ -1,6 +1,7 @@
 // apps/web-next/app/layout.tsx
 import type { Metadata } from 'next';
 import { HeaderNav } from './components/HeaderNav';
+import { Providers } from './components/Providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,10 +15,13 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="ko">
       <body className="min-h-screen bg-white text-black antialiased">
-        <header className="border-b border-black/10">
-          <HeaderNav />
-        </header>
-        {children}
+        {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
+        <Providers>
+          <header className="border-b border-black/10">
+            <HeaderNav />
+          </header>
+          {children}
+        </Providers>
       </body>
     </html>
   );
