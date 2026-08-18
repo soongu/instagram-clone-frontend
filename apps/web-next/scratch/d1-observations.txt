@@ -1,0 +1,69 @@
+D-1 채증 — 2026-08-18 · Next.js 16.3.1 / TypeScript 6.0.3 / Node v23.6.0
+================================================================
+
+[1] 갓 만든 앱은 타입 검사를 통과하지 못한다 (빌드 전)
+----------------------------------------------------------------
+create-next-app 직후, next 를 한 번도 안 돌린 상태:
+
+  $ ls -d .next          → 없음
+  $ npx tsc --noEmit
+  app/layout.tsx(20,50): error TS2304: Cannot find name 'LayoutProps'.
+  exit=1
+
+next build 를 한 번 돌린 뒤:
+
+  $ npx tsc --noEmit
+  exit=0
+
+원인: LayoutProps 는 손으로 쓴 타입이 아니라 .next/types/routes.d.ts 에
+declare global 로 생성되는 타입이다. Next 가 app/ 폴더를 읽어야 생긴다.
+→ 저장소를 새로 받은 사람은 npm install 만으로는 타입 검사가 안 통과한다.
+
+[2] 폴더를 만들면 타입이 자란다 (측정)
+----------------------------------------------------------------
+.next/types/routes.d.ts 의 AppRoutes 유니온 실측:
+
+  app/page.tsx 만 있을 때
+    type AppRoutes = "/"
+    interface ParamMap { "/": {} }
+
+  app/explore/page.tsx + app/[username]/page.tsx 를 추가한 뒤
+    type AppRoutes = "/" | "/[username]" | "/explore"
+    interface ParamMap {
+      "/": {}
+      "/[username]": { "username": string; }
+      "/explore": {}
+    }
+
+폴더 이름이 주소가 되는 것을 넘어, 폴더 이름이 그대로 타입이 된다.
+대괄호 칸은 ParamMap 에 { username: string } 으로 정확히 박힌다.
+
+[3] C-2 와의 대조 (같은 일, 다른 타입 강도)
+----------------------------------------------------------------
+React Router 8  useParams()            → string | undefined
+Next.js 16      PageProps<'/[username]'>.params → Promise<{ username: string }>
+
+라우터는 주소를 "배열에 적은 값" 으로 받으므로 컴파일 시점에 알 수 없다.
+Next 는 주소가 "폴더" 라 파일 시스템을 읽어 타입을 만들 수 있다.
+→ 차이는 라이브러리 성능이 아니라 주소를 어디에 적었느냐다.
+
+주의: params 가 Promise 다 (Next 16 async 요청 API). D-4 소관이므로
+D-1 에서는 "왜 기다리는지는 나중에" 한 줄로만 짚는다.
+
+[4] 스캐폴드 실물 (create-next-app 16.3.1)
+----------------------------------------------------------------
+--agents-md 가 기본값이라 AGENTS.md + CLAUDE.md(내용은 "@AGENTS.md" 한 줄)가
+함께 생성된다. --no-agents-md 로 둘 다 안 생기게 했다.
+
+기본 devDependency 가 워크스페이스 고정값과 어긋난다:
+  스캐폴드            워크스페이스(web-spa)      맞춘 값
+  typescript ^5       6.0.3                     6.0.3
+  @types/node ^20     ^24.13.3                  ^24.13.3
+  @types/react ^19    19.2.17                   19.2.17
+  tailwindcss ^4      4.3.3                     4.3.3
+  eslint ^9           9.39.1                    9.39.1
+
+Tailwind 연결 방식도 갈린다: web-spa 는 @tailwindcss/vite,
+web-next 는 @tailwindcss/postcss (같은 Tailwind 4.3.3, 다른 연결 지점).
+
+next build 기본 출력에 Turbopack 플래그가 없다 (16 부터 dev·build 양쪽 기본).
