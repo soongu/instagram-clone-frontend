@@ -20,7 +20,13 @@ export function DmPage({ client = stompClient }: { client?: Client }) {
 
   // 통로가 열리기 전에 오간 것은 여기로 받는다.
   // 통로는 이 캐시에 얹기만 하니, 화면은 어느 쪽으로 온 것인지 몰라도 된다.
-  const { data: messages, isPending: loadingHistory } = useQuery(messagesQuery(roomId));
+  //
+  // ⚠️ 들어오자마자 묻지 않는다. 남의 쪽지를 아무나 못 보게 서버가 막고 있어서,
+  // 로그인 전에 물어보면 거절만 받고 그 실패가 캐시에 남는다.
+  const { data: messages, isPending: loadingHistory } = useQuery({
+    ...messagesQuery(roomId),
+    enabled: username !== null,
+  });
 
   const [draft, setDraft] = useState('');
   const [outgoing, setOutgoing] = useState<PendingMessage[]>([]);

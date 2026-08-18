@@ -1,0 +1,60 @@
+C-9 채증 — 실측값 모음 (2026-08-18)
+=====================================
+
+[시의성] npm registry 확인
+  @stomp/stompjs   7.3.0   (beta 7.4.0-beta.2)  — 코드베이스와 일치
+  react            19.2.8  (React 20 없음)
+  @tanstack/react-query 5.101.4 · axios 1.19.0 · zustand 5.0.15 · react-router 8.3.0
+  vite             registry 8.2.1 / 코드베이스 8.1.5 (patch 뒤짐 — 교안이 인용 안 함)
+
+[API 실측] @stomp/stompjs 7.3.0
+  publish() 는 연결이 없으면 조용히 버리지 않고 던진다
+    → TypeError: There is no underlying STOMP connection   (client.js:687 _checkConnection)
+  subscribe() 도 같은 검사를 거친다 — 붙기 전에는 구독도 못 한다
+
+[Node probe] apps/web-spa/scratch/c9-user-queue-probe.mjs (진짜 스텁 서버 + 두 사람)
+  1) 두 사람이 /user/queue/dm 을 구독 — SUBSCRIBE 목적지 문자열이 글자 하나 안 다름
+  2) minji 가 /app/dm.send → jaehoon 1건 · minji 1건 (둘 다 대화 참여자)
+     보낸 사람에게 돌아온 것에 clientId 가 그대로 실려 있다
+  3) 빈 내용 → minji 의 /user/queue/errors 에 1건 · jaehoon 의 errors 는 0건
+  4) ★ 한 사건이 두 목적지에서 갈린다 — minji 가 jaehoon 게시물에 좋아요:
+        /topic/posts               jaehoon 1 · minji 1
+        /user/queue/notifications  jaehoon 1 · minji 0
+  5) 이력 REST 3건
+  6) 끊긴 채 publish → TypeError
+
+[단위 검증] 흉내 브로커(scratch/c8-stomp-harness.ts, 포트 안 씀)
+  가드는 전부 일부러 깨서 확인했다:
+    /user 접두사 제거            → 3건 FAIL
+    세션 주인 확인 제거          → 2건 FAIL
+    effect 의존성에서 username 제거 → 1건 FAIL
+    통로에서 쪽지 구독 제거      → 2건 FAIL
+    보낼 때 clientId 제거        → 2건 FAIL
+    에러 큐 구독 제거            → 2건 FAIL
+    재연결 무효화 끄기           → 1건 FAIL
+    처음 붙을 때도 무효화하기    → 2건 FAIL   (양방향 확인)
+
+[두 탭 실물 확인] 스텁 서버 :8090 + vite :5199, 탭 두 개
+  탭 A = jaehoon · 탭 B = minji (머리말에서 각각 고름)
+  · 두 탭 다 들어가자마자 지나간 쪽지 2건이 먼저 뜬다 (REST 이력)
+  · 탭 B 에서 "노을 시간 맞춰 가볼게요" 를 보냄
+    → 탭 B: 서버가 되돌려준 것으로 확정 ("보내는 중" 이 사라짐)
+    → 탭 A: 새로고침 없이 그대로 떴다   ★ 이 모듈의 중심 주장
+  · 서버 로그에 구독 4줄이 사람마다 따로 찍힌다:
+      /topic/posts · /user/queue/dm · /user/queue/notifications · /user/queue/errors
+  · minji 가 jaehoon 게시물에 좋아요·댓글 → GET /api/notifications (jaehoon) 에 쌓임
+    minji 로 같은 주소를 물어보면 0건
+
+  ⚠️ 알림 토스트가 브라우저 화면에 뜨는 장면은 브라우저 자동화의 탭 포커스 문제로
+     화면 캡처를 못 남겼다. 도착 자체는 위 probe 4) 와 단위 판 5건으로 확인돼 있다.
+     (교안에는 학생이 두 탭으로 직접 확인하는 절차로 쓴다.)
+
+[빌드 지표]
+  CSS  43,421 → 43,920 B  (+499 — 쪽지 화면과 사람 고르는 칸)
+  JS   524,641 → 531,540 B (+6,899)
+  SignUpPage 청크 100.00 kB 불변
+  500 kB 경고는 C-8 에 이어 그대로 (라이브러리를 더 안 들였는데도 본체가 커졌다)
+
+[게이트]
+  npm test 133 files / 946 passed   (C-8: 126/908)
+  tsc 0 · eslint 0 · build 성공

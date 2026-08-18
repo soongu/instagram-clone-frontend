@@ -161,3 +161,22 @@ describe('Step 4 — 이력은 요청으로, 새 것은 통로로, 담는 곳은
     expect(broker.sent).toHaveLength(before);
   });
 });
+
+describe('Step 4 — 로그인 전에는 묻지 않는다', () => {
+  it('출입증이 없으면 이력을 물어보지 않는다 — 거절만 받고 그 실패가 캐시에 남는다', async () => {
+    useSessionStore.getState().signOut();
+    const client = createStompClient({ webSocketFactory: broker.webSocketFactory });
+    render(
+      withQuery(
+        <>
+          <RealtimeBridge client={client} />
+          <RouterProvider router={roomRouter(<DmPage client={client} />)} />
+        </>,
+      ),
+    );
+
+    expect(screen.getByText('쪽지를 보려면 먼저 로그인해주세요.')).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(requestLog.filter((it) => it.includes('/messages'))).toHaveLength(0);
+  });
+});
