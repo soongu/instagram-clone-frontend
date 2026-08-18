@@ -59,9 +59,6 @@ export const allPosts: Post[] = [
   post(10, 'minji', 'carousel', '전시 다녀왔어요', ['전시', '주말'], 3300, 97, '2026-07-11T15:45:00'),
 ];
 
-/** 홈 피드는 아직 전부 다 보여주지 않는다 */
-export const feedPosts: Post[] = allPosts.slice(0, 2);
-
 export function postsByUsername(username: string): Post[] {
   return allPosts.filter((it) => it.username === username);
 }
