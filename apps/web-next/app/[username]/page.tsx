@@ -1,6 +1,6 @@
 // apps/web-next/app/[username]/page.tsx
 import { Suspense } from 'react';
-import { TopTags } from '@/app/components/TopTags';
+import { TagFilter } from '@/app/components/TagFilter';
 import { fetchPostsByUsername, fetchProfile, fetchTopTags } from '@/lib/api';
 
 // 대괄호 칸의 값은 props.params 로 들어온다.
@@ -23,7 +23,7 @@ export default async function ProfilePage({ params }: PageProps<'/[username]'>) 
       </p>
       {/* 느린 조각은 여기서 안 기다린다. 준비되면 그때 이 자리에 끼워 넣는다. */}
       <Suspense fallback={<p className="mb-4 text-sm text-black/40">태그 세는 중…</p>}>
-        <TopTags tags={tagsRequest} />
+        <TagFilter tags={tagsRequest} />
       </Suspense>
       <ul className="grid grid-cols-3 gap-2">
         {posts.map((post) => (
