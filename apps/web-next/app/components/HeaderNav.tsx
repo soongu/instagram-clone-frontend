@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { UserSearch } from './UserSearch';
 
 const items = [
   { href: '/', label: '홈' },
@@ -30,6 +31,7 @@ export function HeaderNav() {
           </Link>
         );
       })}
+      <UserSearch />
     </nav>
   );
 }
