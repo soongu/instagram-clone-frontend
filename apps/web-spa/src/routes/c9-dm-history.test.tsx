@@ -142,7 +142,8 @@ describe('Step 4 — 이력은 요청으로, 새 것은 통로로, 담는 곳은
 
     const sent = broker.sent.at(-1);
     expect(sent?.headers.destination).toBe(DM_SEND);
-    expect(JSON.parse(sent?.body ?? '{}')).toEqual({
+    // Step 5 에서 확인용 표(clientId)가 하나 더 붙는다. 여기서 재는 것은 그게 아니다.
+    expect(JSON.parse(sent?.body ?? '{}')).toMatchObject({
       conversationId: 1,
       content: '노을 시간 맞춰 가볼게요',
     });

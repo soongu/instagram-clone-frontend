@@ -25,6 +25,34 @@ export function parseDirectMessage(raw: string): DirectMessage | null {
     senderUsername: candidate.senderUsername,
     content: candidate.content,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : '',
+    clientId: typeof candidate.clientId === 'string' ? candidate.clientId : undefined,
+  };
+}
+
+// 서버가 보내기를 거절했을 때 오는 것. 정상 쪽지와 다른 줄로 온다.
+export interface StompError {
+  code: string;
+  message: string;
+  clientId: string | null;
+}
+
+export function parseStompError(raw: string): StompError | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+
+  if (typeof candidate.message !== 'string') return null;
+
+  return {
+    code: typeof candidate.code === 'string' ? candidate.code : 'UNKNOWN',
+    message: candidate.message,
+    clientId: typeof candidate.clientId === 'string' ? candidate.clientId : null,
   };
 }
 

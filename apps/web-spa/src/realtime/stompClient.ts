@@ -11,6 +11,9 @@ export const POSTS_TOPIC = '/topic/posts';
 // "이 줄에서 나에게 온 것만 달라" 는 표시다. 누구에게 갈지는 서버가 정한다.
 export const DM_QUEUE = '/user/queue/dm';
 
+// 보내기가 거절당했을 때 답이 오는 곳. 정상 쪽지와 다른 줄이다.
+export const ERRORS_QUEUE = '/user/queue/errors';
+
 // 우리가 서버로 보내는 곳. /app 으로 시작하는 것은 브로커가 아니라
 // 서버의 처리 코드가 받는다 (백엔드의 @MessageMapping).
 export const DM_SEND = '/app/dm.send';

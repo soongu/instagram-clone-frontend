@@ -27,7 +27,9 @@ function feedRequests() {
 describe('폴링 — 정해둔 간격마다 다시 물어본다', () => {
   it('아무도 아무것도 안 바꿔도 요청은 계속 나간다', async () => {
     const client = freshQueryClient();
-    render(withQuery(withRouter(<HomePagePolling intervalMs={100} />), client));
+    // ⚠️ 간격이 너무 짧으면 아래 "아직 한 번" 을 세기도 전에 다음 차례가 와버린다.
+    //    판이 늘어 첫 그림이 느려질수록 잘 깨진다. 간격을 넉넉히 준다.
+    render(withQuery(withRouter(<HomePagePolling intervalMs={300} />), client));
 
     await screen.findByText('좋아요 1240개');
     expect(feedRequests()).toHaveLength(1);
