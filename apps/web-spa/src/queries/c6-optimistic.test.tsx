@@ -60,8 +60,11 @@ describe('먼저 바꾸고 나중에 확인한다', () => {
     const user = userEvent.setup();
     await login('jaehoon');
 
-    // ⚠️ 지연이 없으면 낙관적 값이 눈에 안 잡힌다 — 답이 먼저 도착해 덮어쓴다
-    server.use(feedFromDb(), likeToggleHandler(400));
+    // ⚠️ 지연이 없으면 낙관적 값이 눈에 안 잡힌다 — 답이 먼저 도착해 덮어쓴다.
+    //    아래 1241 단언은 기다리지 않고 그 자리에서 본다. 판이 늘어 컴퓨터가 바쁘면
+    //    클릭 한 번이 수백 ms 를 먹어서 400ms 로는 답이 먼저 오기도 했다.
+    //    창을 넓히되, 뒤의 기다림에도 그만큼 여유를 줘야 한다(아래 timeout).
+    server.use(feedFromDb(), likeToggleHandler(700));
 
     render(withQuery(withRouter(<HomePage />)));
     const hearts = await screen.findAllByRole('button', { name: '좋아요' });
@@ -77,8 +80,8 @@ describe('먼저 바꾸고 나중에 확인한다', () => {
     // 먼저 우리 셈으로 1241 을 보여주고
     expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
 
-    // 답이 오면 진짜 값으로 갈린다
-    expect(await screen.findByText('좋아요 1301개')).toBeInTheDocument();
+    // 답이 오면 진짜 값으로 갈린다 (기본 1초로는 위 지연을 못 기다린다)
+    expect(await screen.findByText('좋아요 1301개', {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });
 
