@@ -1,0 +1,228 @@
+D-4 채증 — 서버 vs 클라이언트 컴포넌트 ② 서버가 기다린다
+측정일 2026-08-18 · Next.js 16.3.1 · React 19.2.8 · 프로덕션 빌드(next start)
+
+측정 방법은 D-3 과 같다. 각 주소의 HTML 을 받아 <script src="/_next/static/chunks/...">
+를 뽑고 중복을 없앤 뒤 각 파일의 실제 다운로드 바이트를 합산했다.
+시간은 curl 의 time_starttransfer(첫 바이트)와 time_total(전체)로 쟀다.
+
+  ⚠️⚠️ 포트 3000 을 이번에도 Docker 가 잡고 있었다. D-3 과 똑같은 상황이라
+     처음부터 PORT=3100 으로 띄웠다. 매 측정 전 확인:
+       lsof -nP -iTCP:3000 -sTCP:LISTEN
+       next start 로그에 EADDRINUSE 가 없는지
+
+  ⚠️ curl 로는 판정할 수 없는 것이 있다. error.tsx 와 notFound() 가 그린 화면은
+     응답 HTML 이 <html id="__next_error__"> 껍데기뿐이고 글자는 브라우저가 그린다.
+     실제로 무엇이 남는지는 브라우저로 봐야 한다(아래 4절).
+
+  ⚠️ React 가 이웃 텍스트 노드 사이에 <!-- --> 를 끼운다(D-1 캐논).
+     '팔로워 1240' 으로 grep 하면 0건이다. sed 's/<!-- -->//g' 를 먼저 통과시킬 것.
+
+
+1. 착수 전제가 빗나갔다 — api-stub 없이는 빌드가 죽는다
+--------------------------------------------------------------------
+계획 단계에서 "Next 16 은 dynamic-by-default 이니 빌드 때 fetch 를 안 부를 것"
+이라고 예상했는데 틀렸다. Cache Components 가 꺼진 기본 상태에서 Next 는
+여전히 정적 생성을 시도하고, 그 과정에서 서버 컴포넌트의 fetch 를 실제로 부른다.
+
+  api-stub 안 띄운 채 next build
+    -> Error occurred prerendering page "/"
+       TypeError: fetch failed ... code: 'ECONNREFUSED'
+       Export encountered an error on /page: /, exiting the build.
+       종료 코드 1
+
+  api-stub 띄우고 next build -> 종료 코드 0
+
+「빌드 판정은 종료 코드로」가 또 값을 했다. Compiled successfully 는 그 앞에서 지나간다.
+
+
+2. / 는 await fetch 를 넣어도 여전히 정적이다 (데이터가 박제된다)
+--------------------------------------------------------------------
+라우트 표는 Step 1~8 내내 한 번도 안 바뀌었다.
+
+  ○ /            ○ /_not-found     ƒ /[username]     ○ /explore
+
+/ 는 uncached fetch 를 쓰는데도 ○ 다. 빌드 때 한 번 부르고 그 결과가 HTML 에 박힌다.
+증거: next start 로 띄운 뒤 api-stub 을 완전히 죽이고 / 를 요청해도
+
+  status=200 · '한강 노을이 미쳤다' 1건
+
+지연 3,000ms 짜리 서버를 붙여도 / 의 응답은 1.5~2.5ms 다. 서버에 물어보지도 않는다.
+-> D-4 의 loading.tsx / Suspense 무대는 전부 ƒ 인 /[username] 이다.
+-> "요청마다 새로 부르게 하려면" 은 D-5 소관. D-4 에서는 이름도 안 부른다.
+
+
+3. Step 별 실측
+--------------------------------------------------------------------
+
+3-1. Step 1 — children 구멍
+
+root layout 을 클라이언트 컴포넌트 <Providers> 로 통째로 감쌌다.
+
+                         scripts   JS bytes      차이
+  D-3 끝 (기준선)  /         8      576,272
+  Step 1           /         8      576,822      +550
+  D-3 끝      /explore       7      575,819
+  Step 1      /explore       7      576,369      +550
+
+  HTML 에 게시물 글자 1건 / JS 청크에 0건 — 페이지는 여전히 서버다.
+  라우트 표 무변경(/ 는 정적 유지).
+
+  반례(A/B) — 같은 것을 children 이 아니라 import 로 받으면:
+
+                            scripts   JS bytes
+    A children (정상)     /    8      576,822
+                    /explore    7      576,369
+    B import (반례)      /    7      578,442
+                    /explore    7      578,442
+
+  B 에서 드러난 것 셋
+    (1) / 가 +1,620 B
+    (2) /explore 도 +2,073 B — 탐색 화면은 피드를 안 그리는데도 값을 치른다
+        (root layout 에 있으니 모든 주소가 문다)
+    (3) JS 청크에서 '한강 노을이 미쳤다' 0건 -> 1건 (데이터 유출)
+    (4) scripts 가 8 -> 7 로 줄었는데 바이트는 늘었다 (청크 병합)
+        -> 개수로 재면 속는다
+    (5) 빌드는 통과한다(종료 코드 0). 조용히 일어난다.
+
+
+3-2. Step 2 — 피드를 서버에서 await fetch
+
+  / JS 576,822 B — 한 바이트도 안 늘었다. 데이터 출처만 바뀌었다.
+  / HTML 7,573 -> 12,484 B (게시물 2장 -> 10장)
+  JS 청크에 게시물 글자 0건 유지
+
+
+3-3. Step 3 — 프로필도 진짜 서버에서 (순차 두 fetch)
+
+  /jaehoon 전체 807~864ms (400ms 두 번)
+  HTML 7,960 B 로 고정 — D-3 의 5,977 <-> 8,533 널뛰기가 멈췄다.
+    (흉내 서버 loadFollowerCount 가 세 번에 한 번만 성공하던 것이 사라졌다)
+  팔로워 959(= 'jaehoon'.length * 137) -> 1,240 (서버가 준 값)
+  격자 3장 -> 1장 (api-stub 은 열 장을 열 사람이 나눠 쓴다)
+  이 시점의 화면은 일부러 어긋나 있다 — 껍데기는 파일을 봐서 '게시물 3',
+  격자는 서버라서 1장. Step 7 에서 정리한다.
+
+
+3-4. Step 4 — loading.tsx
+
+  loading.tsx 없음 : 첫 바이트 810ms · 전체 811ms
+  loading.tsx 있음 : 첫 바이트   6ms · 전체 810ms
+
+  전체 시간은 그대로다. 빨라진 게 아니라 기다림이 보이게 된 것.
+
+  정적인 / 은 대상이 아니다. 지연 3,000ms 서버를 붙여도 1.5~2.5ms.
+
+
+3-5. Steps 5·6 — Promise.all 과 Suspense
+
+  Step 5 (두 요청 동시 출발)
+    /jaehoon 810ms -> 407ms · 첫 바이트 6ms 유지
+
+  Step 6 (느린 태그 집계 1,200ms 를 추가한 뒤 세 판 비교)
+                                        첫 바이트   팔로워/격자    전체
+    A 셋 다 Promise.all 로 같이 기다림      7ms      1,207ms     1,207ms
+    B Suspense 로 떼되 안에서 요청 시작     7ms        407ms     1,612ms
+    C 미리 출발시키고 Promise 를 넘김       7ms        407ms     1,207ms
+
+  B 가 함정이다. 떼어내기만 하면 그 조각의 요청이 부모 렌더가 끝난 뒤에야
+  출발해서 400 + 1,200 = 1,600ms 가 된다. 전체로 보면 A 보다 느리다.
+  떼어내는 것과 언제 출발시키느냐는 다른 결정이다.
+
+  0.9초에서 끊은 HTML 에 '게시물 1 · 팔로워 1240' + 격자 + '태그 세는 중' 이 들어 있다.
+
+
+3-6. Step 7 — 껍데기가 기다리면
+
+  /jaehoon 첫 바이트                                    없는 사람
+    껍데기가 존재 확인 + 게시물 수        408ms            404
+    껍데기가 존재 확인만                  408ms            404
+    껍데기가 아무것도 안 기다림             7ms            200
+
+  -> 404 를 지키는 값이 401ms 다.
+  -> 껍데기에서 게시물 수를 빼도 안 줄어든다. 존재 확인 하나가 남아 있으니까.
+     (D-3 과제 2 의 "안 줄어드는 것이 정답" 과 같은 계열)
+
+  공식 문서가 이 상황을 별도 박스로 경고한다.
+    "a layout that accesses uncached or runtime data ... does not fall back to a
+     same route segment loading.js. Instead, it blocks navigation until the
+     layout finishes rendering."
+
+  요청 수 — /jaehoon 한 번에 api-stub 이 실제로 받은 것은 3건뿐이다.
+
+    [REQ] GET /api/posts?username=jaehoon
+    [REQ] GET /api/users/jaehoon
+    [REQ] GET /api/users/jaehoon/tags
+
+  layout 과 page 가 같은 주소를 각각 불러도 서버로는 한 번만 나간다
+  (같은 렌더 안에서 같은 fetch 는 한 번 — 캐싱이 아니라 요청 메모이제이션).
+
+  /jiwon 이 404 -> 200 으로 바뀌었다. 서버가 아는 사람인데 파일에는 없던 사람이다.
+  /zzzzz 는 404 유지.
+
+
+3-7. Step 8 — use()
+
+  첫 바이트 408ms · 전체 1,207ms (Step 7 과 같다 — 읽는 쪽만 바뀌었다)
+  /jaehoon JS 551,574 -> 576,922 B · scripts 6 -> 8
+
+
+4. 브라우저로만 확인되는 것 (curl 로는 안 보인다)
+--------------------------------------------------------------------
+
+4-1. api-stub 을 끄면 error.tsx 가 받는다
+  curl: status 500, HTML 은 <html id="__next_error__"> 껍데기 6,085 B.
+        '@jaehoon' 도 에러 문구도 안 보인다.
+  브라우저: 머리말 + 프로필 껍데기(@jaehoon)가 남고 격자 자리만 갈린다.
+        "이 부분을 불러오지 못했어요 / (기록 번호 3283315029) / 다시 시도"
+  -> D-2 가 기록한 경계 그대로다. 다만 소스 보기로는 판정이 안 된다.
+
+  ⚠️ 미해결 — api-stub 을 되살린 뒤 "다시 시도" 를 눌러도 회복되지 않았다.
+     digest 도 3283315029 로 고정. 새로고침하면 정상 복구된다.
+     D-2 가 기록한 retry 동작(digest 가 바뀌며 회복)과 다르다.
+     D-2 는 동기 throw, 여기는 async fetch 실패라 조건이 다르다.
+     D-4 교안은 이 자리를 주장하지 않는다 (error.tsx 로 흘러온다까지만).
+
+4-2. loading.tsx fallback 이 실제로 그리는 것
+  DELAY_MS=3000 으로 늘려 잡은 화면:
+    머리말(인스타그램 클론 · 홈 · 탐색 · 검색칸 · 글자 크게) — 남음
+    프로필 껍데기(@minji) — 남음
+    그 아래 '게시물 세는 중…' + 격자 3칸 뼈대 — fallback
+  -> loading.tsx 가 같은 칸 layout 을 안 감싼다는 것이 눈으로 확인된다.
+
+
+5. 🚨 반례 실행 — 클라이언트가 Promise 를 직접 만들면
+--------------------------------------------------------------------
+TagFilter 가 props 로 받는 대신 자기가 fetch 하도록 바꿔 실행했다.
+
+  tsc --noEmit 0 · eslint 0 · next build 0
+    -> 아무도 안 막는다. D-3 의 "타입은 통과하는데 빌드가 막는다" 와 반대로,
+       여기는 셋 다 통과하고 런타임에서만 드러난다.
+
+  첫 화면은 멀쩡하다. 태그가 정상으로 뜬다.
+    -> 서버가 한 번 그려서 보냈기 때문. 여기서 멈추면 정상인 줄 안다.
+
+  태그 버튼을 누르는 순간
+    - 선택 상태가 안 바뀐다 (화면이 굳는다)
+    - fallback 조차 안 뜬다 (옛 화면이 그대로 남는다)
+    - 같은 주소로 요청이 계속 나간다. 두 번 눌렀을 때 11건 이상,
+      전부 pending 으로 쌓였다.
+
+  즉 "fallback 이 영영 안 걷힌다" 보다 정확한 서술은
+  "첫 화면은 멀쩡하고, 상호작용이 시작되는 순간 화면이 굳으며 요청이 폭주한다" 다.
+
+  react.dev 원문:
+    "Promises created during render are recreated on every render, which causes
+     React to show the Suspense fallback repeatedly and prevents content from
+     appearing."
+
+
+6. 최종 상태 (Step 8 커밋 시점)
+--------------------------------------------------------------------
+              scripts   JS bytes    HTML     첫 바이트    전체
+  /              8      576,822    12,484      5ms        6ms
+  /explore       7      576,369    11,005      9ms        9ms
+  /jaehoon       8      576,922    10,312    421ms    1,212ms
+
+  라우트 표: ○ /   ○ /_not-found   ƒ /[username]   ○ /explore
+  /jaehoon 200 · /jiwon 200 · /zzzzz 404
+  화면: @jaehoon / 게시물 1 · 팔로워 1240 / #한강 #노을 / 격자 1장
