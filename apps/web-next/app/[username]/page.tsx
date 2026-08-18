@@ -6,9 +6,11 @@ import { fetchPostsByUsername, fetchProfile } from '@/lib/api';
 export default async function ProfilePage({ params }: PageProps<'/[username]'>) {
   const { username } = await params;
 
-  // 둘 다 서버에서 직접 물어본다. 훅도, 로딩 상태도 없다.
-  const profile = await fetchProfile(username);
-  const posts = await fetchPostsByUsername(username);
+  // 둘은 서로의 결과가 필요 없다. 그러니 먼저 둘 다 출발시켜 두고,
+  // 그다음에 한꺼번에 기다린다. await 를 두 줄 쓰면 두 번째가 첫 번째를 기다린다.
+  const profileRequest = fetchProfile(username);
+  const postsRequest = fetchPostsByUsername(username);
+  const [profile, posts] = await Promise.all([profileRequest, postsRequest]);
 
   return (
     <>
