@@ -23,7 +23,7 @@ interface FeedSectionProps {
 // 좋아요는 더 이상 여기 상태가 아니다. 우리가 그리는 posts 는 창고에 있는 것
 // 그대로이고, 누르면 서버에 보낸다. 화면이 따로 세지 않으니 틀릴 일도 없다.
 export function FeedSection({ posts }: FeedSectionProps) {
-  const likeMutation = useLikeMutation();
+  const { mutate: toggleLike } = useLikeMutation();
 
   // 알림은 이 화면에만 있다가 사라지는 것이라 여기 그대로 둔다.
   const [toast, setToast] = useState<FeedToast | null>(null);
@@ -39,7 +39,7 @@ export function FeedSection({ posts }: FeedSectionProps) {
     }
 
     setToast({ message: likeToastMessage(target) });
-    likeMutation.mutate(id);
+    toggleLike(id);
   }
 
   // 피드 끝에 닿으면 여기까지 봤다고 알려준다
