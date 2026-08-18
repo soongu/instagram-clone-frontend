@@ -58,10 +58,20 @@ export function createStompBroker({ log = () => {} } = {}) {
     }
   }
 
-  /** 그 사람에게만 보낸다. 클라이언트는 /user/queue/... 로 구독한다. */
+  /**
+   * 그 사람에게만 보낸다. 부르는 쪽은 /queue/dm 처럼 /user 없이 준다.
+   *
+   * 클라이언트는 /user/queue/dm 을 구독한다. 그 앞의 /user 는 목적지 이름의
+   * 일부가 아니라 "이건 나에게 오는 것만 달라" 는 표시다. 그래서 여기서
+   * 접두사를 붙여 구독한 이름과 맞춘 뒤, 세션 주인이 그 사람인 것만 고른다.
+   *
+   * 구독한 글자는 두 사람이 완전히 같다. 가르는 것은 세션을 아는 서버뿐이다.
+   * (Spring 의 convertAndSendToUser 가 하는 일과 같다.)
+   */
   function sendToUser(username, destination, payload) {
+    const userDestination = `/user${destination}`;
     for (const session of sessions) {
-      if (session.username === username) deliver(session, destination, payload);
+      if (session.username === username) deliver(session, userDestination, payload);
     }
   }
 

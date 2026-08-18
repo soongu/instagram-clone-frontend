@@ -21,8 +21,16 @@ const PORT = Number(process.env.PORT ?? 8090);
 // 지연 시간. 진짜 서버는 즉시 답하지 않는다.
 const DELAY_MS = Number(process.env.DELAY_MS ?? 400);
 
-// 로그인한 사람. 토큰을 발급하고 검사하는 데 쓴다.
-const ME = { id: 1, username: 'jaehoon', profileImageUrl: seed('jaehoon', 64) };
+// 로그인할 수 있는 사람들. 쪽지는 두 사람이 없으면 시연이 안 된다.
+// 탭을 두 개 띄우고 각각 다른 사람으로 로그인해 보라는 뜻이다.
+const USERS = [
+  { id: 1, username: 'jaehoon', profileImageUrl: seed('jaehoon', 64) },
+  { id: 2, username: 'minji', profileImageUrl: seed('minji', 64) },
+];
+
+function findUser(username) {
+  return USERS.find((it) => it.username === username);
+}
 
 function seed(name, size) {
   return `https://picsum.photos/seed/${name}/${size}/${size}`;
@@ -66,27 +74,58 @@ const comments = [
 
 let nextCommentId = 4;
 
+// 대화방. 두 사람이 한 방을 같이 쓴다.
+const conversations = [{ conversationId: 1, participants: ['jaehoon', 'minji'] }];
+
+// 주고받은 쪽지. 새로고침해도 남아 있어야 하니 서버가 들고 있는다.
+const directMessages = [
+  { messageId: 1, conversationId: 1, senderUsername: 'minji', content: '한강 사진 그거 어디서 찍은 거예요?', createdAt: '2026-08-18T09:12:00' },
+  { messageId: 2, conversationId: 1, senderUsername: 'jaehoon', content: '반포대교 남단이요! 해 지기 30분 전이 제일 좋아요', createdAt: '2026-08-18T09:14:00' },
+];
+
+let nextMessageId = 3;
+
+// 알림. 게시물 주인에게만 쌓인다.
+const notifications = [];
+let nextNotificationId = 1;
+
+function conversationOf(id) {
+  return conversations.find((it) => it.conversationId === id);
+}
+
+function otherParticipant(conversation, me) {
+  return conversation.participants.find((it) => it !== me);
+}
+
 // 발급한 토큰. 만료를 흉내 내려고 쓴 횟수를 센다.
+// 누구의 토큰인지도 함께 담는다 — 이제 사람이 둘이라 구분해야 한다.
 const tokens = new Map();
 let nextTokenId = 1;
 
-function issueToken(kind) {
+function issueToken(kind, username) {
   const token = `${kind}-${nextTokenId++}`;
-  tokens.set(token, { kind, uses: 0 });
+  tokens.set(token, { kind, username, uses: 0 });
   return token;
 }
 
 // 액세스 토큰은 세 번 쓰면 만료된다. 401 갱신을 눈으로 보려면 짧아야 한다.
 const ACCESS_TOKEN_USES = Number(process.env.ACCESS_TOKEN_USES ?? 3);
 
+// 검사 결과와 "누구인지" 를 함께 돌려준다.
 function verifyAccessToken(header) {
-  if (typeof header !== 'string' || !header.startsWith('Bearer ')) return 'missing';
+  if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
+    return { status: 'missing', username: null };
+  }
   const token = header.slice('Bearer '.length);
   const found = tokens.get(token);
-  if (found === undefined || found.kind !== 'access') return 'invalid';
+  if (found === undefined || found.kind !== 'access') {
+    return { status: 'invalid', username: null };
+  }
   found.uses += 1;
-  if (found.uses > ACCESS_TOKEN_USES) return 'expired';
-  return 'ok';
+  if (found.uses > ACCESS_TOKEN_USES) {
+    return { status: 'expired', username: found.username };
+  }
+  return { status: 'ok', username: found.username };
 }
 
 function ok(res, data, status = 200) {
@@ -141,6 +180,73 @@ broker.onAppMessage('/app/ping', (payload) => {
   broker.broadcast('/topic/pong', { response: `PONG: ${payload.message}`, timestamp: Date.now() });
 });
 
+/**
+ * 알림 하나를 쌓고, 받는 사람이 지금 붙어 있으면 통로로도 보낸다.
+ *
+ * 자기가 자기 게시물에 한 일은 알리지 않는다.
+ */
+function notify(receiver, actor, { type, targetId, message }) {
+  if (receiver === actor) return;
+
+  const created = {
+    notificationId: nextNotificationId++,
+    type,
+    senderUsername: actor,
+    senderProfileImageUrl: seed(actor, 64),
+    targetId,
+    message,
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  };
+  // 누구에게 온 것인지는 서버만 알면 된다. 보낼 때는 빼고 보낸다.
+  notifications.push({ receiverUsername: receiver, notification: created });
+
+  broker.sendToUser(receiver, '/queue/notifications', created);
+}
+
+/**
+ * 쪽지 보내기. 백엔드 과목의 @MessageMapping("/dm.send") 와 같은 자리다.
+ *
+ * 받는 사람과 보낸 사람 양쪽의 /user/queue/dm 으로 같은 것을 보낸다.
+ * 보낸 사람에게 되돌려 보내는 것이 곧 "서버까지 갔다" 는 확인이다
+ * (백엔드에서는 @SendToUser 가 그 일을 한다).
+ */
+broker.onAppMessage('/app/dm.send', (payload, session) => {
+  const sender = session.username;
+  const conversation = conversationOf(Number(payload.conversationId));
+
+  if (conversation === undefined || !conversation.participants.includes(sender)) {
+    return broker.sendToUser(sender, '/queue/errors', {
+      code: 'CONVERSATION_NOT_FOUND',
+      message: '참여하지 않은 대화방입니다',
+      clientId: payload.clientId ?? null,
+    });
+  }
+
+  const content = typeof payload.content === 'string' ? payload.content.trim() : '';
+  if (content === '') {
+    return broker.sendToUser(sender, '/queue/errors', {
+      code: 'EMPTY_CONTENT',
+      message: '내용을 입력해주세요',
+      clientId: payload.clientId ?? null,
+    });
+  }
+
+  const created = {
+    messageId: nextMessageId++,
+    conversationId: conversation.conversationId,
+    senderUsername: sender,
+    content,
+    createdAt: new Date().toISOString(),
+    // 보낸 쪽이 "내가 방금 보낸 그것" 을 알아보라고 그대로 실어 돌려준다.
+    clientId: payload.clientId ?? null,
+  };
+  directMessages.push(created);
+
+  broker.sendToUser(sender, '/queue/dm', created);
+  broker.sendToUser(otherParticipant(conversation, sender), '/queue/dm', created);
+});
+
 const routes = [
   // 로그인 — 토큰 두 개를 발급한다.
   {
@@ -148,10 +254,15 @@ const routes = [
     match: (path) => path === '/api/auth/login',
     handle: async (req, res) => {
       const body = await readBody(req);
-      if (body.username !== ME.username) {
+      const user = findUser(body.username);
+      if (user === undefined) {
         return fail(res, 401, '아이디 또는 비밀번호가 올바르지 않습니다');
       }
-      ok(res, { accessToken: issueToken('access'), refreshToken: issueToken('refresh'), user: ME });
+      ok(res, {
+        accessToken: issueToken('access', user.username),
+        refreshToken: issueToken('refresh', user.username),
+        user,
+      });
     },
   },
 
@@ -165,7 +276,7 @@ const routes = [
       if (found === undefined || found.kind !== 'refresh') {
         return fail(res, 401, '리프레시 토큰이 유효하지 않습니다');
       }
-      ok(res, { accessToken: issueToken('access') });
+      ok(res, { accessToken: issueToken('access', found.username) });
     },
   },
 
@@ -215,9 +326,9 @@ const routes = [
     match: (path) => /^\/api\/posts\/\d+\/like$/.test(path),
     handle: async (req, res, path) => {
       const auth = verifyAccessToken(req.headers.authorization);
-      if (auth === 'missing') return fail(res, 401, '로그인이 필요합니다');
-      if (auth === 'invalid') return fail(res, 401, '토큰이 유효하지 않습니다');
-      if (auth === 'expired') return fail(res, 401, '액세스 토큰이 만료되었습니다');
+      if (auth.status === 'missing') return fail(res, 401, '로그인이 필요합니다');
+      if (auth.status === 'invalid') return fail(res, 401, '토큰이 유효하지 않습니다');
+      if (auth.status === 'expired') return fail(res, 401, '액세스 토큰이 만료되었습니다');
 
       const id = Number(path.split('/').at(-2));
       const found = posts.find((it) => it.id === id);
@@ -236,8 +347,17 @@ const routes = [
         type: 'like',
         postId: found.id,
         likeCount: found.likeCount,
-        actor: ME.username,
+        actor: auth.username,
       });
+
+      // 게시물 주인에게는 따로 알림이 간다. 모두가 아니라 한 사람에게만 가는 소식이다.
+      if (found.liked) {
+        notify(found.username, auth.username, {
+          type: 'LIKE',
+          targetId: found.id,
+          message: `${auth.username} 님이 회원님의 게시물을 좋아합니다`,
+        });
+      }
 
       ok(res, { id: found.id, liked: found.liked, likeCount: found.likeCount });
     },
@@ -249,14 +369,16 @@ const routes = [
     match: (path) => /^\/api\/posts\/\d+\/comments$/.test(path),
     handle: async (req, res, path) => {
       const auth = verifyAccessToken(req.headers.authorization);
-      if (auth !== 'ok') return fail(res, 401, auth === 'expired' ? '액세스 토큰이 만료되었습니다' : '로그인이 필요합니다');
+      if (auth.status !== 'ok') {
+        return fail(res, 401, auth.status === 'expired' ? '액세스 토큰이 만료되었습니다' : '로그인이 필요합니다');
+      }
 
       const postId = Number(path.split('/').at(-2));
       const body = await readBody(req);
       const content = typeof body.content === 'string' ? body.content.trim() : '';
       if (content === '') return fail(res, 400, '댓글 내용을 입력해주세요');
 
-      const created = { id: nextCommentId++, postId, username: ME.username, content, createdAt: '2026-08-14T10:00:00' };
+      const created = { id: nextCommentId++, postId, username: auth.username, content, createdAt: '2026-08-14T10:00:00' };
       comments.push(created);
       const post = posts.find((it) => it.id === postId);
       if (post !== undefined) post.commentCount += 1;
@@ -265,10 +387,79 @@ const routes = [
         type: 'comment',
         postId,
         commentCount: post?.commentCount ?? 0,
-        actor: ME.username,
+        actor: auth.username,
       });
 
+      if (post !== undefined) {
+        notify(post.username, auth.username, {
+          type: 'COMMENT',
+          targetId: postId,
+          message: `${auth.username} 님이 댓글을 남겼습니다: ${content}`,
+        });
+      }
+
       ok(res, created, 201);
+    },
+  },
+
+  // 내 대화 목록 — 상대가 누구인지와 마지막 쪽지를 함께 준다.
+  {
+    method: 'GET',
+    match: (path) => path === '/api/conversations',
+    handle: async (req, res) => {
+      const auth = verifyAccessToken(req.headers.authorization);
+      if (auth.status !== 'ok') return fail(res, 401, '로그인이 필요합니다');
+
+      const mine = conversations
+        .filter((it) => it.participants.includes(auth.username))
+        .map((it) => {
+          const other = otherParticipant(it, auth.username);
+          const last = directMessages.filter((dm) => dm.conversationId === it.conversationId).at(-1);
+          return {
+            conversationId: it.conversationId,
+            otherUsername: other,
+            otherProfileImageUrl: seed(other, 64),
+            lastMessage: last?.content ?? null,
+            lastMessageAt: last?.createdAt ?? null,
+          };
+        });
+
+      ok(res, mine);
+    },
+  },
+
+  // 대화방의 쪽지 이력 — 통로가 열리기 전에 있던 것은 여기로 받는다.
+  {
+    method: 'GET',
+    match: (path) => /^\/api\/conversations\/\d+\/messages$/.test(path),
+    handle: async (req, res, path) => {
+      const auth = verifyAccessToken(req.headers.authorization);
+      if (auth.status !== 'ok') return fail(res, 401, '로그인이 필요합니다');
+
+      const id = Number(path.split('/').at(-2));
+      const conversation = conversationOf(id);
+      if (conversation === undefined || !conversation.participants.includes(auth.username)) {
+        return fail(res, 404, '대화방을 찾을 수 없습니다');
+      }
+
+      ok(res, directMessages.filter((it) => it.conversationId === id));
+    },
+  },
+
+  // 내 알림 목록 — 최근 것이 위로 온다.
+  {
+    method: 'GET',
+    match: (path) => path === '/api/notifications',
+    handle: async (req, res) => {
+      const auth = verifyAccessToken(req.headers.authorization);
+      if (auth.status !== 'ok') return fail(res, 401, '로그인이 필요합니다');
+
+      const mine = notifications
+        .filter((it) => it.receiverUsername === auth.username)
+        .map((it) => it.notification)
+        .toReversed();
+
+      ok(res, mine);
     },
   },
 
@@ -278,12 +469,14 @@ const routes = [
     match: (path) => /^\/api\/comments\/\d+$/.test(path),
     handle: async (req, res, path) => {
       const auth = verifyAccessToken(req.headers.authorization);
-      if (auth !== 'ok') return fail(res, 401, auth === 'expired' ? '액세스 토큰이 만료되었습니다' : '로그인이 필요합니다');
+      if (auth.status !== 'ok') {
+        return fail(res, 401, auth.status === 'expired' ? '액세스 토큰이 만료되었습니다' : '로그인이 필요합니다');
+      }
 
       const id = Number(path.split('/').at(-1));
       const index = comments.findIndex((it) => it.id === id);
       if (index === -1) return fail(res, 404, '댓글을 찾을 수 없습니다');
-      if (comments[index].username !== ME.username) {
+      if (comments[index].username !== auth.username) {
         return fail(res, 403, '내가 쓴 댓글만 지울 수 있습니다');
       }
 
@@ -343,4 +536,5 @@ server.on('upgrade', (req, socket) => {
 server.listen(PORT, () => {
   console.log(`[api-stub] http://localhost:${PORT}/api — 지연 ${DELAY_MS}ms · 좋아요는 ${LIKE_FAIL_EVERY}번에 한 번 실패 · 액세스 토큰은 ${ACCESS_TOKEN_USES}회 사용 후 만료`);
   console.log(`[api-stub] ws://localhost:${PORT}/ws — STOMP · /topic 구독 · /app 으로 보내기`);
+  console.log(`[api-stub] 로그인할 수 있는 사람: ${USERS.map((it) => it.username).join(' · ')} — 탭마다 다른 사람으로 들어가 보세요`);
 });
