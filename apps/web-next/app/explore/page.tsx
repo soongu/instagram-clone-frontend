@@ -1,0 +1,18 @@
+// apps/web-next/app/explore/page.tsx
+import { allPosts } from '@/lib/posts';
+
+export default function ExplorePage() {
+  return (
+    <main className="mx-auto max-w-3xl p-6">
+      <h1 className="mb-4 text-xl font-bold">탐색</h1>
+      <ul className="grid grid-cols-3 gap-2">
+        {allPosts.map((post) => (
+          <li key={post.id} className="aspect-square rounded bg-black/5 p-3 text-sm">
+            <p className="font-semibold">@{post.username}</p>
+            <p className="mt-1 text-black/60">좋아요 {post.likeCount}</p>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
