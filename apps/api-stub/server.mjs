@@ -13,6 +13,8 @@
 
 import { createServer } from 'node:http';
 
+import { createStompBroker } from './stomp.mjs';
+
 const PORT = Number(process.env.PORT ?? 8090);
 
 // 지연 시간. 진짜 서버는 즉시 답하지 않는다.
@@ -130,6 +132,14 @@ function sleep(ms) {
 let likeAttempts = 0;
 const LIKE_FAIL_EVERY = Number(process.env.LIKE_FAIL_EVERY ?? 5);
 
+// 실시간 통로. HTTP 서버와 같은 포트를 쓴다.
+const broker = createStompBroker({ log: (line) => console.log(line) });
+
+// 백엔드 과목의 StompController 와 같은 자리다. /app 으로 들어오면 여기서 받는다.
+broker.onAppMessage('/app/ping', (payload) => {
+  broker.broadcast('/topic/pong', { response: `PONG: ${payload.message}`, timestamp: Date.now() });
+});
+
 const routes = [
   // 로그인 — 토큰 두 개를 발급한다.
   {
@@ -219,6 +229,15 @@ const routes = [
 
       found.liked = !found.liked;
       found.likeCount += found.liked ? 1 : -1;
+
+      // 누른 사람에게만 답하고 끝내지 않는다. 열려 있는 연결 전부에 알린다.
+      broker.broadcast('/topic/posts', {
+        type: 'like',
+        postId: found.id,
+        likeCount: found.likeCount,
+        actor: ME.username,
+      });
+
       ok(res, { id: found.id, liked: found.liked, likeCount: found.likeCount });
     },
   },
@@ -240,6 +259,14 @@ const routes = [
       comments.push(created);
       const post = posts.find((it) => it.id === postId);
       if (post !== undefined) post.commentCount += 1;
+
+      broker.broadcast('/topic/posts', {
+        type: 'comment',
+        postId,
+        commentCount: post?.commentCount ?? 0,
+        actor: ME.username,
+      });
+
       ok(res, created, 201);
     },
   },
@@ -288,6 +315,17 @@ const server = createServer(async (req, res) => {
   }
 });
 
+// 업그레이드 요청은 보통 요청과 다른 문으로 들어온다.
+server.on('upgrade', (req, socket) => {
+  const path = new URL(req.url ?? '/', `http://localhost:${PORT}`).pathname;
+  if (path !== '/ws') {
+    socket.end('HTTP/1.1 404 Not Found\r\n\r\n');
+    return;
+  }
+  broker.handleUpgrade(req, socket);
+});
+
 server.listen(PORT, () => {
   console.log(`[api-stub] http://localhost:${PORT}/api — 지연 ${DELAY_MS}ms · 좋아요는 ${LIKE_FAIL_EVERY}번에 한 번 실패 · 액세스 토큰은 ${ACCESS_TOKEN_USES}회 사용 후 만료`);
+  console.log(`[api-stub] ws://localhost:${PORT}/ws — STOMP · /topic 구독 · /app 으로 보내기`);
 });

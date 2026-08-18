@@ -1,0 +1,104 @@
+C-8 (WebSocket 클라이언트 — STOMP 실시간) 채증
+================================================
+착수일 2026-08-18 · 브랜치 module-C8-stomp (module-C7-performance 64aece2 에서 분기)
+
+
+[1] 시의성 — npm registry 로 확인 (WebSearch 아님, C-4 교훈)
+------------------------------------------------------------
+@stomp/stompjs      7.3.0   latest · 2026-05-07 공개 · 런타임 의존성 0개
+                            (7.4.0-beta.2 가 있으나 beta — stable 은 7.3.0)
+sockjs-client       1.6.1   2022-10-22 이후 멈춤 — 우리는 안 쓴다(아래 [4])
+@tanstack/react-query 5.101.4  C-6 과 동일
+react               19.2.8  C-7 과 동일 (React 20 없음)
+zustand             5.0.15  C-4 와 동일
+
+커리큘럼 C-8 행에는 STOMP 클라이언트 라이브러리 이름이 아예 없었다 — 신설 필요.
+
+
+[2] 착수 전제 확인 — 붙을 브로커가 있는가
+------------------------------------------------------------
+❌ 없다. C-5 와 같은 상황이 반복됐다.
+  - 현행 spring-boot/instagram-clone-v2 : WebSocket 관련 파일 0건
+  - 레거시 instagram-clone-with-jpa202502 : WebSocketConfig·StompController·
+    StompChannelInterceptor 가 실물로 있다. 단 (a) 레거시라 v2 가 아니고
+    (b) 봉투가 다르다(C-5 가 이미 확인한 사유).
+  - spring-boot-advanced 는 curriculum.md 만 있고 교안·코드 0건
+    (C-1~C-4 가 WebSocket·STOMP·DM·보안으로 예정만 되어 있다).
+
+→ C-5 선례대로 apps/api-stub 에 STOMP 브로커를 세웠다. 의존성 0개.
+
+레거시 백엔드에서 그대로 가져온 규약 (WebSocketConfig.java 실물):
+  registry.enableSimpleBroker("/topic", "/queue");
+  registry.setApplicationDestinationPrefixes("/app");
+  registry.addEndpoint("/ws")
+  → 우리 스텁도 /ws · /topic · /queue · /app 을 똑같이 쓴다.
+  → StompController 의 /app/ping → /topic/pong 도 그대로 재현(백엔드 과목과 대조 가능).
+
+
+[3] ⚠️⚠️ 손으로 짠 핸드셰이크가 두 번 거절당했다 — 둘 다 클라이언트가 알려줬다
+------------------------------------------------------------
+(a) "Server did not respond with sent protocols."
+    stompjs 는 Sec-WebSocket-Protocol: v12.stomp, v11.stomp, v10.stomp 를 내밀고
+    서버가 그중 하나를 골라 돌려주기를 기다린다. 안 돌려주면 연결을 끊는다.
+    → selectProtocol 로 v12.stomp 를 골라 응답 헤더에 실었다.
+
+(b) "Incorrect hash received in Sec-WebSocket-Accept header."
+    ★ 내가 쓴 고정 문자열(GUID)이 틀렸다. 눈으로는 안 잡혔다.
+      틀린 것: 258EAFA5-E914-47DA-95CA-5AB0DC85B11F   ← C 가 앞으로 가고 F 가 붙음
+      맞는 것: 258EAFA5-E914-47DA-95CA-C5AB0DC85B11
+    확인 방법: RFC 예시 키 dGhlIHNhbXBsZSBub25jZQ== 를 넣으면
+      s3pPLMBiTxaQ9kYGzzhZRbK+xOo= 가 나와야 한다(맞는 것으로 하면 나온다).
+    ★ 한 글자 자리바꿈을 사람 눈으로 찾으려 하지 말 것 — 규격이 준 시험값으로 대조한다.
+
+
+[4] SockJS 를 안 쓰는 이유 (교안에서 한 줄로 짚을 것)
+------------------------------------------------------------
+레거시 백엔드는 .withSockJS() 가 붙어 있다. 그러나
+  - sockjs-client 는 2022-10 이후 새 릴리스가 없다
+  - WebSocket 을 못 쓰는 브라우저가 이제 없다
+  - spring-boot-advanced 커리큘럼 C-2 도 "SockJS 불필요 이유" 를 항목으로 둔다
+→ 우리는 날 WebSocket 으로 붙는다. 다만 학생이 회사 코드에서 만날 수 있으니 이름은 짚는다.
+
+
+[5] 실물 대조 — @stomp/stompjs 7.3.0 이 우리 브로커에 붙는다 (probe 4/4)
+------------------------------------------------------------
+스크립트: apps/web-spa/scratch/c8-stomp-probe.mjs
+서버: DELAY_MS=0 node apps/api-stub/server.mjs
+
+  1) CONNECTED   ok
+  2) SUBSCRIBE   ok
+  3) /app/ping → /topic/pong
+       {"response":"PONG: 안녕하세요","timestamp":1787016806523}
+  4) REST 좋아요 → 열려 있는 연결에 푸시
+       {"type":"like","postId":1,"likeCount":1241,"actor":"jaehoon"}
+
+★ 4) 가 이 모듈의 핵심 교보재다. 좋아요는 여전히 C-6 의 REST 뮤테이션으로 가는데,
+   결과가 누른 사람에게만 돌아오지 않고 열려 있는 모든 연결로 나간다.
+   두 탭을 띄우면 한쪽에서 누른 것이 다른 쪽에 뜬다 — 흉내가 아니라 진짜 두 클라이언트다.
+
+실제 오간 프레임 (stompjs debug 원문 — 교안 Step 4 교보재):
+  >>> CONNECT
+  login:jaehoon
+  accept-version:1.2,1.1,1.0
+  heart-beat:10000,10000
+
+  <<< CONNECTED
+  user-name:jaehoon
+  session:sess-1
+  heart-beat:10000,10000
+  version:1.2
+
+  >>> SUBSCRIBE
+  id:sub-0
+  destination:/topic/posts
+
+  >>> SEND
+  destination:/app/ping
+
+서버 로그:
+  [stomp] jaehoon 님이 연결했습니다 (sess-1) — 전체 1
+  [stomp] 구독 /topic/posts (sess-1)
+  [stomp] 연결이 끊겼습니다 (sess-1) — 남은 연결 0
+
+⚠️ stompjs debug 에 "connected to server undefined" 가 찍힌다 —
+   CONNECTED 프레임에 server 헤더가 없어서다. Spring 도 안 보낸다. 정상.
