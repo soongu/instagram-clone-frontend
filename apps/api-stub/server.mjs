@@ -320,6 +320,21 @@ const routes = [
     },
   },
 
+  // 이 사람이 자주 쓴 해시태그 — 전부 훑어서 세는 집계라 다른 것보다 오래 걸린다.
+  {
+    method: 'GET',
+    match: (path) => /^\/api\/users\/[^/]+\/tags$/.test(path),
+    extraDelayMs: 800,
+    handle: async (req, res, path) => {
+      const username = decodeURIComponent(path.split('/').at(-2));
+      const mine = posts.filter((it) => it.username === username);
+      if (mine.length === 0) {
+        return fail(res, 404, '그런 사람이 없습니다');
+      }
+      ok(res, [...new Set(mine.flatMap((it) => it.hashtagNames))]);
+    },
+  },
+
   // 태그 목록 — 화면이 게시물에서 뽑아 쓰지 않게 서버가 준다.
   {
     method: 'GET',
@@ -529,6 +544,11 @@ const server = createServer(async (req, res) => {
   const route = routes.find((it) => it.method === req.method && it.match(path));
   if (route === undefined) {
     return fail(res, 404, `그런 주소는 없습니다: ${req.method} ${path}`);
+  }
+
+  // 집계처럼 원래 오래 걸리는 주소는 더 잔다.
+  if (route.extraDelayMs !== undefined) {
+    await sleep(route.extraDelayMs);
   }
 
   try {

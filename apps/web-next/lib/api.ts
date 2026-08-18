@@ -46,3 +46,8 @@ export function fetchProfile(username: string): Promise<Profile> {
 export function fetchPostsByUsername(username: string): Promise<Post[]> {
   return get<Post[]>(`/posts?username=${encodeURIComponent(username)}`);
 }
+
+/** 자주 쓴 해시태그. 게시물을 전부 훑어 세는 집계라 다른 것보다 오래 걸린다. */
+export function fetchTopTags(username: string): Promise<string[]> {
+  return get<string[]>(`/users/${encodeURIComponent(username)}/tags`);
+}
