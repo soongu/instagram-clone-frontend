@@ -67,3 +67,34 @@ Tailwind 연결 방식도 갈린다: web-spa 는 @tailwindcss/vite,
 web-next 는 @tailwindcss/postcss (같은 Tailwind 4.3.3, 다른 연결 지점).
 
 next build 기본 출력에 Turbopack 플래그가 없다 (16 부터 dev·build 양쪽 기본).
+
+
+[5] Step 3 채증 — 서버가 보낸 HTML 대조 (2026-08-18)
+----------------------------------------------------------------
+측정 조건: 양쪽 다 프로덕션 빌드본. Next 는 `next build && next start -p 3100`
+후 `curl -s http://localhost:3100/`, SPA 는 `vite build` 후 dist/index.html.
+
+                      SPA(dist/index.html)   Next(/ 응답)
+  바이트                    1,487                7,713
+  "한강" 등장                  0회                  2회
+  "오늘 한강 노을이 미쳤다"      0회                  2회
+
+SPA 의 body 는 실제로 이게 전부다:
+
+  <body class="bg-canvas text-ink">
+    <div id="root"></div>
+  </body>
+
+⚠️ Next 쪽 "2회" 를 교안에 그냥 쓰면 안 된다. 한 번은 눈에 보이는 HTML,
+또 한 번은 브라우저가 이어받을 때 쓰는 데이터(self.__next_f.push)다.
+그 둘의 정체는 D-3 소관이므로, D-1 은 "있다/없다" 로만 대비한다.
+숫자를 쓸 거면 바이트(1,487 vs 7,713)가 안전하다.
+
+[6] Step 2 빌드 결과 — 폴더가 곧 라우트 목록
+----------------------------------------------------------------
+  Route (app)
+  ┌ ○ /
+  ├ ○ /_not-found
+  └ ○ /explore
+
+/_not-found 는 우리가 안 만들었는데 있다 (Next 기본). D-2 소관.
