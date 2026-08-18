@@ -3,11 +3,14 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Client } from '@stomp/stompjs';
 import type { Post } from '../types/instagram';
+import type { DirectMessage } from '../types/dm';
 import { applyPostEvent, parsePostEvent } from '../lib/postEvents';
+import { appendMessage, parseDirectMessage } from '../lib/dmEvents';
 import { feedKey } from '../queries/posts';
+import { dmKey } from '../queries/dm';
 import { useConnectionStore } from '../stores/useConnectionStore';
 import { useSessionStore } from '../stores/useSessionStore';
-import { POSTS_TOPIC, stompClient } from './stompClient';
+import { DM_QUEUE, POSTS_TOPIC, stompClient } from './stompClient';
 
 // 통로와 캐시를 잇는 자리. 그리는 것이 없어서 null 을 돌려준다.
 //
@@ -43,6 +46,19 @@ export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
 
           queryClient.setQueryData<Post[]>(feedKey(), (current) =>
             applyPostEvent(current, event),
+          );
+        });
+
+        // 쪽지도 같은 자리에서 듣는다. 화면이 아니라 앱이 듣는 이유는
+        // 쪽지 화면을 떠나 있는 동안에도 받아둬야 하기 때문이다.
+        client.subscribe(DM_QUEUE, (message) => {
+          const received = parseDirectMessage(message.body);
+          if (received === null) return;
+
+          // 얹는 방식은 좋아요와 똑같다. 진실을 캐시 한 곳에 모아뒀으니
+          // 화면은 이 줄이 있는 줄도 모르고 다시 그려진다.
+          queryClient.setQueryData<DirectMessage[]>(dmKey(received.conversationId), (current) =>
+            appendMessage(current, received),
           );
         });
       },
