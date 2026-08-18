@@ -6,6 +6,7 @@ import type { Post } from '../types/instagram';
 import { applyPostEvent, parsePostEvent } from '../lib/postEvents';
 import { feedKey } from '../queries/posts';
 import { useConnectionStore } from '../stores/useConnectionStore';
+import { useSessionStore } from '../stores/useSessionStore';
 import { POSTS_TOPIC, stompClient } from './stompClient';
 
 // 통로와 캐시를 잇는 자리. 그리는 것이 없어서 null 을 돌려준다.
@@ -15,6 +16,10 @@ import { POSTS_TOPIC, stompClient } from './stompClient';
 export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
   const queryClient = useQueryClient();
 
+  // 누구로 들어와 있는지가 바뀌면 통로도 다시 열어야 한다.
+  // 서버는 CONNECT 때 받은 이름으로 "누구에게 보낼지" 를 가르기 때문이다.
+  const username = useSessionStore((state) => state.username);
+
   useEffect(() => {
     const { setStatus, countAttempt } = useConnectionStore.getState();
     setStatus('connecting');
@@ -23,6 +28,10 @@ export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
     // 바깥에서 만든 것을 그리는 도중에 고치지 말라는 그 규칙이다(C-7 에서 본 것).
     // 라이브러리가 그래서 configure 를 열어뒀다 — 대입 대신 이쪽으로 넘긴다.
     client.configure({
+      // 출입증을 서버에 내미는 자리. 진짜 서버는 여기서 JWT 를 검사한다.
+      // 로그인 전에는 아무것도 안 싣는다 — 그래도 /topic 은 받는다.
+      connectHeaders: username === null ? {} : { login: username },
+
       // 붙을 때마다 불린다 — 처음 붙을 때도, 끊겼다 다시 붙을 때도.
       // 그래서 구독을 여기서 한다. 다시 붙으면 구독도 다시 살아난다.
       onConnect: () => {
@@ -52,7 +61,7 @@ export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
       void client.deactivate();
       useConnectionStore.getState().reset();
     };
-  }, [client, queryClient]);
+  }, [client, queryClient, username]);
 
   return null;
 }

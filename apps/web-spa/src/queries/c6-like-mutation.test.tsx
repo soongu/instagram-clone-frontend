@@ -11,6 +11,7 @@ import { withQuery, freshQueryClient } from '../../scratch/c5-query-harness';
 import { server, requestLog, resetRequestLog, fakeAuth } from '../../scratch/c5-server-harness';
 import { c6Handlers, fakeDb } from '../../scratch/c6-server-harness';
 import { login } from '../api/auth';
+import { useSessionStore } from '../stores/useSessionStore';
 import { fetchFeed } from '../api/posts';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -20,6 +21,9 @@ beforeEach(() => {
   resetRequestLog();
   fakeAuth.reset();
   fakeDb.reset();
+  // C-9 에서 "누구로 들어와 있는지" 가 store 로 옮겨갔다.
+  // store 는 판이 끝나도 안 지워지니 판마다 로그아웃 상태에서 시작한다.
+  useSessionStore.getState().signOut();
 });
 
 afterEach(() => server.resetHandlers());

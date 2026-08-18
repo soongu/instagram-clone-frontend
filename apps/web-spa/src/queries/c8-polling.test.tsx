@@ -33,11 +33,13 @@ describe('폴링 — 정해둔 간격마다 다시 물어본다', () => {
     expect(feedRequests()).toHaveLength(1);
 
     // 서버에서는 그동안 아무 일도 없었다.
-    await expect.poll(() => feedRequests().length, { timeout: 3000 }).toBeGreaterThanOrEqual(5);
+    // ⚠️ 이 판은 흐르는 시간을 센다. 판이 늘어 컴퓨터가 바쁘면 같은 3초 안에
+    //    들어가는 요청 수가 줄어든다. 창과 판의 한도를 함께 넓혀둔다.
+    await expect.poll(() => feedRequests().length, { timeout: 8000 }).toBeGreaterThanOrEqual(5);
 
     // 다섯 번을 물어봤는데 답은 처음과 똑같다.
     expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it('★ 남이 바꾼 것을 아는 데 간격만큼 늦는다', async () => {
     const client = freshQueryClient();

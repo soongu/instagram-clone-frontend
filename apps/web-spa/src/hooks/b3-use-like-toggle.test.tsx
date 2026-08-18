@@ -73,8 +73,10 @@ function withoutSiteNav(html: string) {
 }
 
 // C-6 은 같은 머리말에 출입증 버튼을 덧붙였다. 같은 이유로 걷어낸다.
+// C-9 에서 사람을 고르는 칸이 함께 붙어, 버튼 하나가 아니라 묶음째 걷어낸다.
+// (로그인 전 화면에는 이 묶음 안에 span 이 없어서 첫 </span> 이 곧 바깥 것이다.)
 function withoutSignIn(html: string) {
-  return html.replace(/<button[^>]*>로그인<\/button>/, '');
+  return html.replace(/<span data-slot="sign-in"[^>]*>.*?<\/span>/s, '');
 }
 
 // C-8 은 같은 머리말에 연결 표시를 덧붙였다. 같은 이유로 걷어낸다.
@@ -102,6 +104,7 @@ describe('HomePage — 훅으로 옮긴 뒤에도 화면과 동작이 그대로�
     expect(after).not.toContain('aria-label="화면 밝기"');
     expect(after).not.toContain('aria-label="주요 메뉴"');
     expect(after).not.toContain('로그인');
+    expect(after).not.toContain('sign-in');
     expect(after).not.toContain('connection-indicator');
     // 되돌리기가 실제로 걸렸는지 — 안 걸리면 이 비교는 아무것도 증명하지 못한다
     expect(b3BridgeHits(rendered)).toContain('feed');
