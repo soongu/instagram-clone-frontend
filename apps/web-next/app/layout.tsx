@@ -1,5 +1,6 @@
 // apps/web-next/app/layout.tsx
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,8 +17,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <header className="border-b border-black/10">
           <nav className="mx-auto flex max-w-3xl gap-4 p-4 text-sm">
             <span className="font-bold">인스타그램 클론</span>
-            <span className="text-black/50">홈</span>
-            <span className="text-black/50">탐색</span>
+            <Link href="/">홈</Link>
+            <Link href="/explore">탐색</Link>
           </nav>
         </header>
         {children}
