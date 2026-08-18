@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { NotificationToaster } from './components/NotificationToaster';
 import { ThemeColorMeta } from './components/ThemeColorMeta';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { queryClient } from './queries/queryClient';
@@ -20,6 +21,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
         {children}
         {/* 확인 상자는 감쌀 것이 없다. 앱에 한 번 그려두기만 하면 된다. */}
         <ConfirmDialog />
+        {/* 알림 상자도 같은 자리다. 어느 화면에 있든 떠야 한다. */}
+        <NotificationToaster />
       </ThemeProvider>
     </QueryClientProvider>
   );

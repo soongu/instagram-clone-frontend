@@ -6,11 +6,13 @@ import type { Post } from '../types/instagram';
 import type { DirectMessage } from '../types/dm';
 import { applyPostEvent, parsePostEvent } from '../lib/postEvents';
 import { appendMessage, parseDirectMessage } from '../lib/dmEvents';
+import { parseNotification } from '../lib/notificationEvents';
 import { feedKey } from '../queries/posts';
 import { dmKey } from '../queries/dm';
 import { useConnectionStore } from '../stores/useConnectionStore';
+import { useNotificationStore } from '../stores/useNotificationStore';
 import { useSessionStore } from '../stores/useSessionStore';
-import { DM_QUEUE, POSTS_TOPIC, stompClient } from './stompClient';
+import { DM_QUEUE, NOTIFICATIONS_QUEUE, POSTS_TOPIC, stompClient } from './stompClient';
 
 // 통로와 캐시를 잇는 자리. 그리는 것이 없어서 null 을 돌려준다.
 //
@@ -60,6 +62,14 @@ export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
           queryClient.setQueryData<DirectMessage[]>(dmKey(received.conversationId), (current) =>
             appendMessage(current, received),
           );
+        });
+
+        // 알림도 나에게만 오는 소식이다. 쪽지와 같은 길, 다른 줄.
+        client.subscribe(NOTIFICATIONS_QUEUE, (message) => {
+          const notification = parseNotification(message.body);
+          if (notification === null) return;
+
+          useNotificationStore.getState().show(notification);
         });
       },
 
