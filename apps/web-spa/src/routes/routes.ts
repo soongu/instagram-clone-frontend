@@ -3,17 +3,18 @@ import { lazy } from 'react';
 import type { RouteObject } from 'react-router';
 import { Layout } from './Layout';
 import { HomePage } from './HomePage';
+import { PostDetailPage } from './PostDetailPage';
+import { ExplorePage } from './ExplorePage';
+import { postLoader } from './postLoader';
+import { RootErrorBoundary } from './RootErrorBoundary';
+import { NotFoundPage } from './NotFoundPage';
+
 // 회원가입은 처음 오는 사람만 본다. 피드를 보러 온 사람에게까지
 // 이 화면의 코드를 내려보낼 이유가 없다.
 // 이름 붙은 내보내기라 default 로 갈아 끼워 건넨다.
 const SignUpPage = lazy(() =>
   import('./SignUpPage').then((module) => ({ default: module.SignUpPage })),
 );
-import { PostDetailPage } from './PostDetailPage';
-import { ExplorePage } from './ExplorePage';
-import { postLoader } from './postLoader';
-import { RootErrorBoundary } from './RootErrorBoundary';
-import { NotFoundPage } from './NotFoundPage';
 
 // 부모가 껍데기(Layout)를 맡고, 자식이 Outlet 자리에 들어간다.
 // 자식 주소는 앞에 빗금을 안 붙인다 — 부모 주소에 이어 붙기 때문이다.
