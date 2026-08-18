@@ -32,6 +32,14 @@ function findUser(username) {
   return USERS.find((it) => it.username === username);
 }
 
+// 프로필 화면이 쓰는 집계값. 게시물을 올린 사람은 로그인 계정이 없어도 프로필이 있다.
+const FOLLOWER_COUNTS = {
+  jaehoon: 1_240,
+  minji: 8_500,
+  seungwoo: 320,
+  dahye: 2_180,
+};
+
 function seed(name, size) {
   return `https://picsum.photos/seed/${name}/${size}/${size}`;
 }
@@ -280,14 +288,35 @@ const routes = [
     },
   },
 
-  // 피드 — 인증이 없어도 볼 수 있다. tag 가 붙으면 그것만 골라 준다.
+  // 피드 — 인증이 없어도 볼 수 있다. tag 나 username 이 붙으면 그것만 골라 준다.
   {
     method: 'GET',
     match: (path) => path === '/api/posts',
     handle: async (req, res) => {
-      const tag = new URL(req.url ?? '/', `http://localhost:${PORT}`).searchParams.get('tag');
-      if (tag === null) return ok(res, posts);
-      return ok(res, posts.filter((post) => post.hashtagNames.includes(tag)));
+      const params = new URL(req.url ?? '/', `http://localhost:${PORT}`).searchParams;
+      const tag = params.get('tag');
+      const username = params.get('username');
+      let found = posts;
+      if (tag !== null) found = found.filter((post) => post.hashtagNames.includes(tag));
+      if (username !== null) found = found.filter((post) => post.username === username);
+      return ok(res, found);
+    },
+  },
+
+  // 프로필 — 게시물을 올린 사람이면 로그인 계정이 없어도 프로필이 있다.
+  {
+    method: 'GET',
+    match: (path) => /^\/api\/users\/[^/]+$/.test(path),
+    handle: async (req, res, path) => {
+      const username = decodeURIComponent(path.split('/').at(-1));
+      if (!posts.some((it) => it.username === username)) {
+        return fail(res, 404, '그런 사람이 없습니다');
+      }
+      ok(res, {
+        username,
+        profileImageUrl: seed(username, 64),
+        followerCount: FOLLOWER_COUNTS[username] ?? 0,
+      });
     },
   },
 

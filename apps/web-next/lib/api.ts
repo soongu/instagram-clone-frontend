@@ -31,3 +31,18 @@ async function get<T>(path: string): Promise<T> {
 export function fetchPosts(): Promise<Post[]> {
   return get<Post[]>('/posts');
 }
+
+/** 프로필 머리에 쓰는 집계값 */
+export type Profile = {
+  username: string;
+  profileImageUrl: string;
+  followerCount: number;
+};
+
+export function fetchProfile(username: string): Promise<Profile> {
+  return get<Profile>(`/users/${encodeURIComponent(username)}`);
+}
+
+export function fetchPostsByUsername(username: string): Promise<Post[]> {
+  return get<Post[]>(`/posts?username=${encodeURIComponent(username)}`);
+}
