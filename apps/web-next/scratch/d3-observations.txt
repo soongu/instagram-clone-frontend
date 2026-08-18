@@ -1,0 +1,143 @@
+D-3 채증 — 서버 vs 클라이언트 컴포넌트 ① 경계를 긋는다
+측정일 2026-08-18 · Next.js 16.3.1 · React 19.2.8 · 프로덕션 빌드(next start)
+
+측정 방법: 각 주소의 HTML 을 받아 <script src="/_next/static/chunks/..."> 를 뽑고
+          중복을 없앤 뒤 각 파일의 실제 다운로드 바이트를 합산했다.
+
+
+1. next build 출력에 First Load JS 열이 없다
+--------------------------------------------------------------------
+Next 16.3.1 의 `next build` 라우트 표는 주소와 정적/동적 표시만 낸다.
+옛 자료가 가르치는 "빌드 표의 First Load JS 를 보라" 는 이 버전에서 성립하지 않는다.
+`--experimental-analyze` 플래그가 있으나 experimental 이라 교안 표준으로 쓰지 않는다.
+
+  Route (app)
+  ┌ ○ /
+  ├ ○ /_not-found
+  ├ ƒ /[username]
+  └ ○ /explore
+
+  ○ (Static) prerendered as static content
+  ƒ (Dynamic) server-rendered on demand
+
+
+2. 기준선 (클라이언트 컴포넌트 3개: HeaderNav · UserSearch · error.tsx)
+--------------------------------------------------------------------
+  /           scripts=7   JS=575,819 B   HTML= 6,993 B
+  /explore    scripts=7   JS=575,819 B   HTML=10,772 B
+  /jaehoon    scripts=6   JS=551,574 B   HTML= 5,977 B
+
+  * /jaehoon 이 오히려 스크립트가 하나 적다.
+
+
+3. Step 1 — 서버 컴포넌트는 어디서 도는가
+--------------------------------------------------------------------
+서버 컴포넌트에 console.log 를 심고 위치를 확인했다.
+
+  정적 라우트 /            → next build 로그에 1회. 요청해도 다시 안 돈다.
+  동적 라우트 /[username]  → 요청마다 서버 터미널에
+                             "[서버] 프로필을 그립니다: jaehoon"
+                             "[서버] 프로필을 그립니다: minji"
+  브라우저로 갔나          → HTML 0건 · JS 청크 0개 파일
+
+  ⚠️ "서버에서 돈다" 가 "요청마다 돈다" 는 뜻은 아니다. 정적은 빌드 때 한 번.
+     왜 그렇게 갈리는지는 캐싱 회차 소관이므로 D-3 은 한 줄만 짚고 넘어간다.
+
+
+4. Step 2 — 'use client' 는 파일이 아니라 그 아래 전부에 걸린다
+--------------------------------------------------------------------
+UserSearch 는 HeaderNav 가 import 한다. 둘 다 지시어를 갖고 있다.
+
+  실험 A: UserSearch 에서만 지시어 제거 (HeaderNav 유지)
+          → 빌드 성공. 아무 일도 안 일어난다.
+
+  실험 B: HeaderNav 에서도 제거 (둘 다 없음)
+          → 빌드 실패. 에러 3건:
+            - usePathname 을 서버 컴포넌트로 import (HeaderNav 자신)
+            - useRouter  을 서버 컴포넌트로 import (UserSearch)
+            - useState   를 서버 컴포넌트로 import (UserSearch)
+
+  ★ 실험 B 의 에러 3건 중 2건이 UserSearch 것이다.
+    실험 A 에서 UserSearch 가 지시어 없이 멀쩡했던 이유가 여기서 증명된다.
+    Next 의 에러 문구도 그대로 그 이야기를 한다:
+      "To fix, mark the file (or its parent) with the `use client` directive."
+                                    ^^^^^^^^^^^^^^^
+
+
+5. Step 3 — 경계를 페이지 통째로 그으면 (대조 실험)
+--------------------------------------------------------------------
+app/explore/page.tsx 맨 위에 'use client' 한 줄만 추가하고 다시 쟀다.
+
+                        서버 컴포넌트      'use client'      차이
+  /explore scripts          7                 8             +1
+  /explore JS         575,819 B         577,822 B        +2,003 B
+  /explore HTML        10,772 B           8,371 B        -2,401 B
+
+  ★ 게시물 데이터가 JS 청크로 옮겨갔다
+    "한강 노을이 미쳤다" 문자열
+      서버 컴포넌트일 때 → JS 청크 0건 · HTML 0건
+      'use client' 일 때 → JS 청크 1건 (chunks/02xggx0zqk47m.js)
+
+  ★★ /explore 는 post.content 를 화면에 아예 안 그린다.
+     그런데도 클라이언트로 바꾸는 순간 브라우저까지 갔다.
+     allPosts 배열이 통째로 경계를 건넜기 때문이다.
+     -- 화면에 안 보이는 데이터까지 간다는 것이 이 실험의 결론.
+
+  HTML 이 줄어든 이유: 서버 컴포넌트일 때는 그려진 결과가 HTML 에 실리고,
+  클라이언트 컴포넌트가 되면 그 자리가 모듈 참조로 바뀐다. 데이터가
+  HTML 에서 JS 로 자리를 옮긴 것이지 사라진 게 아니다.
+
+
+6. Step 4 — 경계를 잎으로 (LikeButton 신설)
+--------------------------------------------------------------------
+app/components/LikeButton.tsx ('use client', useState 토글) 를 만들고
+app/page.tsx 의 좋아요 문단을 그것으로 갈아 끼웠다.
+
+                     이전              이후            차이
+  /       scripts      7                8            +1
+  /       JS     575,819 B        576,272 B        +453 B
+  /       HTML     6,993 B          7,340 B        +347 B
+  /explore         무변경           무변경            0 B
+  /jaehoon         무변경           무변경            0 B
+
+  ★ 다른 두 화면은 한 바이트도 안 늘었다. 경계가 그 화면에만 있으니까.
+
+  ★ 두 방식의 값 비교 (같은 앱, 같은 빌드)
+      페이지 통째로 클라이언트  +2,003 B  + 안 보이는 데이터 유출
+      버튼 하나만 클라이언트      +453 B  + 유출 없음
+
+  ★ 서버가 보낸 HTML 에 버튼이 이미 그려져 있다
+      aria-pressed 2개 (게시물 2장) · <button> 3개 (좋아요 2 + 검색 이동 1)
+      클라이언트 컴포넌트도 서버가 먼저 그려서 보낸다.
+
+
+7. Step 5 — 경계를 건너는 값
+--------------------------------------------------------------------
+[A] 함수를 내려본다 — onLike={() => console.log('좋아요')}
+
+    tsc --noEmit  → exit 0 (타입 검사는 통과한다)
+    next build    → 실패
+
+      Error: Event handlers cannot be passed to Client Component props.
+        {likeCount: 1240, liked: false, onLike: function onLike}
+                                                ^^^^^^^^^^^^^^^
+      If you need interactivity, consider converting part of this to a
+      Client Component.
+
+    ★ 타입이 통과해도 막힌다. 경계는 타입 시스템이 아는 개념이 아니다.
+      에러가 어느 prop 인지 화살표로 짚어준다.
+
+[B] Date 객체를 내려본다 — at={new Date(post.createdAt)}
+
+    next build → 성공. 화면에 연도가 그대로 찍힌다.
+
+    ★ "직렬화" 를 "JSON 으로 바꿀 수 있는 것" 으로 뭉뚱그리면 틀린다.
+      Date 는 건너가고 함수는 못 건넌다.
+
+
+8. 게이트
+--------------------------------------------------------------------
+  tsc --noEmit  0
+  eslint        0
+  next build    성공
+  실험 흔적     console.log 0건 · 모든 실험 파일 원복 확인
