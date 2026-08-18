@@ -40,6 +40,16 @@ export interface FakeBroker {
   webSocketFactory: () => IStompSocket;
   /** 구독 중인 연결에 서버가 먼저 말을 건다. */
   push(destination: string, payload: unknown): void;
+  /**
+   * 그 사람의 연결에만 보낸다. destination 은 /user 없이 준다(진짜 서버와 같다).
+   * 구독한 글자는 두 사람이 같고, 가르는 것은 CONNECT 때 받아둔 이름이다.
+   */
+  pushToUser(username: string, destination: string, payload: unknown): void;
+  /** /app/... 으로 들어온 것을 받는다. 진짜 스텁의 onAppMessage 와 같은 자리다. */
+  onAppMessage(
+    destination: string,
+    handler: (payload: Record<string, unknown>, session: { username: string }) => void,
+  ): void;
   /** 서버가 죽은 것처럼 연결을 끊는다. */
   dropAll(): void;
   /** 다음 연결 시도를 실패시킨다(서버가 아직 안 살아난 상태). */
@@ -59,6 +69,10 @@ export function createFakeBroker(): FakeBroker {
   let openCount = 0;
   let refusals = 0;
   const attemptTimes: number[] = [];
+  const appHandlers = new Map<
+    string,
+    (payload: Record<string, unknown>, session: { username: string }) => void
+  >();
   let messageId = 0;
 
   class FakeSocket implements IStompSocket {
@@ -70,6 +84,8 @@ export function createFakeBroker(): FakeBroker {
 
     readyState: number = StompSocketState.CONNECTING;
     subscriptions = new Map<string, string>();
+    // CONNECT 프레임의 login 헤더로 받는다. 진짜 서버는 여기서 JWT 를 검사한다.
+    username = 'guest';
 
     constructor() {
       attemptTimes.push(Date.now());
@@ -98,9 +114,23 @@ export function createFakeBroker(): FakeBroker {
 
       if (frame.command === 'CONNECT' || frame.command === 'STOMP') {
         connectHeaders.push(frame.headers);
+        this.username = frame.headers.login ?? 'guest';
         this.receive(
           serialize('CONNECTED', { version: '1.2', 'heart-beat': '0,0', session: 'fake-1' }),
         );
+        return;
+      }
+      if (frame.command === 'SEND') {
+        const handler = appHandlers.get(frame.headers.destination);
+        if (handler !== undefined) {
+          let payload: Record<string, unknown> = {};
+          try {
+            payload = frame.body === '' ? {} : JSON.parse(frame.body);
+          } catch {
+            payload = {};
+          }
+          handler(payload, { username: this.username });
+        }
         return;
       }
       if (frame.command === 'SUBSCRIBE') {
@@ -130,21 +160,33 @@ export function createFakeBroker(): FakeBroker {
     }
   }
 
+  function deliver(socket: FakeSocket, destination: string, payload: unknown): void {
+    for (const [id, subscribed] of socket.subscriptions) {
+      if (subscribed !== destination) continue;
+      socket.receive(
+        serialize(
+          'MESSAGE',
+          { subscription: id, 'message-id': `m-${(messageId += 1)}`, destination },
+          JSON.stringify(payload),
+        ),
+      );
+    }
+  }
+
   return {
     webSocketFactory: () => new FakeSocket(),
     push(destination, payload) {
+      for (const socket of sockets) deliver(socket, destination, payload);
+    },
+    pushToUser(username, destination, payload) {
+      const userDestination = `/user${destination}`;
       for (const socket of sockets) {
-        for (const [id, subscribed] of socket.subscriptions) {
-          if (subscribed !== destination) continue;
-          socket.receive(
-            serialize(
-              'MESSAGE',
-              { subscription: id, 'message-id': `m-${(messageId += 1)}`, destination },
-              JSON.stringify(payload),
-            ),
-          );
-        }
+        if (socket.username !== username) continue;
+        deliver(socket, userDestination, payload);
       }
+    },
+    onAppMessage(destination, handler) {
+      appHandlers.set(destination, handler);
     },
     dropAll() {
       for (const socket of [...sockets]) socket.close();
