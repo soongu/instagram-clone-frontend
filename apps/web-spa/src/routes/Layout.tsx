@@ -1,4 +1,5 @@
 // apps/web-spa/src/routes/Layout.tsx
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { SignInButton } from '../components/SignInButton';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -30,7 +31,10 @@ export function Layout() {
         <SignInButton />
         <ThemeToggle />
       </header>
-      <Outlet />
+      {/* 아직 안 내려받은 화면이 있으면 여기서 기다린다 */}
+      <Suspense fallback={<p className="text-sm text-faint">화면을 불러오는 중이에요…</p>}>
+        <Outlet />
+      </Suspense>
     </main>
   );
 }

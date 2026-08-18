@@ -40,6 +40,8 @@ function renderAt(entries: string[], index = entries.length - 1) {
 }
 
 async function fillAndSubmit(values: typeof VALID = VALID) {
+  // C-7 이후 회원가입 화면은 따로 내려받는다. 폼이 도착한 뒤에 채운다.
+  await screen.findByLabelText('사용자 이름');
   await userEvent.type(screen.getByLabelText('사용자 이름'), values.username);
   await userEvent.type(screen.getByLabelText('이메일'), values.email);
   await userEvent.type(screen.getByLabelText('비밀번호'), values.password);

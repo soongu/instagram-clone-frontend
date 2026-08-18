@@ -21,10 +21,11 @@ describe('C-1 Step 4 — 주소로 화면을 가른다', () => {
     expect(screen.queryByRole('region', { name: '회원가입' })).not.toBeInTheDocument();
   });
 
-  it('/signup 은 회원가입을 그리고 피드는 안 그린다', () => {
+  // C-7 이후 회원가입 화면은 따로 내려받는다. 도착할 때까지 기다렸다 본다.
+  it('/signup 은 회원가입을 그리고 피드는 안 그린다', async () => {
     renderAt('/signup');
 
-    expect(screen.getByRole('region', { name: '회원가입' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: '회원가입' })).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: '피드 목록' })).not.toBeInTheDocument();
   });
 

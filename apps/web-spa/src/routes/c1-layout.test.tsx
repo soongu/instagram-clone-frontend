@@ -51,8 +51,8 @@ describe('C-1 Step 5 — 갈리는 것은 Outlet 자리뿐이다', () => {
 
     // 다시 만들어진 게 아니라 살아남은 것 — 같은 노드다
     expect(headerAfter).toBe(headerBefore);
-    // 안쪽만 갈렸다
-    expect(screen.getByRole('region', { name: '회원가입' })).toBeInTheDocument();
+    // 안쪽만 갈렸다 (C-7 이후 회원가입은 따로 내려받으므로 도착을 기다린다)
+    expect(await screen.findByRole('region', { name: '회원가입' })).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: '피드 목록' })).not.toBeInTheDocument();
   });
 });

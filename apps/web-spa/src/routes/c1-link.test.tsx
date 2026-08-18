@@ -59,7 +59,8 @@ describe('C-1 Step 6 — Link 도 결국 앵커다', () => {
     await user.click(screen.getByRole('link', { name: '회원가입' }));
 
     expect(router.state.location.pathname).toBe('/signup');
-    expect(screen.getByRole('region', { name: '회원가입' })).toBeInTheDocument();
+    // C-7 이후 회원가입 화면은 따로 내려받는다. 도착할 때까지 기다렸다 본다.
+    expect(await screen.findByRole('region', { name: '회원가입' })).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: '피드 목록' })).not.toBeInTheDocument();
   });
 

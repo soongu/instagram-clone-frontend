@@ -1,8 +1,14 @@
 // apps/web-spa/src/routes/routes.ts
+import { lazy } from 'react';
 import type { RouteObject } from 'react-router';
 import { Layout } from './Layout';
 import { HomePage } from './HomePage';
-import { SignUpPage } from './SignUpPage';
+// 회원가입은 처음 오는 사람만 본다. 피드를 보러 온 사람에게까지
+// 이 화면의 코드를 내려보낼 이유가 없다.
+// 이름 붙은 내보내기라 default 로 갈아 끼워 건넨다.
+const SignUpPage = lazy(() =>
+  import('./SignUpPage').then((module) => ({ default: module.SignUpPage })),
+);
 import { PostDetailPage } from './PostDetailPage';
 import { ExplorePage } from './ExplorePage';
 import { postLoader } from './postLoader';
