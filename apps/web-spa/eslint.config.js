@@ -10,6 +10,14 @@ export default tseslint.config(
   tseslint.configs.recommended,
   reactHooks.configs.flat.recommended,
   {
+    // 빌드 결과물을 들여다보는 도우미는 브라우저가 아니라 node 에서 돈다
+    files: ['scratch/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2025,
+      globals: globals.node,
+    },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2025,
