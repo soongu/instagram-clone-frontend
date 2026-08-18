@@ -1,6 +1,6 @@
 // apps/web-next/app/layout.tsx
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { HeaderNav } from './components/HeaderNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,11 +15,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="ko">
       <body className="min-h-screen bg-white text-black antialiased">
         <header className="border-b border-black/10">
-          <nav className="mx-auto flex max-w-3xl gap-4 p-4 text-sm">
-            <span className="font-bold">인스타그램 클론</span>
-            <Link href="/">홈</Link>
-            <Link href="/explore">탐색</Link>
-          </nav>
+          <HeaderNav />
         </header>
         {children}
       </body>
