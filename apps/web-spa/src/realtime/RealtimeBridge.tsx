@@ -1,5 +1,5 @@
 // apps/web-spa/src/realtime/RealtimeBridge.tsx
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Client } from '@stomp/stompjs';
 import type { Post } from '../types/instagram';
@@ -25,6 +25,9 @@ export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
   // 서버는 CONNECT 때 받은 이름으로 "누구에게 보낼지" 를 가르기 때문이다.
   const username = useSessionStore((state) => state.username);
 
+  // 이번이 첫 연결인지, 끊겼다 다시 붙는 것인지. 둘은 해야 할 일이 다르다.
+  const connectedBefore = useRef(false);
+
   useEffect(() => {
     const { setStatus, countAttempt } = useConnectionStore.getState();
     setStatus('connecting');
@@ -41,6 +44,16 @@ export function RealtimeBridge({ client = stompClient }: { client?: Client }) {
       // 그래서 구독을 여기서 한다. 다시 붙으면 구독도 다시 살아난다.
       onConnect: () => {
         setStatus('connected');
+
+        // ★ 끊겨 있던 동안 일어난 일은 통로로 안 온다. 지나간 건 지나간 것이다.
+        // 그래서 다시 붙은 순간 받아둔 것을 전부 낡은 것으로 표시해 다시 물어본다.
+        //
+        // 처음 붙을 때는 안 한다 — 화면이 방금 받아온 것을 또 받을 이유가 없다.
+        // 실시간을 붙였다고 물어보는 방식을 버릴 수 없는 이유가 여기 있다.
+        if (connectedBefore.current) {
+          void queryClient.invalidateQueries();
+        }
+        connectedBefore.current = true;
 
         client.subscribe(POSTS_TOPIC, (message) => {
           const event = parsePostEvent(message.body);
