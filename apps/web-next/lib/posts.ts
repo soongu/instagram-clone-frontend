@@ -65,3 +65,10 @@ export const feedPosts: Post[] = allPosts.slice(0, 2);
 export function postsByUsername(username: string): Post[] {
   return allPosts.filter((it) => it.username === username);
 }
+
+/** 우리가 아는 사람의 목록 — 게시물이 0장인 것과 아예 없는 사람은 다르다 */
+const knownUsernames = new Set(allPosts.map((it) => it.username));
+
+export function isKnownUser(username: string): boolean {
+  return knownUsernames.has(username);
+}
