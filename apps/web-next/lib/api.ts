@@ -39,12 +39,21 @@ export type Profile = {
   followerCount: number;
 };
 
-export function fetchProfile(username: string): Promise<Profile> {
+/**
+ * 프로필 머리의 집계값은 초당 천 번 물어볼 이유가 없다 — 굳혀두고 쓴다.
+ * 인자로 받은 username 이 그대로 캐시 칸을 가르는 열쇠가 된다.
+ */
+export async function fetchProfile(username: string): Promise<Profile> {
+  'use cache';
   return get<Profile>(`/users/${encodeURIComponent(username)}`);
 }
 
-/** 없는 사람이면 예외 대신 null 을 준다 — 없는 것과 못 가져온 것은 다르게 다뤄야 한다. */
+/**
+ * 없는 사람이면 예외 대신 null 을 준다 — 없는 것과 못 가져온 것은 다르게 다뤄야 한다.
+ * 이 사람이 있는지 없는지도 매 요청 물어볼 값은 아니라 같이 굳힌다.
+ */
 export async function findProfile(username: string): Promise<Profile | null> {
+  'use cache';
   const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`);
 
   if (response.status === 404) {
