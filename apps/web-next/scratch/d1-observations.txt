@@ -98,3 +98,40 @@ SPA 의 body 는 실제로 이게 전부다:
   └ ○ /explore
 
 /_not-found 는 우리가 안 만들었는데 있다 (Next 기본). D-2 소관.
+
+
+[7] Step 5 채증 — 생성된 타입이 실제로 막아주는가 (세 탐침, 2026-08-18)
+----------------------------------------------------------------
+app/[username]/page.tsx 를 일부러 틀리게 고쳐 tsc --noEmit 을 돌렸다.
+
+A. 없는 주소를 PageProps 에 넣기 → PageProps<'/profile/[username]'>
+   TS2344: Type '"/profile/[username]"' does not satisfy the constraint 'AppRoutes'.
+   TS2339: Property 'username' does not exist on type 'unknown'.
+   → 폴더에 없는 주소는 타입 인자로 못 쓴다.
+
+B. 없는 칸 이름 꺼내기 → const { userName } = await params;
+   TS2339: Property 'userName' does not exist on type '{ username: string; }'.
+   → 에러 메시지가 실제로 있는 칸의 모양을 그대로 보여준다.
+
+C. await 빼기 → const { username } = params;
+   TS2339: Property 'username' does not exist on type 'Promise<{ username: string; }>'.
+   → 기다려야 한다는 사실을 타입이 직접 말해준다. 조용히 undefined 가 되지 않는다.
+
+셋 다 원복 후 tsc 0.
+
+★ C-2 정전과 정면 대비:
+   React Router 8   useParams()      → string | undefined
+                    useLoaderData()  → any  (틀려도 통과시킨다)
+   Next.js 16       params           → Promise<{ username: string }>
+                    위 세 실수가 전부 컴파일에서 막힌다
+
+라이브러리 품질 차이가 아니라 주소를 어디에 적었느냐의 차이다.
+배열에 적은 주소는 컴파일 시점에 읽을 수 없고, 폴더로 적은 주소는 읽을 수 있다.
+
+[8] 빌드 표의 ○ 와 ƒ
+----------------------------------------------------------------
+  ┌ ○ /
+  ├ ○ /_not-found
+  ├ ƒ /[username]     ← 미리 안 만들어두고 요청 올 때 만든다
+  └ ○ /explore
+ƒ 의 의미(dynamic)는 D-4(캐싱) 소관이라 D-1 에서는 설명하지 않는다.
