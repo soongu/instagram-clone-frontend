@@ -1,0 +1,87 @@
+D-5 채증 — 데이터 페칭 & 캐싱 ① (무엇을 굳히고 무엇을 흘려보낼까)
+측정 환경: next 16.3.1 / react 19.2.8 / Node — next start -p 3100
+           (포트 3000 은 Docker 가 잡고 있어 D-3·D-4 와 같이 3100 우회)
+           api-stub 은 API_STUB_LOG=1 로 띄워 요청을 한 줄씩 셈 (D-5 에서 신설)
+
+
+1. 요청과 요청 사이 — 메모이제이션의 경계
+====================================================================
+
+실험 A) /jaehoon 을 한 번 요청
+  http=200  time=1.210s
+  api-stub 이 받은 것 = 3 건
+    GET /api/users/jaehoon
+    GET /api/posts?username=jaehoon
+    GET /api/users/jaehoon/tags
+
+  ★ layout(findProfile) 과 page(fetchProfile) 가 같은 주소를 각각 부르는데
+    서버로는 1 건만 나갔다 = 한 요청 안의 중복 제거. D-4 기록 재현.
+
+실험 B) 같은 주소를 두 번 더 요청
+  요청1 200 / 1.210s
+  요청2 200 / 1.210s
+  api-stub 이 받은 것 = 6 건  (= 3 건 × 2)
+
+  ★★ 요청과 요청 사이에는 아무것도 안 아낀다. 이것이 D-4 가
+     "한 요청 안에서만" 이라고 끊어둔 자리의 실물.
+
+
+2. 홈은 정반대 — 박제된 화면
+====================================================================
+
+                      api-stub 켬                api-stub 끔
+  /                   200 · 2.5ms · stub 0건     200 · 2.0ms · 게시물 그대로
+  /jaehoon            200 · 1,210ms · stub 3건   500
+
+  홈이 서버를 끈 뒤에도 그리는 글자: "한강 노을이 미쳤다" / "제주도 3박 4일 기록"
+
+  ★ 같은 앱, 같은 await fetch 인데 한쪽은 0 건이고 한쪽은 매 요청 3 건.
+
+
+3. ⚠️⚠️ 빌드가 fetch 를 부르는 조건 — D-4 기록의 누락된 전제
+====================================================================
+
+  .next 있는 채로 재빌드   exit 0 · stub 요청 0 건
+  .next 지우고 클린 빌드    exit 0 · stub 요청 1 건  (GET /api/posts)
+
+  api-stub 을 끈 상태에서:
+  .next 있는 채로 빌드      exit 0          ← 프리렌더 결과를 재사용해 그냥 통과
+  .next 지우고 클린 빌드     exit 1          ← ECONNREFUSED
+                                             "Error occurred prerendering page /"
+                                             "Export encountered an error on /page: /"
+
+  ★★★ D-4 채증은 "api-stub 없이 빌드하면 종료 코드 1" 이라고만 적었는데
+      그것은 클린 빌드에서만 참이다. .next 가 있으면 조용히 통과한다.
+      → 과제에서 이 실험을 시킬 때 rm -rf .next 를 반드시 함께 지시해야 한다.
+        (안 그러면 학생 절반은 "저는 안 죽는데요" 가 된다)
+
+
+4. Cache Components 를 켜면 — 플랜 단계 선행 검증
+====================================================================
+
+  next.config.ts 에 cacheComponents: true 한 줄
+
+  빌드 헤더에 "- Cache Components enabled" 가 찍히고 exit 1.
+  --debug-prerender 없이는 첫 라우트에서 끊긴다(prerenderEarlyExit).
+  붙이면 전체 목록:
+
+  Error: Route "/": uncached or runtime data during prerendering
+      at get (lib/api.ts:16:26)
+      at fetchPosts (lib/api.ts:32:10)
+      at FeedList (app/components/FeedList.tsx:8:33)
+      at HomePage (app/page.tsx:9:7)
+
+  Error: Route "/[username]": uncached or runtime data during prerendering
+  Error: Route "/[username]": URL data `usePathname()` in a Client Component
+                              outside of <Suspense>   digest: CLIENT_HOOK_DYNAMIC
+      at app/components/HeaderNav.tsx:17:20
+
+  /explore 는 아무 에러도 안 났다 (파일 상수 = 예측 가능한 값).
+
+  ★ 에러가 직접 말하는 세 갈래:
+      [stream] <Suspense fallback={...}> 로 감싸라
+      [cache]  "use cache" 로 캐시하라 (connection() 에는 안 통함)
+      [block]  export const instant = false
+
+  ★★ usePathname 은 / 에서는 안 막히고 /[username] 에서만 막힌다.
+     주소를 빌드 때 아느냐가 갈랐다. (같은 컴포넌트 · 다른 판정)

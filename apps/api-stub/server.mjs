@@ -21,6 +21,9 @@ const PORT = Number(process.env.PORT ?? 8090);
 // 지연 시간. 진짜 서버는 즉시 답하지 않는다.
 const DELAY_MS = Number(process.env.DELAY_MS ?? 400);
 
+// 들어온 요청을 한 줄씩 찍을지. 서버가 몇 번 불리는지 셀 때만 켠다.
+const LOG_REQUESTS = process.env.API_STUB_LOG === '1';
+
 // 로그인할 수 있는 사람들. 쪽지는 두 사람이 없으면 시연이 안 된다.
 // 탭을 두 개 띄우고 각각 다른 사람으로 로그인해 보라는 뜻이다.
 const USERS = [
@@ -534,6 +537,12 @@ const routes = [
 
 const server = createServer(async (req, res) => {
   const path = new URL(req.url ?? '/', `http://localhost:${PORT}`).pathname;
+
+  // API_STUB_LOG=1 로 켜면 들어온 요청을 한 줄씩 찍는다.
+  // 화면 한 번에 서버가 실제로 몇 번 불리는지 세어볼 때 쓴다.
+  if (LOG_REQUESTS && req.method !== 'OPTIONS') {
+    console.log(`[api-stub] ${req.method} ${req.url}`);
+  }
 
   if (req.method === 'OPTIONS') {
     return send(res, 204, {});
