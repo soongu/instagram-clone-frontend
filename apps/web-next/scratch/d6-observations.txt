@@ -213,3 +213,54 @@ Step 7 — ProfileHeading 을 떼어 <Suspense> 안으로. ProfileLayout 이 asy
 · 문서 lastUpdated: cacheLife 2026-08-18 · cacheTag 2026-08-18 · instant 2026-08-03 ·
   instant-navigation 2026-08-10 · notFound 2026-07-24 · loading 2026-06-08
 · 측정 전 포트 확인 필수: lsof -nP -iTCP:3000 -sTCP:LISTEN → Docker 점유 → PORT=3100
+
+────────────────────────────────────────────────────────────────────────
+11절. 과제 4문항 실측 (답안이 인용하는 숫자의 근거)
+────────────────────────────────────────────────────────────────────────
+※ 이 절은 10절까지를 쓴 뒤에 과제를 검증해서 뒤늦게 추가했다. 독립 검수가
+   「답안 숫자의 근거가 채증에 없다」로 잡아낸 자리 — 측정은 다 했으나 기록이 빠져 있었다.
+   전부 `rm -rf .next` 후 클린 빌드.
+
+과제 1 — /explore 를 굳히고 수명 정하기
+  lib/api.ts 에 fetchAllPosts() 신설: 'use cache' + cacheLife('minutes') + cacheTag('posts')
+  app/explore/page.tsx 를 async 로 바꿔 await fetchAllPosts()
+  → build exit 0 · 에러 0
+  → 라우트 표:  └ ◐ /explore               1m      1h
+  ★ export default async function 인데도 안 막힌다 — 'use cache' 로 굳혔기 때문.
+    Step 7 에서 ProfileLayout 이 async 를 벗어야 했던 것과 대비되는 자리.
+
+과제 2 — FeedList 에 'use cache' + 수명 세 가지 (전부 build exit 0 · 에러 0)
+                                              Revalidate  Expire
+  'use cache' 만                    ◐ /          15m       1y
+  + cacheLife('hours')             ◐ /           1h       1d
+  + cacheLife('seconds')           ◐ /        (열 통째로 사라짐)
+  ★ seconds 만 expire 1분 < 5분 임계값이라 프리렌더에서 빠진다(4절 참조).
+  ★ 표의 두 숫자는 **라우트 전체**의 수명 — 그래서 Step 2 에서 fetchProfile 에 건
+    hours 는 표에 안 뜬다. 답안이 이 의문을 갚는다.
+
+과제 3 — findProfile 조건부 수명
+  if (response.status === 404) { cacheLife('minutes'); return null; }
+  ... cacheLife('days');
+  → tsc --noEmit 0 · build exit 0 · 에러 0
+  → GET /jaehoon 200 · GET /zzzzz 200 + "없는 주소예요" 1건 (404 UI 정상)
+  ★ 갈라진 길에 하나씩 두면 "한 번 호출에 한 번" 규칙 위반이 아니다(문서 명시).
+
+과제 4 — TextScaleStyle 에 'use cache'
+  → build **exit 1** · Error **8건** · 라우트 **4개** 전부
+      Route /          used `cookies()` inside "use cache"
+      Route /explore   (같음)
+      Route /[username] (같음)
+      Route /_not-found (같음)
+      at TextScaleStyle (app/components/TextScaleStyle.tsx:8:28)
+      at RootLayout (app/layout.tsx:22:11)
+  ★★ 7절(Step 5)과 **같은 위반인데 터지는 시점이 다르다**.
+     fetchProfile 은 <Suspense> 안쪽 페이지에서 불려 프리렌더가 실행조차 안 하므로
+     빌드가 못 본다(exit 0). TextScaleStyle 은 root layout 직속이라 모든 라우트를
+     미리 그릴 때마다 실행돼 빌드가 직접 목격한다.
+     → "빌드 통과 = 규칙 준수" 가 아니라 "빌드가 실행해본 범위에서 괜찮았다".
+  ⚠️ 6절의 「4라우트 8건」과 숫자가 같지만 **다른 실험**이다.
+     6절 = root layout 최상단에서 직접 await cookies() (instant=false 제거 상태)
+     11절 = TextScaleStyle 에 'use cache' 부착
+     우연히 같은 숫자이므로 서로의 근거로 쓰면 안 된다.
+
+전부 실험 후 원복. 최종 워킹트리는 7절 커밋 상태와 동일(git status 빈 출력 확인).
