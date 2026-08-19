@@ -36,4 +36,23 @@ describe('좋아요 버튼', () => {
     expect(button).toBeInTheDocument();
     expect(button).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('좋아요가 0개면 개수 줄이 아예 없다', () => {
+    render(<LikeButton liked={false} likeCount={0} onToggle={() => {}} />);
+
+    // 없어야 하는 것을 확인할 때는 queryBy 로 묻는다 — getBy 는 여기서 던진다
+    expect(screen.queryByText(/좋아요 \d+개/)).not.toBeInTheDocument();
+  });
+
+  it('하트가 여럿이면 눌림 여부로 가른다', () => {
+    render(
+      <>
+        <LikeButton liked={false} likeCount={10} onToggle={() => {}} />
+        <LikeButton liked={true} likeCount={20} onToggle={() => {}} />
+      </>,
+    );
+
+    expect(screen.getAllByRole('button', { name: '좋아요' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: '좋아요', pressed: true })).toHaveLength(1);
+  });
 });
