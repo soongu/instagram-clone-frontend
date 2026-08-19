@@ -43,6 +43,17 @@ const FOLLOWER_COUNTS = {
   dahye: 2_180,
 };
 
+// 누가 누구를 팔로우하고 있는지. "actor -> 팔로우한 사람들" 로 들고 있는다.
+const following = new Map();
+
+function followersOf(username) {
+  return FOLLOWER_COUNTS[username] ?? 0;
+}
+
+// 팔로우를 누른 횟수. 실패를 규칙적으로 내려면 세어야 한다.
+let followAttempts = 0;
+const FOLLOW_FAIL_EVERY = Number(process.env.FOLLOW_FAIL_EVERY ?? 0);
+
 function seed(name, size) {
   return `https://picsum.photos/seed/${name}/${size}/${size}`;
 }
@@ -318,10 +329,49 @@ const routes = [
       ok(res, {
         username,
         profileImageUrl: seed(username, 64),
-        followerCount: FOLLOWER_COUNTS[username] ?? 0,
+        followerCount: followersOf(username),
         // 집계를 돌린 시각. 팔로워 수처럼 모아 센 값은 "언제 기준인지" 가 같이 와야 한다.
         countedAt: new Date().toISOString(),
       });
+    },
+  },
+
+  // 팔로우 — 누른 사람이 누구인지를 헤더로 받는다. 없으면 거절한다.
+  // 진짜 서비스라면 세션이나 토큰을 보겠지만, 여기서는 "서버가 직접 확인한다" 는
+  // 모양만 같으면 된다. 토큰 발급은 다른 시간에 다룬다.
+  {
+    method: 'POST',
+    match: (path) => /^\/api\/users\/[^/]+\/follow$/.test(path),
+    handle: async (req, res, path) => {
+      const actor = req.headers['x-actor'];
+      if (typeof actor !== 'string' || findUser(actor) === undefined) {
+        return fail(res, 401, '로그인이 필요합니다');
+      }
+
+      const target = decodeURIComponent(path.split('/').at(-2));
+      if (!posts.some((it) => it.username === target)) {
+        return fail(res, 404, '그런 사람이 없습니다');
+      }
+      if (target === actor) {
+        return fail(res, 400, '자기 자신은 팔로우할 수 없습니다');
+      }
+
+      followAttempts += 1;
+      if (FOLLOW_FAIL_EVERY > 0 && followAttempts % FOLLOW_FAIL_EVERY === 0) {
+        return fail(res, 500, '팔로우를 저장하지 못했습니다');
+      }
+
+      const mine = following.get(actor) ?? new Set();
+      const nowFollowing = !mine.has(target);
+      if (nowFollowing) {
+        mine.add(target);
+      } else {
+        mine.delete(target);
+      }
+      following.set(actor, mine);
+      FOLLOWER_COUNTS[target] = followersOf(target) + (nowFollowing ? 1 : -1);
+
+      ok(res, { username: target, following: nowFollowing, followerCount: followersOf(target) });
     },
   },
 

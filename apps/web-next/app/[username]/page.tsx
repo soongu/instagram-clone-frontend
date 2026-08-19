@@ -1,5 +1,6 @@
 // apps/web-next/app/[username]/page.tsx
 import { Suspense } from 'react';
+import { FollowButton } from '@/app/components/FollowButton';
 import { TagFilter } from '@/app/components/TagFilter';
 import { fetchPostsByUsername, fetchProfile, fetchTopTags } from '@/lib/api';
 
@@ -24,6 +25,7 @@ export default async function ProfilePage({ params }: PageProps<'/[username]'>) 
           ({new Date(profile.countedAt).toLocaleTimeString('ko-KR')} 기준)
         </span>
       </p>
+      <FollowButton username={username} />
       {/* 느린 조각은 여기서 안 기다린다. 준비되면 그때 이 자리에 끼워 넣는다. */}
       <Suspense fallback={<p className="mb-4 text-sm text-black/40">태그 세는 중…</p>}>
         <TagFilter tags={tagsRequest} />
