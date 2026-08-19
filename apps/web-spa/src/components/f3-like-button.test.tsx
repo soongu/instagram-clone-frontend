@@ -1,6 +1,7 @@
 // apps/web-spa/src/components/f3-like-button.test.tsx
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { LikeButton } from './LikeButton';
 
 describe('좋아요 버튼', () => {
@@ -54,5 +55,24 @@ describe('좋아요 버튼', () => {
 
     expect(screen.getAllByRole('button', { name: '좋아요' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: '좋아요', pressed: true })).toHaveLength(1);
+  });
+
+  it('누르면 알려준다', async () => {
+    const onToggle = vi.fn();
+    render(<LikeButton liked={false} likeCount={1240} onToggle={onToggle} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '좋아요' }));
+
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('눌러도 스스로 숫자를 바꾸지는 않는다', async () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '좋아요' }));
+
+    // 이 버튼은 받은 것을 그릴 뿐이다. 숫자를 바꾸는 쪽은 위에 있다.
+    expect(screen.getByText('좋아요 1240개')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false');
   });
 });
