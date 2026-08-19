@@ -14,6 +14,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 들어와도 되는 사람인지부터 본다. 네트워크를 타기 전에 끝나는 검사라 여기가 가장 싸다.
+  if (request.cookies.get('me') === undefined) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   const username = request.nextUrl.pathname.slice(1);
 
   const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`);
