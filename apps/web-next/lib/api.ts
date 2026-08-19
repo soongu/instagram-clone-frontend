@@ -1,10 +1,10 @@
 // apps/web-next/lib/api.ts
 import { cacheLife, cacheTag } from 'next/cache';
 import type { Post } from './posts';
-
 // 브라우저가 아니라 서버가 부른다. 서버에는 "지금 보고 있는 주소" 같은 게 없어서
 // 상대 경로(/api/posts)로는 어디로 갈지 정할 수 없다 — 주소를 통째로 적는다.
-const API_BASE = 'http://localhost:8090/api';
+// 그 주소를 어디서 받아오는지는 config.ts 한 곳에서 정한다.
+import { API_BASE } from './config';
 
 // 백엔드는 늘 같은 봉투로 답한다. C-5 에서 만든 것과 같은 모양이다.
 type ApiEnvelope<T> = {

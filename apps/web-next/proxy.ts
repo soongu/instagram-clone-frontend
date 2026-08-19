@@ -1,8 +1,7 @@
 // apps/web-next/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
-const API_BASE = 'http://localhost:8090/api';
+import { API_BASE } from './lib/config';
 
 // 이 파일은 app 폴더 밖, 프로젝트 뿌리에 둔다.
 // 요청이 우리 앱에 도착했지만 아직 아무것도 안 그려진 순간에 끼어든다.
