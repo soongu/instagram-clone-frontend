@@ -14,6 +14,12 @@ export async function generateMetadata({ params }: PageProps<'/[username]'>): Pr
   return {
     title: `@${username} · 인스타그램 클론`,
     description: `팔로워 ${profile.followerCount}명`,
+    // 우리 화면이 아니라 남의 화면에 뜨는 카드다. 크기까지 같이 줘야 자리를 잡는다.
+    openGraph: {
+      title: `@${username}`,
+      description: `팔로워 ${profile.followerCount}명`,
+      images: [{ url: profile.profileImageUrl, width: 64, height: 64 }],
+    },
   };
 }
 

@@ -15,6 +15,12 @@ const notoSansKr = Noto_Sans_KR({ subsets: ['latin'], display: 'swap' });
 export const metadata: Metadata = {
   title: '인스타그램 클론',
   description: 'Next.js App Router 로 다시 짓는 인스타그램',
+  // 아래 화면이 자기 것을 안 주면 이게 쓰인다 — 링크가 맨몸으로 나가는 일은 없다.
+  openGraph: {
+    title: '인스타그램 클론',
+    description: 'Next.js App Router 로 다시 짓는 인스타그램',
+    type: 'website',
+  },
 };
 
 // 이 파일이 앱에서 가장 바깥 껍데기다.
