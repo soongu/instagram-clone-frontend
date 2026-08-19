@@ -1,4 +1,5 @@
 // apps/web-next/app/components/FeedList.tsx
+import Image from 'next/image';
 import { LikeButton } from './LikeButton';
 import { fetchPosts } from '@/lib/api';
 
@@ -12,8 +13,15 @@ export async function FeedList() {
       {posts.map((post) => (
         <li key={post.id} className="rounded border border-black/10 p-4">
           <p className="font-semibold">@{post.username}</p>
-          {/* 데이터에는 처음부터 있었다. 화면에 붙이는 건 지금이 처음이다. */}
-          <img src={post.imageUrl} alt={post.content} />
+          {/* 원본이 몇 대 몇인지 알려준다. 그러면 사진이 오기 전에도 그 비율만큼 자리가 비워진다.
+              화면 폭에 맞춰 줄어드는 건 className 이 맡는다. */}
+          <Image
+            src={post.imageUrl}
+            alt={post.content}
+            width={640}
+            height={640}
+            className="h-auto w-full"
+          />
           <p className="mt-1">{post.content}</p>
           <LikeButton postId={post.id} likeCount={post.likeCount} liked={post.liked} />
         </li>
