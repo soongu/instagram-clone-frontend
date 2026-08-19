@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useTextScale } from './Providers';
 import { UserSearch } from './UserSearch';
 
@@ -13,7 +14,10 @@ const items = [
 
 // 지금 어느 주소에 와 있는지는 브라우저만 안다.
 // 그래서 이 컴포넌트는 클라이언트에서 돈다.
-export function HeaderNav() {
+//
+// children 으로 받은 것은 이 파일이 import 한 게 아니라 밖에서 만들어져 온다.
+// 그래서 이 안에 서버 조각을 끼워 넣을 수 있다 — D-4 에서 본 그 구멍이다.
+export function HeaderNav({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
   const { toggle } = useTextScale();
 
@@ -41,6 +45,7 @@ export function HeaderNav() {
       >
         글자 크기
       </button>
+      {children}
     </nav>
   );
 }

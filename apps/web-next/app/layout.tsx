@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { HeaderNav } from './components/HeaderNav';
 import { Providers } from './components/Providers';
+import { SignInForm } from './components/SignInForm';
 import { TextScaleStyle } from './components/TextScaleStyle';
 import './globals.css';
 
@@ -27,7 +28,11 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             {/* 머리말은 지금 어느 주소에 와 있는지를 읽는다. 그건 요청이 와야 아는 값이라
                 미리 그릴 수 없는 주소가 있다 — 그 자리를 이 경계가 받아준다. */}
             <Suspense fallback={<div className="mx-auto h-14 max-w-3xl" />}>
-              <HeaderNav />
+              {/* 로그인 칸은 쿠키를 읽는 서버 조각이다. 클라이언트 머리말 안에
+                  children 으로 끼워 넣는다 — 경계를 넘어가지 않는다. */}
+              <HeaderNav>
+                <SignInForm />
+              </HeaderNav>
             </Suspense>
           </header>
           {children}
