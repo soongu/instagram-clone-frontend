@@ -5,3 +5,7 @@ dist/
 scratch/emit/out/
 
 .omc/
+
+# next dev 가 자동 생성한다 (D-1 에서 --no-agents-md 로 막았던 것)
+apps/web-next/AGENTS.md
+apps/web-next/CLAUDE.md
