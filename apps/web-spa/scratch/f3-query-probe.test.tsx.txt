@@ -1,0 +1,132 @@
+// F-3 계획 단계 탐침 — 교안에 쓰기 전에 주장을 실행으로 확인한다.
+import { describe, it, expect } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { LikeButton } from '../src/components/LikeButton';
+import { CommentForm } from '../src/components/CommentForm';
+
+function noop() {}
+
+describe('탐침 1 — 같은 버튼을 몇 가지 방법으로 찾을 수 있나', () => {
+  it('getByText("좋아요") 는 버튼을 못 찾는다', () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={noop} />);
+    let message = '(안 던졌다)';
+    try {
+      screen.getByText('좋아요');
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    console.log('[탐침1-a] getByText("좋아요") =>', message.split('\n')[0]);
+    expect(message).not.toBe('(안 던졌다)');
+  });
+
+  it('getByText("좋아요 1240개") 는 버튼이 아니라 개수 문단을 찾는다', () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={noop} />);
+    const found = screen.getByText('좋아요 1240개');
+    console.log('[탐침1-b] 태그 =', found.tagName, '/ 버튼인가 =', found.tagName === 'BUTTON');
+    expect(found.tagName).toBe('P');
+  });
+
+  it('getByRole 과 getByLabelText 는 같은 버튼을 찾는다', () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={noop} />);
+    const byRole = screen.getByRole('button', { name: '좋아요' });
+    const byLabel = screen.getByLabelText('좋아요');
+    console.log('[탐침1-c] 같은 요소인가 =', byRole === byLabel, '/ 태그 =', byRole.tagName);
+    expect(byRole).toBe(byLabel);
+  });
+
+  it('저장소 앱 마크업에는 testid 가 없다', () => {
+    const { container } = render(<LikeButton liked={false} likeCount={1240} onToggle={noop} />);
+    console.log('[탐침1-d] data-testid 개수 =', container.querySelectorAll('[data-testid]').length);
+    expect(container.querySelectorAll('[data-testid]')).toHaveLength(0);
+  });
+});
+
+describe('탐침 2 — 버튼 안에 글자가 정말 0개인가', () => {
+  it('버튼의 textContent 와 접근성 이름', () => {
+    render(<LikeButton liked={false} likeCount={1240} onToggle={noop} />);
+    const button = screen.getByRole('button', { name: '좋아요' });
+    console.log('[탐침2] textContent =', JSON.stringify(button.textContent));
+    console.log('[탐침2] aria-label  =', JSON.stringify(button.getAttribute('aria-label')));
+    console.log('[탐침2] aria-pressed=', JSON.stringify(button.getAttribute('aria-pressed')));
+    console.log('[탐침2] 안쪽 HTML   =', button.innerHTML.slice(0, 80));
+    expect(button.textContent).toBe('');
+  });
+});
+
+describe('탐침 3 — getBy / queryBy 실패 모양이 다른가', () => {
+  it('없는 것을 물었을 때', () => {
+    render(<LikeButton liked={false} likeCount={0} onToggle={noop} />);
+    let getByMsg = '(안 던졌다)';
+    try {
+      screen.getByRole('button', { name: '없는버튼' });
+    } catch (error) {
+      getByMsg = (error as Error).message.split('\n')[0];
+    }
+    const queryByResult = screen.queryByRole('button', { name: '없는버튼' });
+    console.log('[탐침3] getBy   =>', getByMsg);
+    console.log('[탐침3] queryBy =>', JSON.stringify(queryByResult));
+    expect(queryByResult).toBeNull();
+  });
+
+  it('likeCount 0 이면 개수 문단 자체가 안 그려진다', () => {
+    render(<LikeButton liked={false} likeCount={0} onToggle={noop} />);
+    console.log('[탐침3-b] 0개일 때 개수 문단 =', JSON.stringify(screen.queryByText(/좋아요 \d+개/)));
+    expect(screen.queryByText(/좋아요 \d+개/)).toBeNull();
+  });
+});
+
+describe('탐침 4 — 댓글 폼은 어떤 이름으로 찾히나', () => {
+  it('입력칸과 버튼', () => {
+    const { container } = render(<CommentForm onSubmit={noop} />);
+    const input = screen.getByLabelText('댓글 입력');
+    const button = screen.getByRole('button', { name: '게시' });
+    console.log('[탐침4] input 태그 =', input.tagName, '/ placeholder =', input.getAttribute('placeholder'));
+    console.log('[탐침4] 버튼 disabled =', (button as HTMLButtonElement).disabled);
+    console.log('[탐침4] textbox 역할로도 찾히나 =', screen.queryByRole('textbox') === input);
+    console.log('[탐침4] form 역할 =', JSON.stringify(container.querySelector('form')?.getAttribute('role')));
+    console.log('[탐침4] queryByRole("form") =', JSON.stringify(screen.queryByRole('form')));
+    expect(input.tagName).toBe('INPUT');
+  });
+});
+
+describe('탐침 5 — 한 화면에 하트가 여럿이면', () => {
+  it('getByRole 는 던지고 getAllByRole 는 센다', () => {
+    render(
+      <div>
+        <LikeButton liked={false} likeCount={10} onToggle={noop} />
+        <LikeButton liked={true} likeCount={20} onToggle={noop} />
+      </div>,
+    );
+    let msg = '(안 던졌다)';
+    try {
+      screen.getByRole('button', { name: '좋아요' });
+    } catch (error) {
+      msg = (error as Error).message.split('\n')[0];
+    }
+    console.log('[탐침5] getByRole 둘일 때 =>', msg);
+    console.log('[탐침5] getAllByRole 개수 =', screen.getAllByRole('button', { name: '좋아요' }).length);
+    console.log(
+      '[탐침5] pressed 로 가르면 =',
+      screen.getAllByRole('button', { name: '좋아요', pressed: true }).length,
+      '/',
+      screen.getAllByRole('button', { name: '좋아요', pressed: false }).length,
+    );
+    expect(screen.getAllByRole('button', { name: '좋아요' })).toHaveLength(2);
+  });
+
+  it('within 으로 범위를 좁힐 수 있다', () => {
+    render(
+      <div>
+        <section aria-label="첫째">
+          <LikeButton liked={false} likeCount={10} onToggle={noop} />
+        </section>
+        <section aria-label="둘째">
+          <LikeButton liked={true} likeCount={20} onToggle={noop} />
+        </section>
+      </div>,
+    );
+    const first = screen.getByRole('region', { name: '첫째' });
+    console.log('[탐침5-b] within 첫째 =', within(first).getAllByRole('button').length);
+    expect(within(first).getAllByRole('button')).toHaveLength(1);
+  });
+});

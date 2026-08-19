@@ -1,0 +1,28 @@
+// F-3 Step 8 실험용 — 일부러 «구현을 붙잡는» 판.
+// 저장소 본판에 두지 않는다. 지키는 것이 없고 구현을 바꿀 때마다 깨지기만 한다.
+import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
+import { LikeButton } from '../src/components/LikeButton';
+
+describe('구현을 붙잡는 판', () => {
+  it('안쪽 여백 클래스로 버튼을 찾는다', () => {
+    const { container } = render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    expect(container.querySelector('button.p-2')).not.toBeNull();
+  });
+
+  it('바깥이 div 이고 그 안에 button 과 p 가 순서대로 있다', () => {
+    const { container } = render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    const root = container.firstElementChild;
+    expect(root?.tagName).toBe('DIV');
+    expect(root?.children[0].tagName).toBe('BUTTON');
+    expect(root?.children[1].tagName).toBe('P');
+  });
+
+  it('하트 svg 의 클래스가 정확히 이것이다', () => {
+    const { container } = render(<LikeButton liked={false} likeCount={1240} onToggle={() => {}} />);
+
+    expect(container.querySelector('svg')?.getAttribute('class')).toBe('lucide lucide-heart size-6');
+  });
+});

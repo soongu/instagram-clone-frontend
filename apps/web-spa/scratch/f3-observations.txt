@@ -1,0 +1,261 @@
+F-3 채증 — 컴포넌트 테스트 (React Testing Library)
+브랜치 module-F3-rtl (module-F2-first-tests 25ccc6a 에서 분기)
+측정일 2026-08-19
+
+================================================================
+1절. 기준선과 착수 전제 재측정
+================================================================
+
+npm test (뿌리·단독)      138 files / 966 passed   ← 핸드오프와 일치
+커버리지(학생 조건 103행)  90.11 / 83.04 / 95.77 / 95.43
+
+핸드오프가 넘긴 숫자를 직접 다시 셌다.
+
+  항목                     핸드오프   실측
+  RTL 쓰는 판 파일           112      112   ✓
+  render( 호출              460      461
+  getByRole                357      369   (getAllByRole 107 · findByRole 83 은 별도)
+  user-event 쓰는 파일        73       75
+  getByTestId               20       12   (data-testid 속성은 src 4 + scratch 4)
+
+=> "RTL 을 설치하고 첫 컴포넌트 테스트를 쓴다" 서사는 성립하지 않는다.
+   F-1 과 같은 상황이 더 큰 규모로 재발. 다만 F-1 의 "이미 있는 것을 마주한다"
+   각도를 되풀이하지 않았다 — 아래 2절이 다른 길을 열었다.
+
+================================================================
+2절. ★★ 척추 — F-2 가 남긴 문장이 우리 앱에서 반증된다
+================================================================
+
+F-2 마무리 마지막 문단:
+  "사용자는 우리 코드를 모릅니다. 사용자는 「좋아요 라고 적힌 버튼」을 누르죠."
+
+그런데 우리 좋아요 버튼에는 글자가 하나도 없다. (실측)
+
+  시도                              결과
+  getByText('좋아요')                실패 — Unable to find an element with the text: 좋아요
+  버튼의 textContent                 ""   (빈 문자열 — 안에 <svg> 뿐)
+  getByText('좋아요 1240개')          성공하는데 <p> 다 — 버튼이 아니라 개수 문단
+  getByRole('button',{name:'좋아요'}) <button> ✓
+  getByLabelText('좋아요')            위와 === 로 같은 요소
+  앱 마크업의 data-testid             0개
+
+★ 위험한 것은 첫 줄이 아니라 셋째 줄이다. 글자로 찾으면 실패하는 게 아니라
+  엉뚱한 것이 조용히 잡힌다. 판은 초록인데 누르는 대상이 문단이다.
+
+버튼의 이름을 대는 것은 E-7 에서 글자 버튼(♡ 좋아요)이 하트 아이콘이 되며
+붙은 aria-label="좋아요" 다.
+
+================================================================
+3절. ★ A-4 의 IconButton 이 접근성 이름을 이미 강제하고 있었다
+================================================================
+
+LikeButton 에서 aria-label 한 줄을 지우면:
+
+  tsc --noEmit
+  src/components/LikeButton.tsx(18,8): error TS2741:
+    Property ''aria-label'' is missing in type '{ children: Element; className: string;
+    "aria-pressed": boolean; onClick: () => void; }' but required in type '{ 'aria-label': string; }'
+
+근거는 A-4 가 만든 타입이다:
+  type IconButtonProps = ComponentProps<typeof Button> & { 'aria-label': string };
+
+=> getByRole('button', { name }) 이 통하는 이유가 타입 수준에서 보장돼 있다.
+   "아이콘 버튼은 이름이 있으면 좋은 게 아니라 필수" 라는 A-4 의 주석이
+   F-3 에서 실제로 값을 한다.
+
+================================================================
+4절. 🚨 isAgent 사고 3연속 — 이번엔 console.log 가 통째로 사라진다
+================================================================
+
+같은 명령, 같은 판, 환경 변수만 다르게:
+
+  조건                                          테스트의 console.log
+  이 세션 기본                                    0 줄
+  env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE   30 줄
+
+F-1(커버리지 표 45↔103행) · F-2(watch 기본값 꺼짐↔켜짐) 에 이은 세 번째.
+
+★ 이번 것이 가장 위험하다. 앞의 둘은 "내가 본 숫자가 학생 숫자와 다르다" 였는데
+  이것은 "출력이 아예 없다" 라서, 교안이 찍어보라고 시킨 것이 안 나오면
+  코드가 안 돈다고 오독하게 된다.
+
+=> 학생이 볼 출력을 재는 모든 명령은 세 변수를 걷어내고 돌렸다.
+   CLAUDECODE 만 걷어선 소용없다(AI_AGENT 가 우선).
+
+================================================================
+5절. 커버리지 총계가 실행마다 두 값을 오간다
+================================================================
+
+같은 코드·같은 명령으로 여섯 번:
+  90.11 / 83.04   (3회)
+  90.16 / 83.12   (3회)
+
+처음엔 --coverage.reportOnFailure=true 플래그를 의심했으나 플래그를 붙인 실행과
+안 붙인 실행 양쪽에서 두 값이 다 나왔다 — 플래그와 무관하다.
+
+파일 행 수는 231 로 불변(103 파일). 실행 간 diff 를 뜨니 갈리는 것은 표가 아니라
+stderr 줄이었다:
+
+  src/routes/c8-answer.test.tsx > 과제 2 — 끊긴 지 10초가 지나면 알린다
+
+이 타이머 판이 실행마다 다른 경로를 타면서 갈래가 더 잡히는 실행이 생긴다.
+
+=> F-3 교안은 커버리지 총계를 인용하지 않는다.
+   게이트는 흔들리지 않는 파일/테스트 수로 잡는다.
+   ⚠️ 다음 모듈이 커버리지를 인용한다면 두 값 중 어느 쪽인지 조건을 밝혀야 한다.
+
+================================================================
+6절. 저장소의 쿼리 분포가 그대로 우선순위 교보재다
+================================================================
+
+  getByRole          369      (getAllByRole 107 · findByRole 83 · queryByRole 36 별도)
+  getByText          177      (findByText 115 · queryByText 45 별도)
+  getByLabelText     122
+  getByTestId         12
+  getByPlaceholderText  0
+  getByAltText          0
+  getByTitle            0
+  getByDisplayValue     0
+
+getByTestId 12건이 있는 파일 6개:
+  b4-unnecessary-effects.test.tsx 5 · c3-theme-not-shared.test.tsx 4
+  b4-toast.test.tsx 3(내부 2) · c3-theme-guard.test.tsx 2 · b4-answer.test.tsx 2
+
+★ 전부 판이 스스로 그린 마크업이거나 scratch 데모다.
+  앱 코드(src 의 비-테스트 tsx)의 data-testid = 0건.
+  ⚠️ C-3 canon 의 "데모의 data-testid 를 걷어냈다(교안에 인용하면 검증 장치가
+     학생 배포본에 노출된다)" 우려는 이로써 해소됐다 — 앱에는 없다.
+
+  그리고 그 testid 들이 붙은 것은 전부 <p> 다 — 역할이 없어서 getByRole 로
+  못 찾는 것들. 정당한 예외의 모양이 저장소 안에 있다.
+
+⚠️ 셸의 「없음」을 또 믿을 뻔했다(F-1·F-2 재현) — grep --include=*.tsx 를
+   따옴표 없이 쓰면 zsh 가 매치 없는 glob 에서 명령을 중단시켜 "0건" 처럼 보인다.
+   --include='*.tsx' 로 따옴표를 씌우고 탐침(일부러 매치되는 것)으로 재확인했다.
+
+================================================================
+7절. fireEvent 는 75개 파일 중 단 1개 파일에 3건
+================================================================
+
+  user-event 쓰는 파일   75
+  fireEvent 쓰는 파일     2  (c7-escape-hatch.test.tsx 3건 + c7-observations.txt 언급)
+
+그 1건의 이유는 C-7 채증에 적혀 있다 — 렌더 횟수를 셀 때 act() 밖의 raw .click()
+이 상태 갱신을 안 일으켜서 fireEvent.click 으로 바꿨다.
+
+=> "userEvent 우선, fireEvent 는 예외" 가 저장소 숫자로 이미 증명돼 있다.
+
+⚠️ 초안 측정이 틀렸다 — 두 방법을 같은 화면에서 이어 쟀더니:
+     userEvent.type(input,'abc')            onChange 3회
+     fireEvent.change(input,{value:'abc'})  onChange 0회   ← 거짓
+   값이 이미 'abc' 라 같은 값을 다시 넣은 것이라 아무 일도 안 일어난 것이었다.
+   화면을 새로 그려(cleanup 후 render) 재측정한 참값:
+     userEvent.type   3회 — "a" / "ab" / "abc"   (한 글자씩)
+     fireEvent.change 1회 — "abc"                (통째로)
+
+★ await 를 빼면 클릭이 아예 안 일어난다:
+     const p = userEvent.click(button);
+     await 전 호출 0회  →  await 후 호출 1회
+
+================================================================
+8절. logRoles(PostCard) — 화면 전체가 역할+이름 목록으로
+================================================================
+
+  article    Name ""
+  img        Name "jaehoon 프로필 사진"
+             Name "jaehoon 의 게시물"
+  button     Name "게시물 메뉴"
+             Name "좋아요"
+             Name "더 보기"
+             Name "댓글 32개 모두 보기"
+             Name "게시"
+  paragraph  Name "" ×3
+  list       Name ""
+  textbox    Name "댓글 입력"
+
+버튼 다섯 개가 각각 다른 이름을 갖는다 — 이름만으로 전부 갈린다.
+article 이 보이는 것은 E-6 에서 들여온 Card 의 <div> 를 <article> 로 되돌린 결과.
+
+================================================================
+9절. ★★★ Step 8 — 구현을 바꾸면 어느 판이 깨지나
+================================================================
+
+대조군: scratch/f3-brittle-experiment.test.tsx.txt (일부러 구현을 붙잡는 판 3건)
+  - button.p-2 클래스 선택자로 찾기
+  - 바깥이 div 이고 자식이 button, p 순서인지
+  - svg 의 class 문자열이 정확히 'lucide lucide-heart size-6' 인지
+
+  구현 변경                       우리 판 (8건)        구현 붙잡는 판 (3건)
+  ------------------------------------------------------------------------
+  (변경 없음)                     8 통과              3 통과
+  M1 클래스 이름 교체              8 통과              1 실패
+      (p-2 -> px-2 py-2)
+  M2 IconButton -> 그냥 button    8 통과              3 통과
+  M3 하트 -> 별 아이콘             8 통과              1 실패
+  M4 바깥 div -> span             8 통과              1 실패
+  M5 이름 좋아요 -> 하트           7 실패 / 1 통과      3 통과
+
+★ 마지막 줄이 결정타다. M5 는 사용자가 실제로 알아채는 유일한 변경인데
+  구현을 붙잡는 판 셋은 전부 초록이고, 우리 판은 8건 중 7건이 빨개진다.
+  M1·M4 는 사용자에게 아무 일도 안 일어난 변경인데 구현 판만 운다.
+
+★ M5 에서 살아남은 한 건은 "좋아요가 0개면 개수 줄이 아예 없다" —
+  버튼을 이름으로 부르지 않는 유일한 판이다.
+
+⚠️ M3(하트→별)은 눈에 보이는 것이 바뀌는데 우리 판은 조용하다. 이건 결함이 아니라
+   경계다 — RTL 은 «무엇을 뜻하고 무엇을 하는가» 를 지키고, «어떻게 보이는가» 는
+   다른 도구(F-6 시각 회귀)의 몫이다. 교안이 이 경계를 밝힌다.
+
+모든 변경은 실험 직후 git checkout 으로 원복했고 git status 로 빈 것을 확인했다.
+
+================================================================
+10절. 부수 실측
+================================================================
+
+- <form> 은 이름이 없으면 역할이 없다 — queryByRole('form') = null.
+  폼 자체를 찾지 말고 안에 있는 것들(입력칸·버튼)로 찾는다.
+
+- likeCount 0 이면 개수 문단이 아예 안 그려진다 ({likeCount > 0 && …}).
+  queryBy 가 필요한 진짜 자리.
+
+- 하트가 둘이면 getByRole 이 던진다:
+    Found multiple elements with the role "button" and name "좋아요"
+  getAllByRole 로 2개, { pressed: true } / { pressed: false } 로 1/1 로 갈린다.
+
+- 매처 실패 메시지 대조:
+    toBeDisabled()          "expect(element).toBeDisabled() … Received element is not disabled: <button …>"
+    .disabled toBe(true)    "expected false to be true"
+  같은 사실을 확인하는데 알려주는 양이 다르다.
+
+- 댓글 폼: 처음 잠김 → 글자 넣으면 풀림 → 게시하면 onSubmit('노을 예쁘네요') +
+  입력칸 '' 로 비워짐 → 공백만 넣으면 잠긴 채(useCommentInput 이 trim 한다)
+  → 엔터로도 제출된다(진짜 <form> 이라 submit 이 걸린다).
+
+- 가드는 전부 일부러 깨서 확인했다:
+    aria-label 제거      → 판 2건 실패 + tsc TS2741
+    aria-pressed 제거    → 판 1건 실패
+    likeCount>0 조건 제거 → 판 1건 실패
+    onClick 제거         → 판 1건 실패
+    disabled={isEmpty} 제거 → 판 2건 실패
+    trim 제거            → 판 1건 실패
+
+================================================================
+11절. 시의성 (npm registry, 2026-08-19)
+================================================================
+
+  @testing-library/react        설치 16.3.2  latest 16.3.2   일치 ✓
+  @testing-library/user-event   설치 14.6.1  latest 14.6.5   patch 뒤짐
+  @testing-library/jest-dom     설치 7.0.0   latest 7.0.1    patch 뒤짐
+  vitest                        설치 4.1.10  latest 4.1.11   patch 뒤짐
+  react                         설치 19.2.8  latest 19.2.8   일치 ✓
+  jsdom                         설치 27.0.1  latest 30.0.1   세 메이저 뒤짐
+
+jsdom 승격 판단: 이번 회차에서는 하지 않는다.
+  ① F-3 이 가르치는 접근성 이름 계산은 jsdom 이 아니라 RTL 의
+     dom-accessibility-api 가 한다
+  ② 탐침 19건이 27.0.1 에서 전부 의도대로 동작
+  ③ ^27 이라 자동 상승 안 하므로 방치돼도 조용히 안 바뀐다
+  ④ 3 메이저 승격은 138 판 전체 회귀 위험 — 교안 회차가 아니라 별건 유지보수
+교안은 jsdom 버전을 인용하지 않는다.
+
+커리큘럼 F-3 행의 "RTL 16.3.2(React 19)" 는 현행과 정확히 일치 — 보정 없음.
