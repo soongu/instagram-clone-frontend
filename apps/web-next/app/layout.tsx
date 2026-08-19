@@ -1,11 +1,16 @@
 // apps/web-next/app/layout.tsx
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { Noto_Sans_KR } from 'next/font/google';
 import { HeaderNav } from './components/HeaderNav';
 import { Providers } from './components/Providers';
 import { SignInForm } from './components/SignInForm';
 import { TextScaleStyle } from './components/TextScaleStyle';
 import './globals.css';
+
+// 빌드할 때 폰트 파일을 받아와 우리 서버에서 준다 — 학생 브라우저가 구글을 부르지 않는다.
+// subsets 는 "미리 받아둘 조각" 이다. 한글은 여기 못 적는다(뒤에서 이유를 본다).
+const notoSansKr = Noto_Sans_KR({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
   title: '인스타그램 클론',
@@ -16,7 +21,7 @@ export const metadata: Metadata = {
 // html 과 body 를 여기서 직접 쓴다 — Next 가 대신 만들어주지 않는다.
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={notoSansKr.className}>
       <body className="min-h-screen bg-white text-black antialiased">
         {/* 쿠키를 읽는 조각 하나만 여기서 흘려보낸다. 나머지는 미리 그려진 채로 남는다. */}
         <Suspense fallback={null}>
