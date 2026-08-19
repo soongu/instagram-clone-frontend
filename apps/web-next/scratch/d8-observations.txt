@@ -1,0 +1,168 @@
+D-8 (Server Actions & Route Handlers ② — 기다림과 문지기) 관찰 기록
+================================================================
+측정 환경: next 16.3.1 · react 19.2.8 · Node dev 서버 PORT=3100(3000 은 Docker 점유)
+          api-stub DELAY_MS=400 · 브랜치 module-D8-actions-ux-security
+
+
+1. 착수 전제 확인 — 좋아요는 인증이 달랐다 (해결)
+------------------------------------------------
+api-stub `POST /api/posts/:id/like` 는 Bearer 토큰만 받았다(C-5·C-6 유산).
+web-next 는 `me` 쿠키를 쓰므로 그대로는 401.
+
+해결: 스텁에 `resolveActor(headers)` 를 두어 Authorization 이 있으면 기존 토큰 검사,
+없으면 `X-Actor` 를 본다(D-7 이 팔로우에 쓴 그 헤더).
+
+실측 (SPA 경로 무손상 확인):
+  X-Actor: jaehoon   → 200 {"liked":true,"likeCount":1241}
+  헤더 없음           → 401 "로그인이 필요합니다"      (C-5 교안 주장 그대로 유효)
+  Bearer nope        → 401 "토큰이 유효하지 않습니다"   (SPA 경로 그대로)
+  LIKE_FAIL_EVERY=2  → 2번에 한 번 500 "좋아요를 저장하지 못했습니다"
+
+
+2. ★★ 낙관적 업데이트 실측 (MutationObserver · DOM 커밋 시각)
+--------------------------------------------------------
+성공 경로 (하이드레이션 완료된 탭):
+    t=  2ms  ♡ 좋아요 1240  pending=true    ← 낙관적 값이 먼저 들어온다
+    t=413ms  ♡ 좋아요 1240  pending=false   ← 서버가 확정. 값이 같아 화면은 안 흔들린다
+
+실패 경로 (서버가 401 로 거절):
+    t=  1ms  ♥ 좋아요 1241  pending=true    ← 먼저 바꿔놓고
+    t=414ms  ♡ 좋아요 1240  pending=false   ← 정확히 되돌아왔다 + 메시지가 붙었다
+
+⇒ 2ms 대 413ms. 낙관적 값은 Action 이 도는 동안만 살고, 끝나면 base 값으로 돌아간다.
+  실패 시 롤백은 "따로 짠 것" 이 아니라 base 가 안 바뀐 결과다.
+
+⚠️ 측정 한계: 화면이 그려진 시각이 아니라 DOM 이 바뀐 시각이다(숨은 탭이라 paint 미보장).
+
+
+3. ★★★ useOptimistic 을 붙이는 순간 폼이 달라진다 (D-7 이 산 것을 되판다)
+--------------------------------------------------------------------
+D-7: 서버 액션 폼은 평범한 HTML 폼 —
+     <form action="" encType="multipart/form-data" method="POST"> + hidden $ACTION_ID_...
+     curl 로 제출해도 그대로 동작했다(자바스크립트 0).
+
+D-8: setOptimistic 을 부르려면 액션을 클라이언트 함수로 감싸야 한다. 그 순간 렌더 결과가
+     <form action="javascript:throw new Error('React form unexpectedly submitted.')">
+     로 바뀐다. hidden $ACTION_ID 도 없다. 자바스크립트가 없으면 아무 일도 안 일어난다.
+
+실측 보강: 하이드레이션 전에 클릭하면 정말로 아무 일도 안 일어난다(변경 0건).
+          숨은 탭에서는 하이드레이션 자체가 몇 초씩 밀렸다.
+
+⇒ 트레이드오프. 서버 액션을 직접 건네는 팔로우 폼은 여전히 평범한 HTML 폼이다.
+  같은 앱 안에 두 형태가 공존한다.
+
+
+4. proxy 인증 보호 — 검사 순서가 화면 밖에서 말해주는 것을 바꾼다
+-------------------------------------------------------------
+proxy.ts 에 쿠키 검사를 404 확인 *앞* 에 뒀다(네트워크를 타기 전에 끝난다).
+
+  로그인 상태 (5회씩)      로그아웃 상태 (3회씩)
+  /         200 / 13~21ms  /         200
+  /explore  200 / 13~18ms  /explore  200
+  /jaehoon  200 / 420~438ms /jaehoon  307 → / / 3~12ms
+  /zzzzz    404 / 428~436ms /zzzzz    307 → / / 2~3ms
+
+⇒ D-7 이 405ms 주고 산 404 는 로그인한 사람에게만 남는다. 로그아웃이면 없는 사람도 307 이다.
+  이것은 회귀가 아니라 순서의 결과다 — 그리고 계정이 있는지 없는지를 안 알려주는 쪽이 안전하다.
+  로그아웃 요청은 400ms 왕복을 아예 안 탄다(3ms).
+
+
+5. ★★★ Server Action 은 공개 엔드포인트다 (세 조건 실측)
+-----------------------------------------------------
+문지기가 로그아웃 GET 을 전부 307 로 막고 있는 상태에서:
+
+  A. 현행 proxy(비-GET 은 그냥 통과 — D-7 이 속도 때문에 넣은 줄)
+     POST /minji  쿠키 없음 → 200 + Set-Cookie: me=minji; HttpOnly  (액션이 실행됐다)
+
+  B. 비-GET 통과 줄을 없애면
+     POST /minji  쿠키 없음 → 307 → /                              (막힌다)
+
+  C. B 와 같은 조건에서 matcher 가 안 무는 주소로
+     POST /       쿠키 없음 → 200 + Set-Cookie: me=minji           (또 뚫린다)
+
+⇒ 액션은 주소가 아니라 식별자로 찾아진다. 문지기는 주소를 보고, 부르는 쪽은 주소를 고른다.
+  그래서 인증은 액션 안에서 매번 확인해야 한다 — follow.ts·like.ts 의 쿠키 한 줄이 진짜 방어선.
+
+
+6. 게이트
+--------
+tsc --noEmit 0 · eslint 0 · next build exit 0
+라우트 표 (D-7 과 동일한 모양):
+  ◐ / · ◐ /_not-found · ◐ /[username] · ƒ /api/profiles/revalidate · ◐ /explore
+  ƒ Proxy (Middleware)
+
+
+7. 부수 관찰 (D-7 잔여)
+---------------------
+dev 로그에 `unhandledRejection: 서버가 404 로 답했습니다 (/users/_not-found/tags)`.
+proxy 가 /_not-found 로 rewrite 하면 프로필 레이아웃이 `_not-found` 를 사람 이름으로 알고
+태그를 조회한다. 화면은 정상 404 라 학생에게는 안 보이지만 dev 콘솔에는 남는다.
+
+
+8. 과제 실측 (지문을 직접 풀어본 결과)
+--------------------------------------
+과제1 팔로우 낙관적 업데이트 — `following: boolean | null` 이라 `optimistic.following !== true`
+       로 뒤집었다(null 과 false 를 같게 본다). 얹은 뒤 프로필 폼도
+       `action="javascript:throw ..."` 로 바뀐다 — 좋아요와 같은 대가.
+       답안 보관: scratch/d8-hw1-answer/FollowButton.tsx
+
+과제2 실패 갈래 대조 (액션 반환값 실측):
+       올바른 갈래  {"liked":true,"likeCount":1241,"message":"좋아요를 저장하지 못했습니다"}
+       틀린 갈래    {"liked":false,"likeCount":0,"message":"좋아요를 저장하지 못했습니다"}
+       ⇒ 1241 이 0 이 된다. 실패했는데 좋아요가 통째로 사라진 것처럼 보인다.
+
+과제3 문지기 범위 두 실험:
+       A. 인증 검사를 fetch 뒤로 → 로그아웃 /zzzzz 가 **404** 로 돌아온다(계정 존재 노출) ·
+          /jaehoon 307 이 3ms → 415~443ms, /zzzzz 404 442~455ms
+       B. matcher 를 ['/(.*)'] 로 → / 도 307. 리다이렉트를 5회 따라가도 계속 307(무한).
+          로그인 화면이 / 에 있어서 로그인 자체가 불가능해진다.
+
+과제4 묶은 인자 조작 — /minji 팔로우 폼의 $ACTION_2:1 = ["minji",{...}] 를
+       ["seungwoo",{...}] 로 고쳐 POST → 스텁에 POST /api/users/seungwoo/follow ·
+       승우 팔로워 320 → 321. **대상은 바뀌고 신원은 안 바뀐다.**
+       (같은 방법을 좋아요 폼에는 못 쓴다 — Step 3 이후 hidden 이 없다. 단 이건 보안이 아니다.)
+
+
+9. ⚠️ 지문이 한 번 바뀌었다 (직접 풀어보고 잡았다)
+------------------------------------------------
+초안 과제4 는 "피드 좋아요 폼의 숨은 입력 넷을 적어라" 였는데 **Step 3 이후 좋아요 폼에는
+hidden 이 0개**라 풀 수 없는 문제였다. 팔로우 폼(프로필 화면)으로 바꾸고, 좋아요 쪽은
+"왜 막히는지, 그게 보안이 되는지" 를 묻는 항목으로 돌렸다.
+같은 이유로 Step 8 본문의 예시도 `$ACTION_11:1 = [1,{...}]`(좋아요) → 팔로우 폼 값으로 교체.
+그리고 `$ACTION_N` 의 N 은 화면마다 달라지므로 리터럴로 박지 않고 찾는 방법을 함께 줬다
+(D-7 이 $ACTION_ID 리터럴로 걸렸던 선례).
+
+
+10. ⚠️ 액션 식별자는 소스가 바뀌면 바뀐다
+----------------------------------------
+like.ts 를 한 줄 고쳤더니 Step 1 시점 식별자로 보낸 POST 가 500 이 됐다.
+  Failed to find Server Action "6017...". This request might be from an older or newer deployment.
+현재 식별자는 .next/dev/server/server-reference-manifest.json 에서 확인했다(6개 중
+toggleLike = 60fd7bf9b2f07e7e9c9d72a333ce8df4dc6d4683ef). 교안 Step 7 의
+"배포된 앱 전체가 같은 값" 서술은 이 에러 메시지가 그대로 뒷받침한다.
+
+
+11. ⚠️ 측정 환경 (다음 회차가 반복하지 않게)
+------------------------------------------
+① 숨은 탭에서는 **하이드레이션 자체가 지연된다.** D-7 의 setTimeout 조임과는 다른 층이다.
+   클릭 4회가 전부 무반응이었고 hydrated 판정도 false 였다. MCP 탭을 앞으로 꺼내려고
+   AppleScript 로 5회 시도(제목 마커로 정확히 찾아 활성화까지 성공)했는데도
+   visibilityState 는 계속 hidden 이었다 — 탭 그룹이 접혀 있는 것으로 보인다.
+   ⇒ 화면 그리기 시각이 아니라 **DOM 커밋 시각**을 MutationObserver 로 재는 쪽으로 갈아탔다.
+      폴링 금지(숨은 탭에서 setTimeout 이 1초로 조여져 CDP 타임아웃). 단발 await 는 정상.
+② 노드 참조를 들고 있으면 안 된다 — 액션이 끝나면 RSC 재렌더로 DOM 노드가 교체되어
+   observer 가 떨어져 나간 노드를 본다. 매번 querySelector 로 다시 집는다.
+③ 장시간 dev 세션 뒤 `RangeError: Map maximum size exceeded`(Next 개발 런타임 내부
+   AsyncHook 맵)로 서버가 죽었다. 새로 띄우면 8회 연속 200 · 오류 0 — 우리 코드 문제 아님.
+④ Docker 가 3000 을 잡고 있어 이번에도 PORT=3100(D-3~D-8 연속).
+
+
+12. 게이트 최종
+--------------
+build exit 0 · tsc --noEmit 0 · eslint 0 · web-spa 무변경(git diff 빈 출력)
+grep FAIL 0 / WARN 0 (교안·답안 2파일)
+교안 1,041줄 · 답안 541줄(배점 합 100 · 25×4)
+회차 간 마감 요소 8/8·8·4·3 (Step수/한줄정리·🙋토글·튜터한마디·핵심멘트 — D-7 과 동일)
+tic 0.04%/0.00% · italic 0/0 · 이모지 4종/3종 · 250자 초과 0 · 최장 코드블록 33줄/37줄
+들여쓰기 평탄화 0 · 한 슬래시 주석 0 · 한글 줄 우측 테두리 0
+코드 블록 대조 11/11 (Step 시점 커밋과 축자 일치) + 답안 과제1 코드 1/1
