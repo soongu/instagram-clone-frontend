@@ -81,9 +81,10 @@ describe('먼저 바꾸고 나중에 확인한다', () => {
     expect(screen.getByText('좋아요 1241개')).toBeInTheDocument();
 
     // 답이 오면 진짜 값으로 갈린다 (기본 1초로는 위 지연을 못 기다린다)
-    expect(await screen.findByText('좋아요 1301개', {}, { timeout: 5000 })).toBeInTheDocument();
-    // ⚠️ 판 자체의 기본 한도도 5초다. 위 5초를 실제로 쓰려면 판의 한도를 함께 넓혀야 한다.
-  }, 15_000);
+    // ⚠️ 커버리지를 켜면 계측 때문에 이 판이 더 느려진다 — 5초로는 간헐적으로 못 기다렸다.
+    //    한도를 넓힐 때는 그것을 감싸는 판의 한도(아래)도 함께 넓힌다.
+    expect(await screen.findByText('좋아요 1301개', {}, { timeout: 10_000 })).toBeInTheDocument();
+  }, 20_000);
 });
 
 describe('진행 중인 요청을 세우는 이유', () => {
