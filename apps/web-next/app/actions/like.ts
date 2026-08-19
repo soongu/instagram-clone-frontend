@@ -1,7 +1,7 @@
 // apps/web-next/app/actions/like.ts
 'use server';
 
-import { cookies } from 'next/headers';
+import { currentUser } from '@/lib/session';
 
 const API_BASE = 'http://localhost:8090/api';
 
@@ -16,9 +16,10 @@ export type LikeState = {
  * 누가 눌렀는지는 브라우저가 보내준 값이 아니라 서버가 쿠키에서 직접 읽는다.
  */
 export async function toggleLike(postId: number, previous: LikeState): Promise<LikeState> {
-  const me = (await cookies()).get('me')?.value;
+  // 폼이 화면에 없어도 이 함수는 누구나 부를 수 있다. 그래서 매번 확인한다.
+  const me = await currentUser();
 
-  if (me === undefined) {
+  if (me === null) {
     return { ...previous, message: '로그인이 필요해요' };
   }
 
