@@ -1,4 +1,5 @@
 // apps/web-next/lib/api.ts
+import { cacheLife } from 'next/cache';
 import type { Post } from './posts';
 
 // 브라우저가 아니라 서버가 부른다. 서버에는 "지금 보고 있는 주소" 같은 게 없어서
@@ -47,6 +48,8 @@ export type Profile = {
  */
 export async function fetchProfile(username: string): Promise<Profile> {
   'use cache';
+  // 팔로워 수는 하루에도 몇 번 변한다. 한 시간마다 다시 세면 충분하다.
+  cacheLife('hours');
   return get<Profile>(`/users/${encodeURIComponent(username)}`);
 }
 
@@ -56,6 +59,8 @@ export async function fetchProfile(username: string): Promise<Profile> {
  */
 export async function findProfile(username: string): Promise<Profile | null> {
   'use cache';
+  // 사람이 있느냐 없느냐도 같은 주기로 본다 — 가입한 사람이 한 시간 안에는 보여야 한다.
+  cacheLife('hours');
   const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`);
 
   if (response.status === 404) {
