@@ -31,6 +31,10 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
   retried?: boolean;
 }
 
+// 토큰을 얻으러 가는 요청. 여기서 온 401 은 "만료" 가 아니라
+// "아이디나 비밀번호가 틀렸다" 는 뜻이라 갱신할 것이 없다.
+const AUTH_FREE_PATHS = ['/auth/login'];
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10_000,
@@ -113,7 +117,14 @@ api.interceptors.response.use(
 
     // 액세스 토큰이 만료된 것뿐이라면, 갱신하고 그 요청을 다시 보낸다.
     // 화면은 실패한 줄도 모른다.
-    if (error.response.status === 401 && config !== undefined && config.retried !== true) {
+    const goesToAuthFreePath = AUTH_FREE_PATHS.includes(config?.url ?? '');
+
+    if (
+      error.response.status === 401 &&
+      config !== undefined &&
+      !goesToAuthFreePath &&
+      config.retried !== true
+    ) {
       config.retried = true;
 
       try {

@@ -54,7 +54,36 @@ export const mockMessages: DirectMessage[] = [
 // 확인해야 하므로, 흉내 서버도 기다리는 시간을 가질 수 있어야 한다.
 export const FEED_DELAY_MS = 100;
 
+// 연습용 서버에 있는 사람들. 이 목록에 없으면 서버가 거절한다.
+export const mockUsers = ['jaehoon', 'minji'];
+
+// 서버가 실제로 받은 요청 본문을 여기에 쌓아둔다.
+// 돌려받은 값만 봐서는 "우리가 무엇을 보냈는지" 를 알 수 없다.
+export const receivedLoginBodies: unknown[] = [];
+
 export const handlers = [
+  // 보내는 요청. 본문은 request.json() 으로 읽는다.
+  http.post(`${MOCK_API_BASE}/auth/login`, async ({ request }) => {
+    const body = (await request.json()) as { username?: string };
+    receivedLoginBodies.push(body);
+
+    if (body.username === undefined || !mockUsers.includes(body.username)) {
+      return HttpResponse.json(failure('아이디 또는 비밀번호가 올바르지 않습니다'), { status: 401 });
+    }
+
+    return HttpResponse.json(
+      ok({
+        accessToken: 'access-1',
+        refreshToken: 'refresh-1',
+        user: {
+          id: 1,
+          username: body.username,
+          profileImageUrl: `https://picsum.photos/seed/${body.username}/64/64`,
+        },
+      }),
+    );
+  }),
+
   // 태그가 붙어 오면 그것만 골라 준다 — 연습용 서버와 같은 규약.
   http.get(`${MOCK_API_BASE}/posts`, async ({ request }) => {
     await delay(FEED_DELAY_MS);

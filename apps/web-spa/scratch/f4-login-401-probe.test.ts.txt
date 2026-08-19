@@ -1,0 +1,34 @@
+// apps/web-spa/scratch/f4-login-401-probe.test.ts
+// 탐침 — 핸들러가 진짜 서버처럼 401 을 말하기 시작하면 앱이 어떻게 반응하나.
+// 서버가 보낸 사유가 그대로 올라오나, 아니면 다른 말로 바뀌나.
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
+import { server } from '../src/mocks/node';
+import { login } from '../src/api/auth';
+import { tokenStore } from '../src/lib/tokens';
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() => tokenStore.clear());
+afterAll(() => server.close());
+
+describe('없는 아이디로 로그인', () => {
+  it('무엇이 올라오나', async () => {
+    try {
+      await login('nobody-such-user');
+      console.log('  던지지 않았다');
+    } catch (error) {
+      const e = error as { name?: string; message?: string; status?: number | null };
+      console.log(`  name=${e.name} status=${String(e.status)} message="${e.message}"`);
+    }
+  });
+
+  it('리프레시 토큰이 있는 채로 하면', async () => {
+    tokenStore.save({ accessToken: 'old-access', refreshToken: 'refresh-1' });
+    try {
+      await login('nobody-such-user');
+      console.log('  던지지 않았다');
+    } catch (error) {
+      const e = error as { name?: string; message?: string; status?: number | null };
+      console.log(`  name=${e.name} status=${String(e.status)} message="${e.message}"`);
+    }
+  });
+});
