@@ -11,6 +11,11 @@ export default mergeConfig(
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/test-setup.ts'],
+      coverage: {
+        // scratch/ 는 앱이 아니라 보관해 둔 예전 판과 과제 답안이다.
+        // 세는 대상에 두면 앱의 숫자를 가린다 — 148개 중 45개가 여기였다.
+        exclude: ['scratch/**'],
+      },
     },
   }),
 );
