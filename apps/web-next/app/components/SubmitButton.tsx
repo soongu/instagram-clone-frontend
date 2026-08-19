@@ -13,7 +13,8 @@ export function SubmitButton({
   className,
 }: {
   children: ReactNode;
-  pendingLabel: string;
+  /** 기다린다고 말해야 하는 버튼만 넘긴다. 먼저 바꿔놓는 버튼은 바뀐 내용을 그대로 보여준다. */
+  pendingLabel?: string;
   pressed?: boolean;
   className?: string;
 }) {
@@ -21,7 +22,7 @@ export function SubmitButton({
 
   return (
     <button type="submit" aria-pressed={pressed} disabled={pending} className={className}>
-      {pending ? pendingLabel : children}
+      {pending && pendingLabel !== undefined ? pendingLabel : children}
     </button>
   );
 }
