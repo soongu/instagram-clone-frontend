@@ -1,7 +1,10 @@
 // apps/web-spa/src/api/f4-dm-msw.test.ts
 // F-4 Step 1~2 — 진짜 client 를 그대로 두고 네트워크만 가로챈다.
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/node';
+import { MOCK_API_BASE, failure } from '../mocks/handlers';
+import { ApiError } from './client';
 import { fetchConversations, fetchMessages } from './dm';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -40,5 +43,33 @@ describe('fetchMessages — 주소 안의 방 번호까지 가로챈다', () => 
 
     // 7번 방에는 아무것도 없다. 방 번호를 안 실어 보냈다면 1번 방 것이 왔을 것이다.
     expect(messages).toEqual([]);
+  });
+});
+
+// 잘 되는 경우는 목록에 적어두고, 안 되는 경우는 그 판에서만 덮어쓴다.
+// 서버를 실제로 고장 낼 방법이 없으니 여기서만 다르게 말하게 한다.
+describe('server.use — 이 판에서만 다르게 말하게 한다', () => {
+  it('서버가 500 이면 서버가 보낸 사유가 손에 들어온다', async () => {
+    server.use(
+      http.get(`${MOCK_API_BASE}/conversations`, () =>
+        HttpResponse.json(failure('대화 목록을 불러오지 못했습니다'), { status: 500 }),
+      ),
+    );
+
+    await expect(fetchConversations()).rejects.toThrow(ApiError);
+    await expect(fetchConversations()).rejects.toThrow('대화 목록을 불러오지 못했습니다');
+  });
+
+  it('연결 자체가 안 되면 우리가 쓴 우리말이 들어온다', async () => {
+    server.use(http.get(`${MOCK_API_BASE}/conversations`, () => HttpResponse.error()));
+
+    // Axios 가 주는 말은 영어 'Network Error' 라 화면에 그대로 못 쓴다.
+    await expect(fetchConversations()).rejects.toThrow('서버에 연결할 수 없어요');
+  });
+
+  it('★ 덮어쓴 것은 이 판에서만 산다 — 다음 판은 원래 목록으로 돌아온다', async () => {
+    const conversations = await fetchConversations();
+
+    expect(conversations).toHaveLength(1);
   });
 });

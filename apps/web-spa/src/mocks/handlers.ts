@@ -17,6 +17,11 @@ export function ok<T>(data: T) {
   return { success: true, data, message: null };
 }
 
+/** 서버가 "안 됐다" 고 말할 때의 봉투. data 자리는 비고 사유가 들어온다. */
+export function failure(message: string) {
+  return { success: false, data: null, message };
+}
+
 export const mockConversations: Conversation[] = [
   {
     conversationId: 1,
