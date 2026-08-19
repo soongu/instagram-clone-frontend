@@ -10,7 +10,7 @@ export async function FeedList() {
 
   return (
     <ul className="space-y-4">
-      {posts.map((post) => (
+      {posts.map((post, index) => (
         <li key={post.id} className="rounded border border-black/10 p-4">
           <p className="font-semibold">@{post.username}</p>
           {/* 원본이 몇 대 몇인지 알려준다. 그러면 사진이 오기 전에도 그 비율만큼 자리가 비워진다.
@@ -21,6 +21,8 @@ export async function FeedList() {
             width={640}
             height={640}
             className="h-auto w-full"
+            // 첫 장은 화면을 열자마자 보이는 자리다. 미루지 않고 곧바로 받는다.
+            loading={index === 0 ? 'eager' : 'lazy'}
           />
           <p className="mt-1">{post.content}</p>
           <LikeButton postId={post.id} likeCount={post.likeCount} liked={post.liked} />
