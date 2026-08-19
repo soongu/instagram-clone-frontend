@@ -1,8 +1,21 @@
 // apps/web-next/app/[username]/page.tsx
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import { FollowButton } from '@/app/components/FollowButton';
 import { TagFilter } from '@/app/components/TagFilter';
 import { fetchPostsByUsername, fetchProfile, fetchTopTags } from '@/lib/api';
+
+// 화면을 그리기 전에 Next 가 이 함수를 먼저 부른다. 돌려준 값이 <head> 로 들어간다.
+// 굳혀둔 집계값을 그대로 다시 쓴다 — 제목 하나 때문에 서버를 또 부르지 않는다.
+export async function generateMetadata({ params }: PageProps<'/[username]'>): Promise<Metadata> {
+  const { username } = await params;
+  const profile = await fetchProfile(username);
+
+  return {
+    title: `@${username} · 인스타그램 클론`,
+    description: `팔로워 ${profile.followerCount}명`,
+  };
+}
 
 // 대괄호 칸의 값은 props.params 로 들어온다.
 // params 를 기다렸다 받는 이유는 나중에 다룬다 — 지금은 await 를 붙인다.
