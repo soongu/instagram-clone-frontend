@@ -1,0 +1,252 @@
+D-10 (배포 & 최적화 ② — 밖으로 내보냅니다) 채증
+====================================================
+브랜치 module-D10-self-hosting · next 16.3.1 · react 19.2.8 (registry latest 와 드리프트 0)
+측정 환경: macOS aarch64 · Docker 29.5.3 · node v23.6.0(호스트) / node:24-alpine(컨테이너)
+포트: api-stub 8090 · standalone 3300 · 컨테이너 3400 · 탐침 3500
+      ⚠️ Docker(theo-web)가 3000 을 점유 중이라 D-3~D-10 내내 우회
+
+
+1. 시의성 — 커리큘럼 표현 한 곳이 낡아 있었다
+---------------------------------------------
+  next 16.3.1 / react 19.2.8 / react-dom 19.2.8  = npm registry latest 와 동일
+
+  ⚠️ 커리큘럼 D-10 행의 "Vercel zero-config" 는 한 세대 전 서술이다.
+    Next 16 이 Deployment Adapter API 를 열었고(16.2 stable) Vercel 은 이제
+    "Verified Adapter" 다 — 번들 문서 검증 목록 = Vercel · Bun.
+    Cloudflare / Netlify 는 작업 중이며 각자 자체 통합을 제공.
+    번들 문서: 01-app/01-getting-started/17-deploying.md 「Adapters」절
+
+  번들 문서가 벌거벗는 이유를 직접 말한다 (output.md):
+    "This minimal server does not copy the `public` or `.next/static` folders
+     by default as these should ideally be handled by a CDN instead"
+
+  환경 변수 (self-hosting.md 「Environment Variables」):
+    "By default, environment variables are only available on the server.
+     To expose ... must be prefixed with NEXT_PUBLIC_. However, these public
+     environment variables will be inlined into the JavaScript bundle during next build."
+    "This allows you to use a singular Docker image that can be promoted
+     through multiple environments with different values."
+
+
+2. 크기 — 무엇을 들고 가야 하나
+-------------------------------
+  node_modules            684 MB · 최상위 564개
+  .next (standalone 켜기 전) 71 MB
+    ├ .next/server         12 MB   실행에 필요
+    ├ .next/static        4.3 MB   실행에 필요
+    └ .next/cache          54 MB   다음 빌드용 — 서버는 안 읽는다
+  ⚠️ cache 크기는 빌드를 몇 번 돌렸느냐에 따라 변한다 (54MB → 여러 번 뒤 62MB).
+    교안은 이 조건을 밝히고 인용했다.
+
+  output:'standalone' 후
+  .next/standalone         50 MB · node_modules 최상위 12개
+    @emnapi @img @next @swc client-only detect-libc
+    next react react-dom semver sharp styled-jsx
+
+  ⚠️ 컨테이너 안에서는 11개 (@emnapi 없음). sharp 가 OS 별로 다른 조각을 딸려온다.
+    같은 코드인데 플랫폼에 따라 목록이 갈리는 자리 — 교안에 괄호로 명시했다.
+
+  구조 (모노레포라 한 겹 더 들어간다):
+    .next/standalone/
+      node_modules/
+      apps/web-next/
+        .next/            (server·manifest — static 은 없다)
+        package.json
+        server.js         ← 여기. standalone 뿌리가 아니다
+  ⇒ 실행 명령: node .next/standalone/apps/web-next/server.js
+
+  ⚠️ outputFileTracingRoot 를 안 줘도 된다 — 빌드 경고 0건.
+    npm workspaces + 뿌리의 package-lock.json 으로 Next 가 스스로 뿌리를 잡는다.
+
+
+3. 벌거벗은 화면 (standalone 을 그냥 띄웠을 때)
+-----------------------------------------------
+  PORT=3300 node .next/standalone/apps/web-next/server.js
+
+  GET /            200  25,499 B
+  정적 파일 11개   전부 404   (js 9 · css 1 · woff2 1)
+
+  ⇒ 페이지는 200 인데 그 페이지가 부르는 것이 전부 없다.
+    D-9 대비 새로 드러난 것: woff2 도 404 다. D-9 이 next/font 로 글꼴을
+    우리 서버가 주게 만들어뒀기 때문에 이번엔 글꼴까지 함께 사라진다.
+
+  ⚠️ 복사만 하고 재시작을 안 하면 계속 404 (직접 확인):
+    cp -r .next/static .next/standalone/apps/web-next/.next/static
+    → css 404 · woff2 404   (서버 부팅 시점에 목록을 잡는다)
+    재시작 후 → 11개 전부 200
+
+  standalone 상태에서 앞 회차가 산 것:
+    로그인 /  200 · /explore 200 · /jaehoon 200 · /zzzzz 404
+    로그아웃 /jaehoon 307
+    /_next/image  200 image/jpeg 24,644 B (sharp 동작)
+
+
+4. 컨테이너
+-----------
+  Dockerfile 3단계(deps → builder → runner) · node:24-alpine · 컨텍스트는 모노레포 뿌리
+  docker build ... 종료 코드 0 · 57.3초 · 이미지 222 MB
+
+  층 (docker history):
+      4.24 MB  COPY .next/static
+     55.7  MB  COPY .next/standalone
+    나머지는 리눅스 + Node.js 본체 (node:20-alpine 이 136MB 인 것과 같은 계열)
+
+  컨테이너 안:
+    /app/node_modules  11개 (위 2절 참조)
+    /app/apps/web-next/  .next  package.json  server.js
+    .ts/.tsx 소스 파일  0개
+    글꼴 woff2  .next/static/media 에 존재
+    npm 은 있다 (베이스 이미지가 들고 온다) — 초안 주석이 "npm 도 없다" 였는데
+    실행해보고 틀린 것을 확인해 "소스도 개발 도구도 안 따라온다" 로 고쳤다
+
+  ★ 이 빌드는 api-stub 없이 성공했다 (컨테이너에서 호스트 8090 에 닿을 길이 없다).
+    D-5 과제 4 의 결론("<Suspense> 가 프리렌더에서 fetch 를 빼내 빌드 기계가
+    API 에 닿을 필요가 없어진다")이 실전 배포에서 확인된 자리.
+
+  ★ 컨테이너 로그가 완전히 깨끗하다 — "✓ Ready in 0ms" 뿐.
+    D-7 잔여로 기록된 unhandledRejection(proxy → /_not-found rewrite 시 dev 콘솔)
+    이 프로덕션에서는 안 나온다.
+
+
+5. ★★★ 한 원인이 네 가지 얼굴로 — 주소를 안 고친 컨테이너
+----------------------------------------------------------
+  docker run -d -p 3400:3000 insta-next:d10        (API_BASE 안 줌)
+
+  로그인 /            200 · 10,680 B · "피드를 불러오는 중…" 에서 영원히 멈춤
+  로그인 /explore     200                (파일 상수라 서버를 안 부른다)
+  로그인 /jaehoon     500
+  로그인 /zzzzz       500                ← D-7 의 404 가 500 이 됐다
+  로그아웃 /jaehoon   307                ← D-8 문지기는 살아 있다
+  정적 파일 11개      전부 200           (Dockerfile 이 static 을 담았으므로)
+  /_next/image        200 image/jpeg     (외부 picsum 은 컨테이너에서 나갈 수 있다)
+
+  컨테이너 로그: TypeError: fetch failed / cause: AggregateError / code: 'ECONNREFUSED'
+
+  ★ 문지기가 사는 이유가 D-8 의 설계 결정에 있다.
+    D-8 Step 6 에서 쿠키 검사를 fetch 앞에 뒀다(그때 근거는 속도).
+    그 순서 덕에 API 서버가 통째로 죽어도 로그인 안 한 사람은 못 들어온다.
+    뒤에 뒀으면 서버가 죽는 순간 문이 열렸다.
+    ⇒ 성능을 위해 고른 순서가 장애 상황에서 보안을 지켰다.
+
+
+6. 주소가 두 군데 박혀 있었다
+-----------------------------
+  grep -rn "localhost:8090" apps/web-next --include="*.ts"
+    lib/api.ts:7
+    proxy.ts:5
+
+  고침: lib/config.ts 신설 · 두 파일이 import 만 한다
+    export const API_BASE = process.env.API_BASE ?? 'http://localhost:8090/api';
+
+  고친 뒤 컨테이너 (-e API_BASE=http://host.docker.internal:8090/api):
+    로그인 /          200  0.423s   피드 실데이터
+    로그인 /explore   200  0.011s
+    로그인 /jaehoon   200  1.635s
+    로그인 /zzzzz     404  0.417s   ← D-7 의 404 복귀
+    로그아웃 /jaehoon 307
+    /minji 제목       <title>@minji · 인스타그램 클론</title>   ← D-9 generateMetadata
+
+  ★ 이미지를 안 바꿨다. 같은 이미지 하나가 값을 안 주면 실패하고 주면 동작한다.
+
+
+7. NEXT_PUBLIC_ 은 빌드 때 박힌다 (탐침 — 확인 후 원복, 흔적 0)
+----------------------------------------------------------------
+  HeaderNav(클라이언트 컴포넌트)에 process.env.NEXT_PUBLIC_PROBE 를 찍게 하고
+
+    NEXT_PUBLIC_PROBE="빌드때값" npx next build
+    NEXT_PUBLIC_PROBE="실행때값" node .next/standalone/apps/web-next/server.js
+
+  화면에 뜬 것:  data-probe="true">빌드때값
+  "빌드때값" 이 있는 곳:
+    .next/static/chunks/20i6joh7skygl.js            ← 브라우저가 받아가는 파일
+    .next/standalone/.../server/app/index.html      ← 미리 그려둔 HTML
+    .../_not-found.html · .../explore.html
+  "실행때값" 이 있는 곳:  0건
+
+  대조 — 서버에서 읽는 값(config.ts)은 실행 때 값을 읽는다:
+    API_BASE=... PORT=3500 node server.js → /jaehoon 200
+
+  ⇒ 서버 값 = 띄울 때 정해짐(이미지 하나로 환경 여러 개 O)
+     NEXT_PUBLIC_ = 빌드 때 정해짐(X) + JS 파일에 글자로 남아 누구나 열어볼 수 있다
+
+
+8. 과제 검증 (전부 직접 풀었다)
+--------------------------------
+  과제1 — static 복사 줄 제거
+    이미지 222MB → 218MB (static 층 4.24MB 만큼)
+    GET /  200 · 25,499 B (본문 크기는 그대로)
+    정적 11개 전부 404 (js 9 · css 1 · woff2 1)
+    ★ 피드 데이터는 온다 — "한강 노을" 이 HTML 에 1건.
+      서버가 그린 글자는 멀쩡하고 스타일·글꼴·상호작용만 없다.
+      "데이터를 못 가져온 것" 과 헷갈리기 쉬운 자리라 답안에서 갈랐다.
+
+  과제2 — api.ts 만 고치고 proxy.ts 는 그대로
+    로그인 /          200  ← 피드 정상. 여기만 보면 다 고친 것처럼 보인다
+    로그인 /explore   200
+    로그인 /jaehoon   500
+    로그인 /zzzzz     500
+    로그아웃 /jaehoon 307
+    로그 ECONNREFUSED 2건
+    ⇒ 절반짜리 수정이 가장 잘 보이는 화면에서만 성공한다
+
+  과제3 — 7절 참조 (탐침으로 이미 확인)
+
+  과제4 — (아래 9절)
+
+
+9. 과제4 — .dockerignore 를 비우면
+-----------------------------------
+  (측정 결과는 이 절 아래에 이어 적는다)
+  A(목록 있음) vs B(목록 비움) — 둘 다 --no-cache --progress=plain
+
+                       A(있음)      B(비움)
+    transferring ctx   31.32 kB     748.15 MB      ← 약 24,000배
+    build real          38.62 s      49.44 s
+    이미지              222 MB       249 MB        ← +27MB
+
+  ★★★ 3번이 내 지문의 전제를 뒤집었다.
+    초안은 "멀티스테이지라 마지막 단계가 새 공간에서 시작하므로 이미지는 그대로일 것"
+    을 깔고 "예상과 다를 수 있다" 고만 썼는데, 실제로는 늘었고 이유가 훨씬 고약하다.
+
+    /app            61.8 MB → 87.8 MB
+    /app/node_modules  54.9 MB(11개) → 80.9 MB(12개)
+    /app/node_modules/@img  35.3 MB → 61.3 MB
+
+    @img 안 (A):  colour · sharp-libvips-linux-arm64 · sharp-libvips-linuxmusl-arm64
+                  sharp-linux-arm64 · sharp-linuxmusl-arm64
+    @img 안 (B):  위 전부 + sharp-darwin-arm64 · sharp-libvips-darwin-arm64
+                  + sharp-wasm32   (그리고 최상위에 @emnapi 추가)
+
+    ⇒ 호스트(macOS)의 node_modules 가 COPY . . 로 빌더에 들어갔고,
+      standalone 추적기가 거기 있던 darwin 전용 바이너리까지 실행에 필요한 것으로
+      집어 리눅스 이미지에 담았다. 그 컨테이너에서 영원히 못 도는 26MB 다.
+
+    ★ Step 1 이 "제 맥에서 만든 폴더를 리눅스 서버에 복사하면 어떤 꾸러미는
+      그대로 안 돌아갑니다" 라고 말한 그 일이 실제로 벌어진 것.
+      안 담을 것 목록은 크기·시간만이 아니라 결과물의 정확성을 지킨다.
+
+    ⚠️ 이것이 로컬 standalone 12개 vs 컨테이너 11개(@emnapi 차이)의 원인이기도 하다.
+
+
+10. 게이트 (마지막 커밋 59a8884 뒤 재측정)
+------------------------------------------
+  web-next   next build 0 · tsc --noEmit 0 · eslint 0
+  라우트 표  ◐ / · ◐ /_not-found · ◐ /[username] · ƒ /api/profiles/revalidate · ◐ /explore
+             ƒ Proxy (Middleware)          — D-9 와 동일, 변화 없음
+  web-spa · api-stub  무변경 (git diff module-D9-deploy-optimization HEAD 빈 출력)
+  grep-check D10      FAIL 0 / WARN 0
+
+  교안 964줄 · 답안 479줄 (배점 합 100 · 25x4 · 항목합도 각 25)
+  회차 간 마감 요소 8/8 · 토글 8 · 튜터한마디 4 · 핵심멘트 3   (D-4~D-9 패턴 유지)
+  tic 0.05% / 0.04% · italic 0/0 · 이모지 4종/3종
+  250자 초과 0/0 (산문 기준 · 마크업 덩어리 오탐 제외) · em-dash 3+ 0
+  최장 코드블록 25줄 / 6줄 · 닫힌 ASCII 박스 폭 불일치 0 · 한 슬래시 주석 0
+  코드 블록 대조 6/6 (전문 축자 4 = next.config.ts·Dockerfile·config.ts·.dockerignore /
+                      발췌 2 = api.ts·proxy.ts) — 각각 그 Step 커밋과 대조
+  미래 모듈 키워드 0건 (Auth.js·Sentry·Vitest·Playwright·Storybook·MSW·useMemo·useCallback)
+
+  최종 커밋 상태에서 컨테이너 재빌드 후 전수 재현 (교안 주장값 전부 일치):
+    이미지 222MB · 꾸러미 11개 · 소스 0개
+    로그인 / 200 · /explore 200 · /jaehoon 200 · /zzzzz 404 · 로그아웃 307
+    <title>@minji · 인스타그램 클론</title>
+    /_next/image 200 image/jpeg 24,644 B
