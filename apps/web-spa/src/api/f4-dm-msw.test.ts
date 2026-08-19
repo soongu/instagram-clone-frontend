@@ -2,7 +2,7 @@
 // F-4 Step 1~2 — 진짜 client 를 그대로 두고 네트워크만 가로챈다.
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { server } from '../mocks/node';
-import { fetchConversations } from './dm';
+import { fetchConversations, fetchMessages } from './dm';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
@@ -22,5 +22,23 @@ describe('fetchConversations — 서버 없이, 우리 코드는 그대로', () 
     // success·data·message 세 칸이 아니라, data 칸 안에 있던 것만 손에 들어온다.
     expect(conversations[0]).not.toHaveProperty('success');
     expect(conversations[0].lastMessage).toBe('반포대교 남단이요! 해 지기 30분 전이 제일 좋아요');
+  });
+});
+
+// 목록에 적어둔 주소만 가로챈다. 방 번호가 주소에 들어가는 자리는
+// 따로 적어줘야 하고, 안 적으면 그 요청은 진짜로 밖으로 나간다.
+describe('fetchMessages — 주소 안의 방 번호까지 가로챈다', () => {
+  it('그 방의 쪽지가 온다', async () => {
+    const messages = await fetchMessages(1);
+
+    expect(messages).toHaveLength(2);
+    expect(messages[0].senderUsername).toBe('minji');
+  });
+
+  it('★ 방 번호가 주소에 실제로 실려 나간다 — 서버가 받은 것으로 확인한다', async () => {
+    const messages = await fetchMessages(7);
+
+    // 7번 방에는 아무것도 없다. 방 번호를 안 실어 보냈다면 1번 방 것이 왔을 것이다.
+    expect(messages).toEqual([]);
   });
 });

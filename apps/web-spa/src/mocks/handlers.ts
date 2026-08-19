@@ -8,7 +8,7 @@
 // 가져다 쓰지 않고 주소를 직접 적는다. 가져다 쓰면 우리 코드가 주소를 틀리게
 // 바꿔도 핸들러가 같이 따라 움직여서 아무 일도 없는 것처럼 보인다.
 import { http, HttpResponse } from 'msw';
-import type { Conversation } from '../types/dm';
+import type { Conversation, DirectMessage } from '../types/dm';
 
 export const MOCK_API_BASE = 'http://localhost:8090/api';
 
@@ -27,6 +27,30 @@ export const mockConversations: Conversation[] = [
   },
 ];
 
+export const mockMessages: DirectMessage[] = [
+  {
+    messageId: 1,
+    conversationId: 1,
+    senderUsername: 'minji',
+    content: '한강 사진 그거 어디서 찍은 거예요?',
+    createdAt: '2026-08-18T09:12:00',
+  },
+  {
+    messageId: 2,
+    conversationId: 1,
+    senderUsername: 'jaehoon',
+    content: '반포대교 남단이요! 해 지기 30분 전이 제일 좋아요',
+    createdAt: '2026-08-18T09:14:00',
+  },
+];
+
 export const handlers = [
   http.get(`${MOCK_API_BASE}/conversations`, () => HttpResponse.json(ok(mockConversations))),
+
+  // 주소 가운데가 바뀌는 자리는 :이름 으로 받는다. 받은 값은 params 에 들어온다.
+  http.get(`${MOCK_API_BASE}/conversations/:conversationId/messages`, ({ params }) => {
+    const id = Number(params.conversationId);
+
+    return HttpResponse.json(ok(mockMessages.filter((message) => message.conversationId === id)));
+  }),
 ];
