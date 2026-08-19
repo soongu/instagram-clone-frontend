@@ -1,0 +1,55 @@
+// apps/web-spa/scratch/f4-unhandled-modes-probe.test.ts
+// 탐침 — onUnhandledRequest 세 모드에서 "핸들러 없는 요청" 이 실제로 어떻게 되나.
+// api-stub 이 8090 에 떠 있는 상태에서 돌린다.
+import { describe, it, beforeAll, afterAll } from 'vitest';
+import { setupServer } from 'msw/node';
+
+const BASE = 'http://localhost:8090/api';
+
+// 핸들러가 하나도 없는 서버 — 무엇을 보내도 "핸들러 없음" 이다.
+const empty = setupServer();
+
+async function tryIt(label: string) {
+  try {
+    const res = await fetch(`${BASE}/tags`);
+    const text = await res.text();
+    console.log(`  ${label.padEnd(12)} → [${res.status}] ${text.slice(0, 80)}`);
+  } catch (error) {
+    console.log(`  ${label.padEnd(12)} → 던짐: ${String(error).slice(0, 100)}`);
+  }
+}
+
+describe('onUnhandledRequest 모드별', () => {
+  beforeAll(() => {
+    /* 각 판에서 직접 listen 한다 */
+  });
+  afterAll(() => empty.close());
+
+  it('기본값 (아무것도 안 줌)', async () => {
+    console.log('\n[기본값]');
+    empty.listen();
+    await tryIt('기본값');
+    empty.close();
+  });
+
+  it("'warn'", async () => {
+    console.log("\n['warn']");
+    empty.listen({ onUnhandledRequest: 'warn' });
+    await tryIt('warn');
+    empty.close();
+  });
+
+  it("'error'", async () => {
+    console.log("\n['error']");
+    empty.listen({ onUnhandledRequest: 'error' });
+    await tryIt('error');
+    empty.close();
+  });
+
+  it("'bypass'", async () => {
+    console.log("\n['bypass']");
+    empty.listen({ onUnhandledRequest: 'bypass' });
+    await tryIt('bypass');
+    empty.close();
+  });
+});

@@ -1,0 +1,70 @@
+// apps/web-spa/scratch/f4-drift-probe.test.ts
+// F-4 계획 단계 탐침 — 같은 주소에 대해 c5 기본 핸들러와 c6 덮어쓰기가 뭐라고 답하나.
+// 진짜 서버(apps/api-stub) 응답은 curl 로 따로 재서 나란히 놓는다.
+import { describe, it, beforeAll, afterAll, afterEach } from 'vitest';
+import { server, fakeAuth, API_BASE } from './c5-server-harness';
+import { c6Handlers, fakeDb } from './c6-server-harness';
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+async function probe(label: string, url: string, init?: RequestInit) {
+  try {
+    const res = await fetch(url, init);
+    const text = await res.text();
+    console.log(`  ${label.padEnd(22)} [${res.status}] ${text.slice(0, 150)}`);
+  } catch (error) {
+    console.log(`  ${label.padEnd(22)} [던짐] ${String(error).slice(0, 120)}`);
+  }
+}
+
+describe('F-4 드리프트 탐침', () => {
+  it('1. 로그인 — 없는 아이디', async () => {
+    console.log('\n[1] POST /auth/login  {"username":"nobody-such-user"}');
+    await probe('c5 기본', `${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'nobody-such-user' }),
+    });
+  });
+
+  it('2. 좋아요 두 번 — c5 기본', async () => {
+    console.log('\n[2] POST /posts/1/like  두 번 연속 (c5 기본 핸들러)');
+    fakeAuth.reset();
+    const token = fakeAuth.issueAccess();
+    const headers = { authorization: `Bearer ${token}` };
+    await probe('c5 첫 번째', `${API_BASE}/posts/1/like`, { method: 'POST', headers });
+    await probe('c5 두 번째', `${API_BASE}/posts/1/like`, { method: 'POST', headers });
+  });
+
+  it('3. 좋아요 두 번 — c6 덮어쓰기', async () => {
+    console.log('\n[3] POST /posts/1/like  두 번 연속 (server.use(...c6Handlers()) 뒤)');
+    fakeAuth.reset();
+    fakeDb.reset();
+    server.use(...c6Handlers());
+    const token = fakeAuth.issueAccess();
+    const headers = { authorization: `Bearer ${token}` };
+    await probe('c6 첫 번째', `${API_BASE}/posts/1/like`, { method: 'POST', headers });
+    await probe('c6 두 번째', `${API_BASE}/posts/1/like`, { method: 'POST', headers });
+  });
+
+  it('4. 하네스에만 있는 주소 · 진짜 서버에만 있는 주소', async () => {
+    console.log('\n[4] 한쪽에만 있는 주소');
+    await probe('c5 /whoami', `${API_BASE}/whoami`);
+    await probe('c5 /users/jaehoon', `${API_BASE}/users/jaehoon`);
+  });
+
+  it('5. 댓글 작성 — 빈 내용', async () => {
+    console.log('\n[5] POST /posts/1/comments  {"content":""}');
+    fakeAuth.reset();
+    fakeDb.reset();
+    server.use(...c6Handlers());
+    const token = fakeAuth.issueAccess();
+    await probe('c6 묶음', `${API_BASE}/posts/1/comments`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: '' }),
+    });
+  });
+});

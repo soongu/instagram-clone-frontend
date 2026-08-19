@@ -1,0 +1,49 @@
+// apps/web-spa/scratch/f4-vimock-vs-msw-probe.test.ts
+// F-4 계획 단계 탐침 — 같은 함수를 MSW 로 확인하면 vi.mock 판이 못 보던 것이 보이나.
+//
+// F-2 의 f2-dm.test.ts 는 './client' 를 통째로 갈아 끼웠다. 그래서 그 판은
+// baseURL·봉투 벗기기 인터셉터·JWT 부착을 하나도 안 지난다.
+// 여기서는 진짜 client 를 그대로 두고 네트워크만 가로챈다.
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+import { fetchConversations, fetchMessages } from '../src/api/dm';
+
+const seen: string[] = [];
+
+const server = setupServer(
+  // 진짜 서버가 말하는 그대로 — 봉투에 담아서 보낸다.
+  http.get('http://localhost:8090/api/conversations', ({ request }) => {
+    seen.push(new URL(request.url).pathname);
+    return HttpResponse.json({
+      success: true,
+      data: [{ id: 3, partnerName: 'minji' }],
+      message: null,
+    });
+  }),
+  http.get('http://localhost:8090/api/conversations/:id/messages', ({ request }) => {
+    seen.push(new URL(request.url).pathname);
+    return HttpResponse.json({ success: true, data: [], message: null });
+  }),
+);
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => {
+  server.resetHandlers();
+  seen.length = 0;
+});
+afterAll(() => server.close());
+
+describe('MSW 로 다시 확인한다', () => {
+  it('봉투를 벗긴 배열이 나온다 — 벗기는 일은 인터셉터가 진짜로 한다', async () => {
+    const conversations = await fetchConversations();
+
+    expect(conversations).toEqual([{ id: 3, partnerName: 'minji' }]);
+  });
+
+  it('★ 서버가 실제로 받은 주소에 :8090/api 앞부분이 붙어 있다', async () => {
+    await fetchMessages(7);
+
+    expect(seen).toEqual(['/api/conversations/7/messages']);
+  });
+});
