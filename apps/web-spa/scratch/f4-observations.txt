@@ -1,0 +1,297 @@
+F-4 (API 모킹 — MSW) 채증
+브랜치 module-F4-msw (module-F3-rtl 25ccc6a 에서 분기)
+측정일 2026-08-20
+
+주의: 이 세션은 AI_AGENT=claude-code_2-1-220_agent 가 설정돼 있어 Vitest 가 출력을 바꾼다.
+      아래 숫자 중 러너 출력에 기댄 것은 전부
+      `env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE` 로 다시 잰 값이다.
+
+
+1절 — 착수 전제 (계획 단계 실행)
+────────────────────────────────
+1-1. MSW 는 이미 깊이 들어와 있다 (src + scratch 기준)
+     msw 를 import 하는 파일   8개
+       scratch/c5-server-harness.ts · c6-server-harness.ts · c9-server-harness.ts
+       src/api/c5-client.test.ts · c5-fetch-vs-axios.test.ts
+       src/routes/c5-effect-fetch.test.tsx · c5-use-query.test.tsx
+       src/routes/c6-throw-on-error.test.tsx
+     http.get/post/put/delete/patch   26건
+     HttpResponse                     46건
+     server.use(                      56건
+     setupServer(                      1건   ← 하나뿐. c5 하네스가 만들고 나머지는 server.use 로 덮는다
+
+1-2. F-3 이 예고한 두 화면이 이미 있다
+     c5-use-query.test.tsx:40  '응답이 오면 열 장이 뜬다'
+     c5-use-query.test.tsx:49  '실패하면 서버가 보낸 사유가 뜬다'
+     => "피드가 도착하는 화면도, 실패하는 화면도 판으로 확인" 은 이미 지켜져 있었다.
+        F-4 의 새것은 그 화면이 아니라 「무엇이 그것을 가능하게 하나」와 그 경계다.
+
+1-3. 앱이 부르는 주소 9개 (src, .test 제외)
+     GET  /posts                              posts.ts:10
+     GET  /tags                               posts.ts:18
+     GET  /posts/{id}                         posts.ts:24
+     POST /posts/{id}/like                    posts.ts:38
+     GET  /posts/{postId}/comments            comments.ts:6
+     DEL  /comments/{commentId}               comments.ts:12
+     GET  /conversations/{id}/messages        dm.ts:7
+     GET  /conversations                      dm.ts:13   ← 세 하네스 어디에도 핸들러가 없다
+     POST /auth/login                         auth.ts:11
+     (+ POST /auth/refresh — client.ts 인터셉터가 맨 axios 로 직접)
+
+1-4. 커리큘럼 항목 1건이 우리 상황에 해당 없음
+     `npx msw init public/` 은 브라우저 전용 서비스 워커를 심는 명령이다.
+     msw 2.15.0 CLI 는 `init` 단 하나뿐이고, 갖다 놓는 것은 mockServiceWorker.js (9,666 B).
+     우리 판은 msw/node 의 setupServer 라 워커가 필요 없다. web-spa 에는 public/ 도 없었다.
+     => Step 8 에서 「브라우저 재사용」의 자리로 정식으로 쓴다.
+
+1-5. 커리큘럼 실습의 절반이 앱에 없다
+     "댓글 제출" — CommentForm 의 onSubmit 은 PostCard.tsx:60 에서
+     dispatch({ type: 'add', content: text }) 로 화면 안 reducer 에만 들어간다.
+     서버로 가는 쓰기는 좋아요와 댓글 삭제뿐. api-stub 에는 POST /api/posts/:id/comments 가 있다.
+     => 본문의 「보내는 요청」은 로그인(본문이 있는 유일한 호출)으로 가르치고,
+        댓글 제출은 [구현] 과제로 돌렸다.
+
+
+2절 — 시의성 (npm registry 기준 · WebSearch 아님)
+────────────────────────────────
+     msw                 설치본 2.15.0  = registry latest   드리프트 0
+     vitest              설치본 4.1.10  / latest 4.1.11     patch
+     @testing-library/react  16.3.2     = latest
+     react               19.2.8         = latest
+     jsdom               설치본 27.0.1  / latest 30.0.1     세 메이저
+     => jsdom 승격 안 함. F-3 와 결론은 같으나 근거가 다르다:
+        @mswjs/interceptors 의 dependencies 에 jsdom 이 0건이고
+        (@open-draft/* · is-node-process · outvariant · strict-event-emitter 뿐),
+        Node 가로채기는 jsdom 이 아니라 Node 요청 계층을 패치한다.
+     API 시그니처 실행 확인: http.get · http.post · HttpResponse.json · HttpResponse.error
+                            · setupServer · setupWorker · server.use · resetHandlers
+                            · delay · onUnhandledRequest · request.json() · params
+
+
+3절 — ★★★ 가로채기의 경계 (Step 3 척추)
+────────────────────────────────
+핸들러 목록에 없는 주소를 부르면 어떻게 되나. api-stub 을 8090 에 띄운 상태에서
+핸들러가 하나도 없는 setupServer() 로 GET /api/tags 를 부른 결과:
+
+  onUnhandledRequest   알림       결과
+  ─────────────────────────────────────────────────────────────
+  (안 줌 = 기본값)     Warning    200 + 진짜 데이터 (한강·노을·제주도…)
+  'warn'               Warning    200 + 진짜 데이터
+  'error'              Error      막힘 — InternalError: [MSW] Cannot bypass a request
+                                  when using the "error" strategy for the
+                                  "onUnhandledRequest" option
+  'bypass'             없음       200 + 진짜 데이터
+
+같은 요청을 api-stub 을 끈 채로 다시:
+  기본값·warn·bypass → TypeError: fetch failed
+  => 같은 코드·같은 명령·같은 판인데 「내 노트북에 서버가 떠 있느냐」로 결과가 갈린다.
+     'error' 만 환경에 안 흔들린다.
+
+부수 확인: 이 저장소의 MSW 판은 전부 이미 server.listen({ onUnhandledRequest: 'error' }) 이다.
+          그래서 npm test 결과가 api-stub 켠 채(143/990)와 끈 채(143/990) 동일했다.
+
+
+4절 — ★★★ vi.mock 과 MSW 가 갈리는 지점 (Step 2 척추)
+────────────────────────────────
+src/api/client.ts 의 API_BASE_URL 을 'http://localhost:9999/wrong' 으로 통째로 바꾸고
+같은 함수를 확인하는 두 판을 나란히 돌렸다.
+
+  판                                    결과
+  ──────────────────────────────────────────────
+  src/api/f2-dm.test.ts  (vi.mock)      4건 전부 통과
+  src/api/f4-dm-msw.test.ts  (MSW)      2건 전부 실패
+
+vi.mock('./client') 는 client.ts 를 통째로 치우므로 baseURL·봉투 벗기기 인터셉터·
+JWT 부착이 그 판을 하나도 안 지난다. 그래서 서버 주소가 틀려도 아무 일이 없다.
+측정 후 원복 확인 (git diff 빈 출력).
+
+이 때문에 src/mocks/handlers.ts 는 client.ts 의 API_BASE_URL 을 import 하지 않고
+MOCK_API_BASE 로 주소를 직접 적는다. 가져다 쓰면 핸들러가 같이 따라 움직여
+이 교보재가 죽는다. (파일 상단 주석에 이유를 박아뒀다.)
+
+
+5절 — 화면의 세 얼굴 (Step 5)
+────────────────────────────────
+src/routes/f4-feed-screen.test.tsx — HomePage 를 withQuery(withRouter(...)) 로 그린다.
+  그리자마자         '피드를 불러오는 중이에요…' 가 보인다
+  그 순간            screen.getAllByRole('article') 이 throw 한다
+  기다리면           findAllByRole('article') 이 10장을 준다 (allPosts.length)
+  도착 후            로딩 문구가 사라진다
+  서버가 500 이면    카드가 영영 안 뜬다 (실패는 C-6 이후 위로 던져진다)
+
+⚠️ delay 는 기다림을 「만드는」 것이 아니다.
+   FEED_DELAY_MS 를 100 → 0 으로 바꿔도 5건 전부 그대로 통과했다.
+   첫 렌더는 응답이 아무리 빨라도 항상 기다리는 화면이다(요청이 렌더보다 늦다).
+   delay 는 그 순간을 눈으로 볼 만큼 늘릴 뿐. 교안이 이대로 서술한다.
+
+
+6절 — ★★★ 판이 앱의 결함을 잡았다 (Step 6)
+────────────────────────────────
+핸들러가 request.json() 으로 본문을 읽고 진짜 서버처럼 거절하게 만들자마자 드러났다.
+
+  없는 아이디로 login('nobody-such-user'):
+    서버가 보낸 것   401 "아이디 또는 비밀번호가 올바르지 않습니다"
+    앱이 올린 것     ApiError status=401 message="다시 로그인해주세요"
+
+  원인: client.ts 응답 인터셉터의 401 갈래가 로그인 요청까지 갱신 대상으로 본다.
+        갱신할 리프레시 토큰이 없으니 LOGIN_AGAIN 으로 갈아치운다.
+        (리프레시 토큰을 들고 있는 채로 해도 결과 동일)
+  => 로그인하려던 사람에게 "다시 로그인해주세요" 라고 말한다.
+
+  왜 지금까지 안 보였나: c5-server-harness 의 login 핸들러는 본문을 아예 안 읽는다.
+                        어떤 아이디로도 200 + jaehoon 을 준다. 401 을 낼 수가 없었다.
+  (진짜 서버는 거절한다 — curl 확인:
+   POST /api/auth/login {"username":"nobody-such-user"} → 401 "아이디 또는 비밀번호가 올바르지 않습니다")
+
+  고침: client.ts 에 AUTH_FREE_PATHS = ['/auth/login'] 을 두고 401 갱신 갈래에서 뺐다.
+  회귀: c5-auth-interceptor.test.ts 14건 전부 통과.
+
+
+7절 — 핸들러는 주장이다 (Step 7)
+────────────────────────────────
+src/mocks/f4-contract.test.ts — apps/api-stub/server.mjs 를 읽어 라우트를 직접 뽑아
+우리 핸들러와 대조한다. 손으로 옮겨 적으면 그 목록이 또 하나의 주장이 되기 때문.
+
+  읽어낸 진짜 라우트   15개 (계획 단계 grep 수치와 일치)
+  우리 핸들러          4개 — POST /auth/login · GET /posts
+                           · GET /conversations · GET /conversations/:conversationId/messages
+  결과                 4/4 통과
+
+  가드 확인: c5 하네스에 실제로 있는 GET /whoami 를 handlers 에 넣으면
+            그 1건만 잡힌다 (나머지 4건은 통과). 진짜 서버에 없는 주소다.
+
+
+8절 — 브라우저 재사용 (Step 8)
+────────────────────────────────
+8-1. npx msw init public/ --save
+     public/mockServiceWorker.js  9,666 B 생성
+     package.json 에 "msw": { "workerDirectory": ["public"] } 추가됨
+
+8-2. 브라우저 실측 — api-stub 을 완전히 끈 채로
+     VITE_MOCK_API=1 npx vite --port 5173
+       serviceWorker 등록   http://localhost:5173/mockServiceWorker.js
+       article 개수         10
+       로딩 문구            사라짐
+       첫 카드              "jaehoon좋아요 1240개jaehoon 오늘 한강 노을이…더 보기댓글 32개 모두 보기게시"
+       페이지에서 직접 fetch('http://localhost:8090/api/posts')
+                            → 200 · data 10개 · 봉투 {success,data,message}
+
+     플래그 없이 (대조군, api-stub 여전히 꺼짐)
+       article 개수         0
+       로딩 문구            '피드를 불러오는 중이에요…' 에 갇힘
+       직접 fetch           TypeError: Failed to fetch
+
+     ⚠️ 측정 시 document.visibilityState 는 'hidden' 이었다.
+        DOM 내용·개수는 숨은 탭에서도 참이라 이 측정은 유효하다(과목 캐논).
+
+8-3. 워커는 남아서 계속 가로채지 않는다 — public/mockServiceWorker.js 소스가 직접 말한다
+     :262  if (!activeClientIds.has(client.id)) return passthrough()
+             → MOCK_ACTIVATE 를 안 받은 클라이언트의 요청은 그냥 통과시킨다
+     :83   if (remainingClients.length === 0) self.registration.unregister()
+             → 클라이언트가 다 닫히면 스스로 등록을 지운다
+     :111  if (activeClientIds.size === 0) return
+     실측에서도 플래그를 끄고 새로 열자 getRegistrations() 가 빈 배열이었다.
+
+8-4. 번들 — 코드는 0 B, 워커 파일은 실린다
+     배선 전 (msw init 만 한 상태)   dist/assets/index-EokRGPrp.js  531,689 B
+     배선 후                          dist/assets/index-B9rLD8p_.js  531,727 B   (+38 B)
+     별도 mocks 청크                  안 생김 (import() 가 DEV 조건 안이라 통째로 제거)
+     SignUpPage 청크                  100,007 B (불변)
+     CSS                              43,981 B (불변 · 해시도 동일 index-DiZ4qHXo.css)
+     dist/mockServiceWorker.js        9,666 B  ← public/ 이라 배포본에 그대로 실린다
+     => 「코드는 안 들어가는데 파일은 들어간다」. 과제 소재.
+
+
+9절 — 게이트 최종 (마지막 커밋 ab80145 뒤 재측정)
+────────────────────────────────
+  npm test        147 files / 1014 passed    (F-3: 142 / 986 · +5 파일 +28 판)
+                  Step 1~8 만 세면 146 / 1008 이고, 과제 답안 판(f4-answer.test.ts)
+                  6건이 더해져 147 / 1014 다. 다음 모듈 기준선은 147 / 1014.
+  tsc --noEmit    0   (apps/web-spa 에서)
+  eslint src scratch  0
+  npm run build   성공
+  web-next        무변경
+  api-stub        무변경
+  커밋            7개 (Step 1·3·4·5·6·7·8) — Step 2 는 코드 변경 없음(측정)
+
+  ⚠️ tsc·eslint 는 반드시 apps/web-spa 에서 돌린다.
+     저장소 뿌리에서 eslint 를 부르면 설정을 못 찾아 마이그레이션 안내를 뱉고
+     종료 코드만 보면 통과처럼 보인다 — 이번 세션에서 실제로 한 번 속았다.
+
+
+10절 — 측정 사고 (전부 코드가 아니라 재는 쪽 문제)
+────────────────────────────────
+10-1. cwd 가 저장소 뿌리로 밀린 채 vitest 를 돌려 7건 중 6건이 깨졌다.
+      web-spa 의 vitest.config.ts 를 아예 안 읽어 MSW 가 가로채지 못한 것.
+      「코드 문제」로 오독할 뻔했다. F-3 canon 의 같은 사고 재발.
+      => 판을 돌리기 전에 pwd 를 찍는다.
+
+10-2. zsh 가 「없음」을 거짓말했다 (F-1·F-2·F-3 에 이어 4연속).
+      grep -rn "..." src --include=*.ts 에서 매치 없는 glob 이 명령 전체를 중단시켜
+      빈 출력이 나왔다. 따옴표를 씌우고 탐침(일부러 매치되는 것)으로 재확인.
+
+10-3. 전체 판을 api-stub 켠 채로 한 번, 끈 채로 한 번 돌려 같은 값(143/990)을 확인했다.
+      이 회차가 가르치는 내용이 바로 「환경이 결과를 바꾼다」라, 게이트 숫자 자체가
+      그 함정을 안 밟았는지 확인이 필요했다.
+
+
+11절 — 과제 검증 (전부 직접 풀어봤다)
+────────────────────────────────
+답안 코드 scratch/f4-story-answer.ts + 판 src/mocks/f4-answer.test.ts (6/6 통과)
+
+과제 1 (댓글 제출)
+  createComment + POST /posts/:postId/comments 핸들러. 확인 3종 전부 통과.
+  ⚠️ 공백만 있는 내용('   ')도 거절돼야 한다 — 연습용 서버가 trim 을 한다.
+  ⚠️ request.json() 에 await 를 빼면 body.content 가 늘 undefined 라 전부 400 이 된다.
+
+과제 2 (배포본의 워커 파일)
+  npm run build → dist/mockServiceWorker.js 9,666 B 실린다 (8-4절).
+  제거 방법을 실제로 만들어 확인했다 — vite.config.ts 에 closeBundle 플러그인:
+    apply: 'build' + await rm('dist/mockServiceWorker.js', { force: true })
+  결과  빌드 후 dist/ = assets · index.html 뿐 (워커 파일 사라짐)
+        개발 서버 /mockServiceWorker.js → 200 (그대로 됨)
+  ⚠️ apply: 'build' 를 빠뜨리면 개발 서버에서도 지우려 들어 흉내 서버가 안 켜진다.
+  측정 후 vite.config.ts 원복 확인 (grep 0건).
+
+과제 3 (좋아요)
+  likeDb 를 핸들러 바깥에 두고 beforeEach 에서 reset().
+  실측  첫 누름 liked:true/1241 · 둘째 누름 liked:false/1240
+        다음 판 첫 누름 다시 liked:true/1241 (처음 상태 복귀)
+  server.use 로 500 → '좋아요를 저장하지 못했습니다' 가 손에 들어온다.
+  ⚠️ reset() 에서 allPosts.map(post => ({...post})) 로 복사본을 만들어야 한다.
+     원본을 그대로 쓰면 판이 원본을 고쳐 다른 판까지 오염된다.
+
+과제 4 (새어 나간 요청은 어디까지 가나)
+  ★★★ 초안 지문이 실측에 반증돼 통째로 갈아엎었다 (D-4~F-3 에 이어 11연속).
+  초안: "'error' 를 'warn' 으로 바꾸고 서버 켠 채/끈 채로 돌려 비교하라"
+  실측: 쪽지 주소는 인증이 걸려 있어서 진짜 서버로 새어도 401 로 막힌다.
+        피드 주소로 바꿔도 판이 1초 타임아웃으로 깨졌다. 둘 다 지문이 기대한
+        "서버가 켜져 있으면 통과" 가 안 나온다.
+  원인을 재서 확정 — 같은 조건(서버 켬 · 핸들러 0개 · 'warn')에서:
+        fetch              → 200 · 14ms      (진짜 서버까지 닿는다)
+        XMLHttpRequest     → onerror
+        axios (우리 인스턴스) → 던짐 '서버에 연결할 수 없어요'
+    axios 는 이 환경에서 XHR 을 쓰고, jsdom 의 XHR 이 다른 주소로 나가는 것을 막는다.
+    서버를 끄면 fetch 만 결과가 바뀌고(TypeError) axios 는 그대로다.
+  => 지문을 "fetch 와 api 인스턴스를 같은 조건에서 비교하라" 로 다시 썼고,
+     교안 Step 3 에도 ⚠️ 절을 신설했다. 표가 fetch 로 잰 값이라는 측정 조건도 명시.
+  ★ 이 실측이 없었으면 교안이 "목록에 없으면 진짜 서버 답을 받는다" 를
+    우리 앱에도 참인 것처럼 서술할 뻔했다.
+
+
+12절 — 교안·답안 지표
+────────────────────────────────
+  교안 1,125줄 · 답안 485줄
+  배점 합 100 (25×4 · 항목합도 각 25)
+  마감 요소 8/8 · 8 · 4 · 3   (D-4~F-3 패턴 유지)
+  grep-check F4  FAIL 0 / WARN 0  (2 파일)
+  italic 0 / 0
+  이모지 4종(⚠🌟🎯💡🙋 중 5종) / 3종
+  tic 0.12% / 0.04%
+  최장 문장 130자 / 130자
+  최장 코드블록 28줄 / 27줄
+  한 슬래시 주석 0 / 0
+  닫는 테두리 폭 불일치 0 / 0
+    ⚠️ 처음 검사에서 1건이 잡혔고 진짜였다 — setupServer 박스의 닫는 │ 가
+       ┐ 보다 2칸 왼쪽에 있었다. 폭을 계산해 재생성(양쪽 21).
+       단독 │ 연결선은 테두리가 아니므로 검사에서 제외해야 오탐이 안 난다.
