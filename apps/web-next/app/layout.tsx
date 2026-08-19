@@ -24,7 +24,11 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
         <Providers>
           <header className="border-b border-black/10">
-            <HeaderNav />
+            {/* 머리말은 지금 어느 주소에 와 있는지를 읽는다. 그건 요청이 와야 아는 값이라
+                미리 그릴 수 없는 주소가 있다 — 그 자리를 이 경계가 받아준다. */}
+            <Suspense fallback={<div className="mx-auto h-14 max-w-3xl" />}>
+              <HeaderNav />
+            </Suspense>
           </header>
           {children}
         </Providers>
