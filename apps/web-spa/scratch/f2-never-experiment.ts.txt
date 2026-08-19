@@ -1,0 +1,17 @@
+// F-2 Step 3 실험 보관 — 이 판은 저장소에 두지 않는다.
+// 커버리지는 66.66 → 100 이 되지만, 이 판이 지키는 것은 없다.
+// 닿는 유일한 방법이 타입 검사를 속이는 것이고, 확인하는 내용은
+// '잘못 부르면 잘못된 것이 나온다' 뿐이다.
+
+import { describe, it, expect } from 'vitest';
+import { commentReducer, initialCommentState, type CommentAction } from './comments';
+
+describe('never 갈래를 억지로 덮으면', () => {
+  it('닿기는 한다', () => {
+    const lie = { type: 'unknown' } as unknown as CommentAction;
+
+    const result = commentReducer(initialCommentState, lie);
+
+    expect(result).toEqual({ type: 'unknown' });
+  });
+});
