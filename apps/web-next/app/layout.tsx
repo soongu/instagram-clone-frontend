@@ -1,7 +1,9 @@
 // apps/web-next/app/layout.tsx
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { HeaderNav } from './components/HeaderNav';
 import { Providers } from './components/Providers';
+import { TextScaleStyle } from './components/TextScaleStyle';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,6 +17,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="ko">
       <body className="min-h-screen bg-white text-black antialiased">
+        {/* 쿠키를 읽는 조각 하나만 여기서 흘려보낸다. 나머지는 미리 그려진 채로 남는다. */}
+        <Suspense fallback={null}>
+          <TextScaleStyle />
+        </Suspense>
         {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
         <Providers>
           <header className="border-b border-black/10">

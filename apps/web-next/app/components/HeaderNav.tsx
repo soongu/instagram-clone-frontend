@@ -15,7 +15,7 @@ const items = [
 // 그래서 이 컴포넌트는 클라이언트에서 돈다.
 export function HeaderNav() {
   const pathname = usePathname();
-  const { large, toggle } = useTextScale();
+  const { toggle } = useTextScale();
 
   return (
     <nav className="mx-auto flex max-w-3xl items-center gap-4 p-4 text-sm">
@@ -36,11 +36,10 @@ export function HeaderNav() {
       <UserSearch />
       <button
         type="button"
-        aria-pressed={large}
         onClick={toggle}
         className="rounded border border-black/15 px-2 py-1"
       >
-        글자 크게
+        글자 크기
       </button>
     </nav>
   );

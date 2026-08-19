@@ -1,32 +1,32 @@
 // apps/web-next/app/components/Providers.tsx
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { createContext, useContext, type ReactNode } from 'react';
 
 type TextScaleValue = {
-  large: boolean;
   toggle: () => void;
 };
 
-// 통로를 하나 만든다. C-3 에서 만든 ThemeContext 와 같은 모양이다.
+// 통로는 그대로 둔다. 다만 이 통로로 흐르는 것이 바뀌었다 —
+// 값을 들고 있지 않고, 값을 바꾸는 방법만 내려보낸다.
 const TextScaleContext = createContext<TextScaleValue>({
-  large: false,
   toggle: () => {},
 });
 
-// 상태를 드는 곳이라 브라우저에서 돌아야 한다.
-// 그런데 안에 그릴 것은 여기서 만들지 않는다 — children 으로 받아 그 자리에 놓기만 한다.
 export function Providers({ children }: { children: ReactNode }) {
-  const [large, setLarge] = useState(false);
+  const router = useRouter();
 
-  return (
-    <TextScaleContext value={{ large, toggle: () => setLarge(!large) }}>
-      <div className={large ? 'text-lg' : undefined}>{children}</div>
-    </TextScaleContext>
-  );
+  // 상태를 여기서 들지 않는다. 쿠키에 적고, 서버에게 다시 그려달라고 한다.
+  function toggle() {
+    const large = document.cookie.includes('text-scale=large');
+    document.cookie = `text-scale=${large ? 'normal' : 'large'}; path=/; max-age=31536000`;
+    router.refresh();
+  }
+
+  return <TextScaleContext value={{ toggle }}>{children}</TextScaleContext>;
 }
 
-// 꺼내 쓰는 쪽은 Context 가 무엇인지 몰라도 된다. 이 훅만 부르면 된다.
 export function useTextScale() {
   return useContext(TextScaleContext);
 }
