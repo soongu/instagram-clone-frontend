@@ -8,6 +8,12 @@ const API_BASE = 'http://localhost:8090/api';
 // 요청이 우리 앱에 도착했지만 아직 아무것도 안 그려진 순간에 끼어든다.
 // 여기서는 아직 한 글자도 안 나갔으니 상태 코드를 우리가 정할 수 있다.
 export async function proxy(request: NextRequest) {
+  // 화면을 달라는 요청에만 확인이 필요하다.
+  // 폼을 제출하면 같은 주소로 POST 가 오는데, 거기까지 물어볼 이유는 없다.
+  if (request.method !== 'GET') {
+    return NextResponse.next();
+  }
+
   const username = request.nextUrl.pathname.slice(1);
 
   const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`);
