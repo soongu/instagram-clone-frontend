@@ -150,6 +150,19 @@ function verifyAccessToken(header) {
   return { status: 'ok', username: found.username };
 }
 
+// 누가 보냈는지를 가린다. 토큰이 없으면 X-Actor 를 본다.
+// X-Actor 는 브라우저가 아니라 서버가 붙이는 헤더다 — 서버가 쿠키를 읽어 "이 사람" 이라고 말해준다.
+function resolveActor(headers) {
+  if (typeof headers.authorization === 'string') {
+    return verifyAccessToken(headers.authorization);
+  }
+  const actor = headers['x-actor'];
+  if (typeof actor !== 'string' || findUser(actor) === undefined) {
+    return { status: 'missing', username: null };
+  }
+  return { status: 'ok', username: actor };
+}
+
 function ok(res, data, status = 200) {
   send(res, status, { success: true, data, message: null });
 }
@@ -419,12 +432,14 @@ const routes = [
     },
   },
 
-  // 좋아요 — 토큰이 필요하고, 다섯 번에 한 번은 서버가 실패한다.
+  // 좋아요 — 누가 눌렀는지를 확인하고, 다섯 번에 한 번은 서버가 실패한다.
+  // 누구인지 말하는 방법은 둘이다. 토큰을 들고 오거나(SPA), 서버가 대신 밝혀주거나(X-Actor).
+  // 팔로우와 같은 헤더를 쓴다 — 브라우저가 아니라 서버가 붙이는 값이다.
   {
     method: 'POST',
     match: (path) => /^\/api\/posts\/\d+\/like$/.test(path),
     handle: async (req, res, path) => {
-      const auth = verifyAccessToken(req.headers.authorization);
+      const auth = resolveActor(req.headers);
       if (auth.status === 'missing') return fail(res, 401, '로그인이 필요합니다');
       if (auth.status === 'invalid') return fail(res, 401, '토큰이 유효하지 않습니다');
       if (auth.status === 'expired') return fail(res, 401, '액세스 토큰이 만료되었습니다');

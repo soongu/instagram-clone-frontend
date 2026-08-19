@@ -13,7 +13,7 @@ export async function FeedList() {
         <li key={post.id} className="rounded border border-black/10 p-4">
           <p className="font-semibold">@{post.username}</p>
           <p className="mt-1">{post.content}</p>
-          <LikeButton likeCount={post.likeCount} liked={post.liked} />
+          <LikeButton postId={post.id} likeCount={post.likeCount} liked={post.liked} />
         </li>
       ))}
     </ul>

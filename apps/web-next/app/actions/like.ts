@@ -1,0 +1,38 @@
+// apps/web-next/app/actions/like.ts
+'use server';
+
+import { cookies } from 'next/headers';
+
+const API_BASE = 'http://localhost:8090/api';
+
+export type LikeState = {
+  liked: boolean;
+  likeCount: number;
+  message: string | null;
+};
+
+/**
+ * 어느 게시물인지는 호출부에서 미리 묶어 보낸다.
+ * 누가 눌렀는지는 브라우저가 보내준 값이 아니라 서버가 쿠키에서 직접 읽는다.
+ */
+export async function toggleLike(postId: number, previous: LikeState): Promise<LikeState> {
+  const me = (await cookies()).get('me')?.value;
+
+  if (me === undefined) {
+    return { ...previous, message: '로그인이 필요해요' };
+  }
+
+  const response = await fetch(`${API_BASE}/posts/${postId}/like`, {
+    method: 'POST',
+    headers: { 'X-Actor': me },
+  });
+
+  const envelope = await response.json();
+
+  if (!response.ok || !envelope.success) {
+    // 실패하면 알던 상태는 그대로 두고 사유만 얹는다.
+    return { ...previous, message: envelope.message ?? '좋아요를 저장하지 못했어요' };
+  }
+
+  return { liked: envelope.data.liked, likeCount: envelope.data.likeCount, message: null };
+}

@@ -1,27 +1,39 @@
 // apps/web-next/app/components/LikeButton.tsx
 'use client';
 
-import { useState } from 'react';
+import { useActionState } from 'react';
+import { toggleLike, type LikeState } from '@/app/actions/like';
 
-// 이 화면에서 브라우저가 맡는 일은 이것 하나다.
-// 카드의 나머지(사람 이름·글·격자)는 서버가 그려서 글자로 보낸다.
-export function LikeButton({ likeCount, liked }: { likeCount: number; liked: boolean }) {
-  const [pressed, setPressed] = useState(liked);
-  const [count, setCount] = useState(likeCount);
-
-  function toggle() {
-    setPressed(!pressed);
-    setCount(pressed ? count - 1 : count + 1);
-  }
+// 이제 이 버튼은 화면 안에서만 숫자를 바꾸지 않는다.
+// 누르면 서버까지 갔다 오고, 돌아온 값이 화면이 된다.
+export function LikeButton({
+  postId,
+  likeCount,
+  liked,
+}: {
+  postId: number;
+  likeCount: number;
+  liked: boolean;
+}) {
+  const initial: LikeState = { liked, likeCount, message: null };
+  const [state, formAction, pending] = useActionState(toggleLike.bind(null, postId), initial);
 
   return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={toggle}
-      className="mt-2 text-sm text-black/60"
-    >
-      {pressed ? '♥' : '♡'} 좋아요 {count}
-    </button>
+    <form action={formAction}>
+      <button
+        type="submit"
+        aria-pressed={state.liked}
+        disabled={pending}
+        className="mt-2 text-sm text-black/60 disabled:opacity-40"
+      >
+        {state.liked ? '♥' : '♡'} 좋아요 {state.likeCount}
+        {pending ? ' (보내는 중…)' : ''}
+      </button>
+      {state.message !== null && (
+        <p aria-live="polite" className="text-sm text-black/60">
+          {state.message}
+        </p>
+      )}
+    </form>
   );
 }
