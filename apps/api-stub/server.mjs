@@ -319,6 +319,8 @@ const routes = [
         username,
         profileImageUrl: seed(username, 64),
         followerCount: FOLLOWER_COUNTS[username] ?? 0,
+        // 집계를 돌린 시각. 팔로워 수처럼 모아 센 값은 "언제 기준인지" 가 같이 와야 한다.
+        countedAt: new Date().toISOString(),
       });
     },
   },

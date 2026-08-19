@@ -20,6 +20,9 @@ export default async function ProfilePage({ params }: PageProps<'/[username]'>) 
     <>
       <p className="mb-4 text-sm text-black/60">
         게시물 {posts.length} · 팔로워 {profile.followerCount}
+        <span className="ml-2 text-black/40">
+          ({new Date(profile.countedAt).toLocaleTimeString('ko-KR')} 기준)
+        </span>
       </p>
       {/* 느린 조각은 여기서 안 기다린다. 준비되면 그때 이 자리에 끼워 넣는다. */}
       <Suspense fallback={<p className="mb-4 text-sm text-black/40">태그 세는 중…</p>}>

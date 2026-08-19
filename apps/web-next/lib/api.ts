@@ -37,6 +37,8 @@ export type Profile = {
   username: string;
   profileImageUrl: string;
   followerCount: number;
+  /** 이 숫자를 센 시각. 모아 센 값은 언제 기준인지가 같이 와야 한다. */
+  countedAt: string;
 };
 
 /**
