@@ -7,8 +7,9 @@
 // 이 파일은 "서버 쪽" 을 흉내 내는 자리다. 그래서 client.ts 의 API_BASE_URL 을
 // 가져다 쓰지 않고 주소를 직접 적는다. 가져다 쓰면 우리 코드가 주소를 틀리게
 // 바꿔도 핸들러가 같이 따라 움직여서 아무 일도 없는 것처럼 보인다.
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, delay } from 'msw';
 import type { Conversation, DirectMessage } from '../types/dm';
+import { allPosts } from '../data/feed';
 
 export const MOCK_API_BASE = 'http://localhost:8090/api';
 
@@ -49,7 +50,20 @@ export const mockMessages: DirectMessage[] = [
   },
 ];
 
+// 진짜 서버는 즉시 답하지 않는다. 늦게 오는 동안 화면이 무엇을 보여주는지도
+// 확인해야 하므로, 흉내 서버도 기다리는 시간을 가질 수 있어야 한다.
+export const FEED_DELAY_MS = 100;
+
 export const handlers = [
+  // 태그가 붙어 오면 그것만 골라 준다 — 연습용 서버와 같은 규약.
+  http.get(`${MOCK_API_BASE}/posts`, async ({ request }) => {
+    await delay(FEED_DELAY_MS);
+    const tag = new URL(request.url).searchParams.get('tag');
+    const shown = tag === null ? allPosts : allPosts.filter((post) => post.hashtagNames.includes(tag));
+
+    return HttpResponse.json(ok(shown));
+  }),
+
   http.get(`${MOCK_API_BASE}/conversations`, () => HttpResponse.json(ok(mockConversations))),
 
   // 주소 가운데가 바뀌는 자리는 :이름 으로 받는다. 받은 값은 params 에 들어온다.
