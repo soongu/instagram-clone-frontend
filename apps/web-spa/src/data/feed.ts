@@ -146,15 +146,3 @@ const morePosts: Post[] = [
 // /p/1 로 들어오면 여전히 한강 노을이 나온다.
 export const allPosts: Post[] = [...feedPosts, ...morePosts];
 
-// 지금까지 데이터는 import 하는 순간 이미 있었다. 진짜 서버라면 그렇지 않다.
-// 여기서는 기다리는 것만 흉내 낸다 — 진짜 요청으로 바뀌는 것은 C-5 다.
-const NETWORK_DELAY_MS = 400;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function fetchPost(id: number): Promise<Post | undefined> {
-  await delay(NETWORK_DELAY_MS);
-  return allPosts.find((post) => post.id === id);
-}
