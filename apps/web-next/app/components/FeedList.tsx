@@ -12,6 +12,8 @@ export async function FeedList() {
       {posts.map((post) => (
         <li key={post.id} className="rounded border border-black/10 p-4">
           <p className="font-semibold">@{post.username}</p>
+          {/* 데이터에는 처음부터 있었다. 화면에 붙이는 건 지금이 처음이다. */}
+          <img src={post.imageUrl} alt={post.content} />
           <p className="mt-1">{post.content}</p>
           <LikeButton postId={post.id} likeCount={post.likeCount} liked={post.liked} />
         </li>
