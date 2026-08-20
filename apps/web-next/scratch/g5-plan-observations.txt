@@ -200,6 +200,46 @@ CSRF 1차 측정에서 세 조건 모두 「스텁 도달 0건」이 나왔다.
   숫자가 그럴듯해 보여서 하마터면 그대로 쓸 뻔했다.
 
 
+═══════════════════════════════════════════════════════════
+집필 단계 실측
+═══════════════════════════════════════════════════════════
+
+13절. Step 1 — next.config.ts headers() 는 전 주소에 걸린다
+------------------------------------------------------------
+next.config.ts 에 headers() 로 source: '/(.*)' · default-src 'self' 를 달고 측정:
+
+  /          Content-Security-Policy: default-src 'self'
+  /explore   Content-Security-Policy: default-src 'self'
+  /signup    Content-Security-Policy: default-src 'self'
+  /jaehoon   Content-Security-Policy: default-src 'self'   (로그인 쿠키로)
+
+=> 3절에서 문지기가 못 보던 / 와 /explore 에도 붙는다. 이것이 headers() 의 값.
+같은 주소를 3회 요청 → 값이 세 번 다 글자 하나 안 다르다. 요청마다 다른 값은 못 준다.
+
+[인라인이 막히는지 확인 — 탐침 페이지]
+  서버가 그린 nonce 없는 인라인 → data-inline-ran = null  → 차단됨
+  홈 화면에서 $RC(스트리밍 swap 함수)  → CSP 있음 undefined / CSP 없음 function
+
+=> default-src 'self' 는 인라인을 실제로 막는다. 그래서 nonce 가 필요해진다(Step 3 다리).
+
+⚠️⚠️ A/B 로 걸러낸 거짓 지표 둘 — 둘 다 「막혔다」의 증거로 쓸 뻔했다:
+  (1) __next_f 길이 = 0  → CSP 켬/끔 **양쪽 다 0**. 판별력이 없다.
+  (2) 하이드레이션 false → CSP 켬/끔 **양쪽 다 false**. 숨은 탭 탓이다(D-8 canon).
+  판별되는 것은 $RC 의 function/undefined 하나뿐이었다.
+  ★ 대조군을 안 재고 (1)(2)를 근거로 썼으면 「CSP 가 앱을 죽였다」를 개발 서버에서
+    주장하게 됐을 것이다. 실제로 개발 서버에서는 화면이 그대로 뜬다(한강 · img 10).
+
+⚠️ 선택자 사고 — 피드 카드를 article/[data-slot=card] 로 셌더니 0개가 나왔다.
+   web-next 에는 그 마크업이 없다(web-spa 것이다). 「CSP 가 피드를 지웠다」로 읽힐 뻔.
+   img 개수와 본문 글자로 다시 세서 바로잡았다.
+
+⚠️ document.body.innerText 가 숨은 탭에서 「피드를 불러오는 중…」만 돌려줬다.
+   textContent 로 바꾸니 한강·좋아요가 전부 잡힌다(D-7 canon 재현).
+
+⚠️ /g5probe 가 또 404 였다 — 4절과 같은 원인(문지기가 사람 이름으로 본다).
+   PUBLIC_PATHS 에 임시로 넣어 측정하고 되돌렸다.
+
+
 12절. raw granularity — 병합 없이 센다
 --------------------------------------
  A 헤더를 어디에 둘까 — next.config headers() vs proxy, 문지기는 홈을 안 본다   20분
