@@ -6,7 +6,11 @@ import { API_BASE } from './lib/config';
 
 // 로그인 안 한 사람이 와야 하는 주소. 여기 없는 주소는 전부 보호된다.
 // 새 주소를 만들면 기본이 "보호" 라서, 공개할 것만 이 목록에 적는다.
-const PUBLIC_PATHS = ['/signup'];
+//
+// matcher 를 모든 주소로 넓히면서 홈과 탐색이 여기로 들어왔다.
+// 홈은 로그인 화면이라 막으면 로그인 자체가 불가능해지고,
+// 탐색은 로그인 없이 둘러보는 화면이다.
+const PUBLIC_PATHS = ['/', '/explore', '/signup'];
 
 // 이 파일은 app 폴더 밖, 프로젝트 뿌리에 둔다.
 // 요청이 우리 앱에 도착했지만 아직 아무것도 안 그려진 순간에 끼어든다.
@@ -49,6 +53,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // 프로필로 갈 수 있는 주소만 본다. 나머지는 아예 안 거친다.
-  matcher: ['/((?!api|_next|favicon.ico|explore).+)'],
+  // 화면으로 나가는 모든 주소를 본다. 헤더를 빠짐없이 붙이려면 여기가 다 봐야 한다.
+  // 끝이 .+ 가 아니라 .* 라 홈(/)도 들어온다.
+  matcher: ['/((?!api|_next|favicon.ico).*)'],
 };
