@@ -19,10 +19,9 @@ export const auth = betterAuth({
   database: memoryAdapter(db),
   // 비밀번호로 로그인하겠다는 선언.
   emailAndPassword: { enabled: true },
-  // 세션 내용을 쿠키에 베껴 담는다. 그러면 서버가 저장소를 안 찾아도 누구인지 안다.
-  // maxAge 를 60 초로 짧게 준 것은 강의에서 유효기간이 지나는 순간을 직접 보려는 것이다.
-  // (기본값은 300 초)
-  session: { cookieCache: { enabled: true, maxAge: 60 } },
+  // session.cookieCache 는 켜지 않는다.
+  // 켜보고 잰 결과, 저장소를 비운 서버에서도 유효기간 동안은 통과했다.
+  // 우리 앱에는 나가기 버튼이 있고, 나가는 순간 끝나는 쪽이 더 중요하다.
   plugins: [
     // 우리 앱은 이메일이 아니라 @jaehoon 같은 아이디로 사람을 부른다.
     username(),
