@@ -1,0 +1,270 @@
+G-4 계획 단계 실행 채증 (2026-08-20)
+====================================
+목적: 커리큘럼 G-4 행의 전제를 착수 전에 실행으로 확인한다.
+환경: next 16.3.1 · react 19.2.8 · Chrome 151 · api-stub :8090 · web-next :3000
+      로그인 계정 jaehoon / hunter22!  (lib/auth.ts:45)
+
+주의: 아래 측정 중 브라우저 탭은 내내 visibilityState:'hidden' 이었다.
+      배치·정적 계산값은 유효하지만 rAF 에 기대는 값은 무효다(과목 캐논).
+
+
+1절. 코드베이스 현황 — 커리큘럼 항목이 걸 자리가 있는가
+------------------------------------------------------
+- dangerouslySetInnerHTML : 저장소 전체 0건 (apps/**/*.ts,tsx)
+- innerHTML               : web-spa 테스트 4건뿐. 앱 코드 0건
+- web-next 의 댓글        : 컴포넌트·액션·라우트 전부 없음. lib/posts.ts 에 commentCount 필드만
+- api-stub 의 댓글 API    : 완비되어 있다
+    GET    /api/posts/:id/comments   (server.mjs:424)
+    POST   /api/posts/:id/comments   (server.mjs:478, 인증 필요)
+    DELETE /api/comments/:id         (server.mjs:578, 남의 것이면 403)
+=> 커리큘럼 실습 "댓글 입력 XSS 방어" 의 무대가 web-next 에 없다. 서버 쪽은 이미 있다.
+
+
+2절. 이미 갚힌 항목 — 토큰 저장 위치 트레이드오프
+-------------------------------------------------
+교안 전수 grep 결과
+  XSS · CSRF · CSP · 살균 · sanitiz · HTTPS · dangerouslySetInnerHTML → 전부 0건
+  localStorage → C3 · C5 · E5 · G3
+  HttpOnly     → C5 · G1 · D7 · G3
+
+C5-lecture.md:697-703  🙋 토글이 그 트레이드오프 자체를 다룬다
+   "localStorage 는 그 사이트에서 도는 자바스크립트라면 누구나 읽을 수 있어요"
+   "더 안전한 방법은 서버가 HttpOnly 쿠키로 토큰을 주는 겁니다"
+   "프런트만으로는 못 정해요" (← G-3 이 이 약속을 갚았다)
+G1-lecture.md:136-144  httpOnly 가 무엇을 막고 무엇을 안 막는지
+G1-lecture.md:441      "HttpOnly  페이지의 자바스크립트가 못 읽는다"
+G3-lecture.md:643-647  표로 대조 + C-5 를 명시 회수
+
+=> 커리큘럼 G-4 행의 "토큰 저장 위치 트레이드오프(httpOnly vs localStorage)" 는
+   세 번 갚혔다. "처음 배우는 것" 으로 쓰면 어색하다 → 회수·확장으로 가야 한다.
+
+
+3절. G-3 이 학생에게 명시한 약속 (G3-lecture.md:944)
+----------------------------------------------------
+"남이 심은 스크립트가 우리 페이지에서 도는 문제"          → XSS
+"남의 사이트가 우리 앱에 요청을 대신 보내는 문제"         → CSRF
+"브라우저에게 이 출처의 스크립트만 실행해라 라고 미리 알려두는 방법" → CSP
+"오늘 마지막 질문에서 뒷문이 한 칸 옮겨갔다고 했던 것도 여기서 이어집니다"
+
+=> HTTPS 강제·토큰 저장 위치는 약속에 없다. 위 셋 + 뒷문이 G-4 의 계약이다.
+
+
+4절. Next 16 기본 응답 헤더 — 보안 헤더가 0건
+---------------------------------------------
+$ curl -s -D - -o /dev/null http://localhost:3000/
+  HTTP/1.1 200 OK
+  Vary / Link / Cache-Control / X-Powered-By: Next.js / Content-Type / Date / ...
+
+CSP 없음 · X-Frame-Options 없음 · X-Content-Type-Options 없음.
+X-Powered-By 는 오히려 프레임워크 이름을 흘린다.
+
+
+5절. 인라인 스크립트 개수 — 커리큘럼의 "인라인 차단" 을 그대로 하면 앱이 죽는다
+------------------------------------------------------------------------------
+개발 서버 / 홈 화면 HTML 32,387 B
+  script 총 27 = 외부 15 + 인라인 12
+
+=> script-src 'self' 만 주면 인라인 12개가 전부 막힌다.
+   커리큘럼 실습 문구 "CSP로 인라인 스크립트 차단" 은 nonce 를 전제해야 성립한다.
+
+
+6절. CSP 를 어디에 둘 것인가 — 문지기는 홈을 안 본다
+----------------------------------------------------
+proxy.ts 에 표시 헤더를 달고 측정 (matcher: ['/((?!api|_next|favicon.ico|explore).+)'])
+
+  /          200  <프록시 안 거침>      ← 패턴 끝의 .+ 가 한 글자 이상을 요구
+  /explore   200  <프록시 안 거침>      ← matcher 가 명시적으로 뺐다
+  /signup    200  거침
+  /jaehoon   307  거침
+  /zzzzz     307  거침
+
+next.config.ts 의 headers() 로 같은 CSP 를 주면
+  / · /explore · /signup 전부 헤더가 붙는다.
+
+=> 트레이드오프가 선명하다.
+   next.config headers() : 모든 주소에 걸리지만 요청마다 다른 값(nonce)을 못 준다
+   proxy.ts              : nonce 를 줄 수 있지만 matcher 가 보는 곳만
+   그리고 matcher 를 '/(.*)'로 넓히면 D-8 채증대로 로그인 자체가 무한 리다이렉트가 된다.
+
+
+7절. nonce — Next 가 붙여준다. 그런데 개발과 프로덕션이 다르다
+--------------------------------------------------------------
+proxy 가 요청마다 nonce 를 만들어 요청 헤더(x-nonce 아님, Content-Security-Policy)와
+응답 헤더 양쪽에 실었다. Next 가 그것을 읽어 script 태그에 붙인다.
+
+                    인라인 nonce   외부 nonce
+  개발 서버            12 / 12       15 / 15
+  프로덕션(standalone)  9 / 10        1 / 10
+
+요청 두 번의 nonce 가 서로 다르다(요청마다 새로 만들어진다) — 프로덕션에서도 확인.
+
+빌드: exit 0 · 에러 0 · 라우트 표 무변경(전부 ◐)
+=> cacheComponents: true 와 충돌하지 않는다.
+
+
+8절. 프로덕션에서 nonce 를 못 받은 인라인 하나 — D-5 가 넣은 Suspense 자리
+--------------------------------------------------------------------------
+  <script>requestAnimationFrame(function(){$RT=performance.now()});</script>   ← nonce 없음
+
+앞뒤 문맥:
+  ...<!--$?--><template id="B:1"></template><p ...>피드를 불러오는 중…</p><!--/$-->...
+
+나머지 인라인 9개는 전부 nonce 를 받았고, 그중에 내용을 채우는 것들이 들어 있다:
+  $RS=function(a,b){...}          nonce O
+  $RS("S:4","P:4")                nonce O
+  $RC("B:2","S:2")                nonce O
+  $RC("B:1","S:1")                nonce O
+  self.__next_f.push([...])       nonce O  (2건, 5,540 B / 5,432 B)
+  addEventListener("submit",...)  nonce O
+
+=> 막히는 것은 React 의 성능 측정 스크립트 하나뿐이고 화면과 무관하다.
+
+브라우저 확인 (프로덕션 + nonce CSP):
+  li 10개 · img 10개 · button 14개 · "한강" 화면에 있음 → 피드 10장 정상
+  $RS · $RC 는 typeof 'function' (실행됨)
+  $RT 는 undefined
+  ⚠ 단 이 탭은 hidden 이라 rAF 이 안 돈다($RT 는 rAF 안에서 대입된다).
+    그러므로 $RT === undefined 만으로는 CSP 차단의 증거가 못 된다.
+    확실한 것은 (a) 그 태그에 nonce 가 없다 (b) nonce 없는 인라인은 실제로 차단된다(9절).
+
+=> "빌드 통과 · 라우트 표 무변경 · 화면 정상인데 콘솔에 CSP 위반이 하나 남는다."
+   개발 서버에서는 27/27 전부 nonce 라 이 위반이 안 보인다.
+
+
+9절. CSP 가 실제로 강제되는지 — 직접 넣어 확인
+----------------------------------------------
+페이지에서 script 요소를 만들어 붙였다.
+  nonce 없는 인라인  → 실행 안 됨.  securitypolicyviolation: script-src-elem / blockedURI: inline
+  nonce 있는 인라인  → 실행됨
+  rAF 이 도는가      → false (숨은 탭 확인)
+
+
+10절. XSS — 세 가지 방법을 나란히 두고 실행
+-------------------------------------------
+탐침 페이지 app/g4probe/page.tsx (측정 후 삭제)
+페이로드: <script>window.__srvScript=1</script><img src=x onerror="window.__srvImg=1">
+
+서버가 보낸 HTML:
+  1) {raw} 중괄호            → &lt;script&gt;... 로 전부 이스케이프. 자식 태그 0개
+  2) dangerouslySetInnerHTML → <script>...</script><img src=x onerror="..."> 원문 그대로
+  3) 클라이언트 innerHTML    → 빈 div (나중에 채운다)
+
+브라우저에서 실행 여부 (CSP 없음):
+
+                          <script>      <img onerror>
+  중괄호 {raw}              글자로만       글자로만
+  서버가 그린 HTML          실행됨         실행됨
+  클라이언트 innerHTML      실행 안 됨     실행됨
+                            (DOM 에 태그는 있다)
+
+⚠ 첫 측정은 서버/클라이언트가 같은 마커를 써서 구별이 안 됐다. 마커를 갈라 다시 쟀다.
+
+=> <script> 하나로만 시험하면 "막혔다" 는 거짓 안심을 얻는다.
+   브라우저는 innerHTML 로 들어온 <script> 를 실행하지 않는다. onerror 는 실행한다.
+=> 서버 컴포넌트가 그리면 <script> 도 돈다. SPA 시절과 갈리는 자리다.
+
+
+11절. CSP 를 켜면 그 페이로드가 막힌다
+--------------------------------------
+같은 페이지 · nonce CSP 켠 상태:
+  서버가 그린 <script>      → 실행 안 됨
+  서버가 그린 <img onerror> → 실행 안 됨   securitypolicyviolation: script-src-attr / inline
+  새로 붙인 onerror         → 실행 안 됨
+  그런데 DOM 에는 script 태그도 img 태그도 그대로 있다.
+
+=> CSP 는 구멍을 메우지 않는다. 구멍으로 들어온 것이 실행되는 것만 막는다.
+
+
+12절. 훔칠 수 있는 것과 없는 것 — HttpOnly 의 경계
+--------------------------------------------------
+같은 출처에서 로그인(200) 한 뒤 남의 스크립트가 할 수 있는 일을 흉내:
+
+  document.cookie 에 session_token   → 안 보인다 (HttpOnly)
+  localStorage 에 넣어둔 토큰        → 그대로 읽힌다
+  fetch('/api/auth/get-session')     → "jaehoon" 을 돌려준다
+
+=> HttpOnly 는 "읽어가는 것" 을 막지 "그 신원으로 행동하는 것" 을 막지 않는다.
+   C-5 🙋 와 G-1:441 을 부정하는 게 아니라 확장하는 자리다.
+   G-3 의 "뒷문이 한 칸 옮겨갔다" 와 같은 구조.
+
+⚠ 측정 중 localStorage 키 목록에 이 개발 기계의 다른 프로젝트 데이터가 섞여 나왔다
+  (같은 출처 localhost:3000 을 공유하기 때문). 내용은 여기 남기지 않는다.
+  심어둔 ig.accessToken 은 측정 후 삭제 확인했다.
+  다만 "localStorage 는 출처 단위로 공유된다" 는 사실 자체는 교보재가 된다.
+
+
+13절. CSRF — 서버 액션은 프레임워크가 막고, 우리가 연 문은 안 막힌다
+--------------------------------------------------------------------
+로그인한 쿠키 항아리를 그대로 쓰고 Origin 만 바꿔 제출했다.
+폼은 -F(multipart)로 보낸다. --data-urlencode 는 액션이 안 돈다(G-3 채증).
+
+[서버 액션 · /minji 팔로우]
+  Origin: http://localhost:3000    curl 000(스트리밍 타임아웃) · 스텁 follow 1건 → 실행됨
+  Origin: https://evil.example.com 500 "Internal Server Error"  · 스텁 follow 0건 → 막힘
+  Origin 없음                       curl 000                    · 스텁 follow 도달
+
+  서버 로그:
+    `x-forwarded-host` header with value `localhost:3000` does not match `origin`
+    header with value `evil.example.com` from a forwarded Server Actions request.
+    Aborting the action.
+    ⨯ Error: Invalid Server Actions request.
+    ⚠ Missing `origin` header from a forwarded Server Actions request.   ← 없으면 경고만
+
+[Route Handler · D-7 이 만든 /api/profiles/revalidate]
+  Origin: http://localhost:3000    200 {"success":true,...}
+  Origin: https://evil.example.com 200 {"success":true,...}
+  Origin 없음                       200 {"success":true,...}
+  쿠키조차 없이                     200 {"success":true,...}
+
+=> 커리큘럼의 "CSRF 방어" 는 유효하지만 대상이 다르다.
+   서버 액션은 Next 16 이 이미 막는다. 안 막히는 것은 우리가 손으로 연 문이다.
+   가짜 결함을 만들지 않으려면 이 갈림을 그대로 가르쳐야 한다.
+
+
+14절. 시의성 — 살균은 이제 브라우저가 해준다 (단 Safari 는 아직)
+----------------------------------------------------------------
+npm registry:
+  dompurify            3.4.14  2026-08-19  (착수 전날)
+  isomorphic-dompurify 3.22.0  2026-08-06
+  sanitize-html        2.17.7  2026-08-13
+
+HTML Sanitizer API: Firefox 148(2026-02, 최초) · Chrome 146 이후. Safari 미구현.
+Baseline 아님 → feature detection + 라이브러리 폴백이 현재 권장.
+
+이 기계의 Chrome 151 실측 — Element.prototype.setHTML / setHTMLUnsafe / window.Sanitizer 전부 function
+
+  입력                                      setHTML 결과
+  <img src="https://picsum.photos/...">     (빈 문자열)          ← 깨끗한 이미지도 사라진다
+  <img src=x onerror="...">                 (빈 문자열)
+  <b>굵게</b><i>기울임</i><a href="https://…">링크</a>
+                                            그대로 전부 남음
+  <a href="javascript:alert(1)">링크</a>     <a>링크</a>          ← 속성만 제거
+  첫줄<br>둘째줄<p>문단</p>                  그대로 남음
+  <b style="color:red">빨강</b>              <b>빨강</b>          ← style 제거
+  <iframe src="…">                          (빈 문자열)
+  <div onclick="...">눌러보세요</div>        <div>눌러보세요</div>
+
+  setHTMLUnsafe('<img src=x onerror="1"><script>1</script>')
+      → <img src="x" onerror="1"><script>1</script>   아무것도 안 지운다
+
+=> 기본 허용목록이 보수적이다. 이미지를 허용하려면 설정을 줘야 한다.
+   "브라우저가 알아서 해준다" 고 믿고 쓰면 사용자가 넣은 이미지가
+   오류도 경고도 없이 사라진다.
+=> 커리큘럼 G-4 행은 2026-06 작성이라 이 API 를 반영하지 못했다.
+
+
+15절. raw granularity — 병합 없이 센다
+--------------------------------------
+ A 이미 안전했다 (중괄호가 이스케이프한다)                    15분
+ B 위험해지는 자리 — dangerouslySetInnerHTML 를 들인다        20분
+ C <script> 만 보면 속는다 — 서버/클라이언트 대조표           20분
+ D 훔칠 수 있는 것과 없는 것 — HttpOnly 의 경계               25분
+ E 살균 — 브라우저가 해주는 것과 안 해주는 것                 20분
+ F 헤더를 어디에 둘까 — 문지기는 홈을 안 본다                 20분
+ G nonce — 요청마다 다른 값 · 개발과 프로덕션이 다르다        25분
+ H 켜보니 하나가 막힌다 · 그리고 페이로드도 막힌다            20분
+ I 남의 사이트가 대신 보낸다 — 액션은 프레임워크가 막는다     25분
+ J 우리가 연 문은 우리가 막는다 — D-7 Route Handler          20분
+ K 비밀은 어디에 두나 — 뒷문 한 칸                           15분
+
+ raw 11 활동 · 합계 약 225분 → 8 상한 초과 → 2강 분할이 필요하다.
