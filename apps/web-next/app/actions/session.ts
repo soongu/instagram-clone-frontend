@@ -34,12 +34,40 @@ export async function signIn(previous: SignInState, formData: FormData): Promise
 
   // 막혀서 온 사람이면 원래 가려던 곳으로 보낸다.
   // redirect 는 값을 돌려주는 대신 던진다 — 이 아래는 실행되지 않는다.
-  if (typeof next === 'string' && next !== '') {
+  const destination = insideOurApp(next);
+  if (destination !== null) {
     // 타입 검사는 "진짜 있는 주소" 목록과 대조하는데, 이 값은 요청 때 정해져서 대조할 수가 없다.
-    redirect(next as Route);
+    // 우리가 바로 위에서 확인했다는 것을 타입은 모르므로 여기서만 단언한다.
+    redirect(destination as Route);
   }
 
   return { message: null };
+}
+
+// 이 주소가 우리 앱 안인지 판단한다.
+//
+// 글자 모양으로 검사하면 뚫린다. "/" 로 시작하는지만 보면 "//evil.example.com" 이
+// 통과하고(브라우저는 이것을 다른 사이트로 읽는다), 그것까지 막아도 역슬래시가 섞인
+// "/\/evil.example.com" 이 남는다. 브라우저가 실제로 어디로 갈지는 주소를 풀어봐야 안다.
+//
+// 그래서 아무도 안 쓰는 이름에 붙여 풀어본 뒤, 그 이름 그대로면 우리 앱 안이라고 본다.
+// 바깥으로 나가는 주소는 붙이는 순간 다른 이름이 되어 걸린다.
+const INTERNAL_BASE = 'http://internal.invalid';
+
+function insideOurApp(next: FormDataEntryValue | null): string | null {
+  if (typeof next !== 'string' || next === '') {
+    return null;
+  }
+
+  try {
+    const resolved = new URL(next, INTERNAL_BASE);
+    if (resolved.origin !== INTERNAL_BASE) {
+      return null;
+    }
+    return resolved.pathname + resolved.search;
+  } catch {
+    return null;
+  }
 }
 
 export async function signOut() {
