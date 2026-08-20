@@ -263,3 +263,44 @@ Step 수: **5**(raw granularity 그대로 · 8 상한 이하라 분할 없음)
 ---------------------------
 tsc 0 · eslint 0 · 변경 파일 2개(route.ts · .env.example)
   .env.local 은 .gitignore 대상이라 커밋 안 됨 — .env.example 이 학생용 안내
+
+
+14절. 🚨🚨 5절의 «미확인» 을 닫았다 — 그리고 도구가 「잘못 보는」 것이 확정됐다
+--------------------------------------------------------------------------------
+5절에서 read_console_messages 가 CSP 위반을 0건으로 보고했고, console.error 탐침은
+잡히길래 «도구는 멀쩡한데 위반이 없나?» 로 헷갈렸다. 그 탐침이 **엉뚱한 것을 쟀다** —
+출처가 chrome-extension://…installHook.js 였으니 확장 세계의 console 호출만 확인한 것.
+
+[올바른 탐침] 주입한 «코드» 는 격리 세계라 CSP 를 안 받지만(G-5 7절),
+주입해서 만든 DOM 요소의 «리소스 로드» 는 페이지 CSP 를 받는다. 이 차이를 이용했다:
+  img.src = 'https://example.com/g6-probe.png'   (img-src 허용 목록 밖)
+  → securitypolicyviolation 이벤트 **잡힘**
+    { directive: 'img-src', blocked: 'https://example.com/g6-probe.png' }
+  → 같은 위반을 read_console_messages 로 조회 → **0건**
+
+=> **확정: read_console_messages 는 브라우저가 스스로 내는 CSP 위반 메시지를 못 본다.**
+   확장 훅을 거친 console 호출만 잡는다. 침묵을 「위반 없음」으로 읽으면 정반대 결론.
+   (과목 캐논 「게이트가 잘못 보는 것은 침묵-감지 층이 원리적으로 못 잡는다」의 실물.)
+
+[그래서 위반을 이 이벤트로 다시 쟀다 — G-4 페이로드]
+⚠ 숨은 탭에서 9초 setTimeout 을 걸었다가 **CDP 45초 타임아웃으로 렌더러가 얼었다**
+  (과목 캐논 「폴링 금지」 재현). 고침 = 리스너만 걸고 즉시 반환 → 대기는 셸에서 →
+  다음 호출로 window.__g6 읽기. 대기를 브라우저 밖으로 뺐다.
+⚠ 리스너는 파싱 전에 걸 수 없어서, api-stub 을 **DELAY_MS=6000** 으로 띄워
+  댓글이 스트리밍으로 늦게 도착하게 만들고 그 창에 리스너를 걸었다(코드 변경 0 · env 만).
+
+  리스너 건 시점    제목 '인스타그램 클론' · 댓글 아직 안 옴(false)
+  12초 뒤           댓글 도착(true)
+                    제목 '인스타그램 클론'  ← 안 바뀜(실행 안 됨)
+                    페이로드 script DOM 에 존재
+                    **위반 이벤트 1건**
+                      { violatedDirective: 'script-src-elem',
+                        blockedURI: 'inline', lineNumber: 2 }
+
+★ 교안이 쓸 수 있는 사실이 확정됐다:
+  - 막힌다(제목 안 바뀜) · 태그는 DOM 에 남는다 · **위반이 실제로 보고된다**
+  - 보고되는 지시어 이름은 `script-src` 가 아니라 **`script-src-elem`**,
+    차단된 대상은 주소가 아니라 문자열 **'inline'**
+  - 학생은 이것을 개발자 도구 콘솔에서 본다(브라우저가 같은 내용을 찍는다)
+
+[복원] sanitizeComment 되돌림 · api-stub 기본 지연으로 재기동 · git status 깨끗
