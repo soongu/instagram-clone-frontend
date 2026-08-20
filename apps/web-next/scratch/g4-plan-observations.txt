@@ -268,3 +268,189 @@ Baseline 아님 → feature detection + 라이브러리 폴백이 현재 권장.
  K 비밀은 어디에 두나 — 뒷문 한 칸                           15분
 
  raw 11 활동 · 합계 약 225분 → 8 상한 초과 → 2강 분할이 필요하다.
+
+
+═══════════════════════════════════════════════════════════
+집필 단계 실측 (Step 1~5 · 같은 날)
+═══════════════════════════════════════════════════════════
+
+16절. Step 1 — 중괄호는 정말 이스케이프한다
+--------------------------------------------
+연습용 서버에 직접 넣은 댓글:  <script>alert(1)</script> 여기 좋네요
+
+서버가 보낸 HTML:
+  <span>&lt;script&gt;alert(1)&lt;/script&gt; 여기 좋네요</span>
+RSC 페이로드:
+  <script>alert(1)</script> 여기 좋네요
+
+실행 가능한 <script>alert(1)</script> 가 HTML 에 있나 → False
+자식 태그 수 → 0
+
+⚠ 교안이 학생에게 시키는 페이로드는 alert 이 아니라 document.title 로 갔다.
+  경고창은 실습 흐름을 끊고, 실제 공격은 조용하다는 점에서 교육적으로도 낫다.
+
+
+17절. Step 2 — dangerouslySetInnerHTML 로 바꾼 뒤
+------------------------------------------------
+넣은 댓글 셋:
+  첫 줄<br>둘째 줄 그리고 <b>강조</b>
+  <script>document.title = "털렸습니다"</script>사진 좋네요
+  <img src=x onerror="document.body.dataset.onerror = 1">좋아요
+
+브라우저 실측 (CSP 없음):
+  document.title                 → "털렸습니다"   (탭 제목이 실제로 바뀐다)
+  document.body.dataset.onerror  → "1"
+  b 태그 1개 · br 태그 1개        → 서식 요구는 충족됐다
+  댓글 목록에 보이는 글자         → @minji document.title = "털렸습니다"사진 좋네요
+                                   (script 태그 자체는 안 그려지고 안의 글자만 남는다)
+
+⚠ 첫 측정 설계 오류 — 서버 쪽과 클라이언트 쪽에 같은 마커를 써서 구별이 안 됐다.
+  마커를 갈라 다시 쟀다.
+
+
+18절. Step 3 — 2x2 (전부 실행 확인)
+-----------------------------------
+                          <script>        <img onerror>
+  중괄호 {content}         글자로만        글자로만
+  서버가 그린 HTML          실행됨          실행됨
+  클라이언트 innerHTML      안 돌아감        실행됨
+                           (DOM 에 태그는 1개 있다)
+
+⚠⚠ 측정 함정 — onerror 는 비동기다.
+  box.innerHTML 직후에 읽으면 'onerror 가 돌았나' 가 false 로 나온다.
+  800ms 기다린 뒤에야 true. 안 기다리면 «안전하다» 는 정반대 결론이 나온다.
+  교안이 이 함정을 본문에 실었다(과목 캐논 「재는 방법이 답을 바꾼다」).
+
+
+19절. Step 4 — 훔칠 수 있는 것과 없는 것
+----------------------------------------
+로그인 200 직후, 같은 출처에서:
+
+  document.cookie 에 session_token          → false  (HttpOnly)
+  document.cookie 길이                      → 30     (다른 쿠키만)
+  localStorage 에 ig.* 토큰                 → 없음   (Next 앱은 서버가 들고 있다)
+  fetch('/api/auth/get-session').user       → "jaehoon"   ← 행동은 된다
+
+★★★ 그리고 실제로 행동시켰다 — 피해자의 댓글 폼을 대신 제출:
+  입력.value = '제가 안 쓴 댓글입니다';
+  입력.dispatchEvent(new Event('input', { bubbles: true }));
+  폼.requestSubmit();
+
+  2번 게시물 댓글:
+    3 @jaehoon: 3박 4일이면 넉넉했나요?
+    9 @jaehoon: 제가 안 쓴 댓글입니다      ← 재훈은 아무것도 안 눌렀다
+
+⚠ 폼 제출이 페이지 이동을 일으켜 브라우저 평가가 끊긴다
+  ("Inspected target navigated or closed"). 판정은 서버 쪽 부작용으로 갈랐다.
+
+=> HttpOnly 는 읽기를 막지 그 신원으로 행동하는 것을 못 막는다.
+   C-5 🙋 · G-1:441 · G-3:643 을 부정이 아니라 확장하는 자리.
+
+
+20절. Step 5 — 서버에는 브라우저 살균 API 가 없다
+-------------------------------------------------
+$ node -e "..."
+  Node v23.6.0
+  globalThis.document       : undefined
+  globalThis.Element        : undefined
+  Element.prototype.setHTML : undefined
+  globalThis.Sanitizer      : undefined
+
+=> 사용자가 고른 「브라우저 내장 우선 + 폴백」 은 우리 앱에서 성립하지 않는다.
+   댓글을 서버 컴포넌트가 그리기 때문이다. D-3 경계가 보안에서 재현된다.
+   교안은 내장 API 를 실측으로 소개한 뒤 「우리에겐 안 닿는다」 를 보이고
+   서버 살균으로 간다. 클라이언트 렌더 앱이면 내장 API 가 답이라고 갈라 말한다.
+
+설치 비용: node_modules 705M → 719M (+14M · jsdom 4.4M + dompurify 1.8M)
+
+★ 클라이언트 번들 영향 0:
+  .next/static/chunks 에서 jsdom|DOMPurify|dompurify grep → 0건
+  .next/server 에는 있다
+  => 14MB 를 설치했는데 브라우저는 한 바이트도 안 받는다 (D-3 회수)
+
+
+21절. 두 도구의 기본값이 갈린다 (같은 입력)
+-------------------------------------------
+  넣은 것                              브라우저 setHTML   서버 DOMPurify(기본값)
+  <b>굵게</b><i>기울임</i>              그대로            그대로
+  깨끗한 <img src="https://...">        (빈 문자열)       <img src="https://...">   ← 갈림
+  <img src=x onerror="1">              (빈 문자열)       <img src="x">             ← 갈림
+  <script>…</script>사진 좋네요          사라짐            "사진 좋네요"
+  <a href="https://example.com">        그대로            그대로
+  <a href="javascript:alert(1)">        <a>링크</a>       <a>링크</a>
+  첫 줄<br>둘째 줄<p>문단</p>            그대로            그대로
+  <b style="color:red">빨강</b>         <b>빨강</b>       <b style="color:red">     ← 갈림
+  <div onclick="1">눌러보세요</div>      <div>…</div>      <div>…</div>
+  <iframe src="…">                      (빈 문자열)       (빈 문자열)
+
+  setHTMLUnsafe('<img src=x onerror="1"><script>1</script>')
+      → 아무것도 안 지운다 (이름이 정직하다)
+
+=> 세 군데가 갈린다. 「살균」은 하나의 정답이 아니라 허용목록의 선택이다.
+   브라우저 기본값을 그대로 쓰면 사용자가 올린 이미지가 경고 없이 사라진다.
+
+
+22절. Step 5 적용 후 확인
+-------------------------
+우리 허용목록: ALLOWED_TAGS ['b','i','strong','em','br','a'] · ALLOWED_ATTR ['href']
+
+  document.title                 → "인스타그램 클론"  (안 바뀐다)
+  document.body.dataset.onerror  → 없음
+  댓글 안 script 태그            → 0
+  댓글 안 img 태그               → 0
+  b 태그 1개 · br 태그 1개        → 서식은 살아남았다
+  HTML 에 실행 가능한 <script>    → False
+  HTML 에 onerror=               → False
+
+빌드 exit 0 · 라우트 표 무변경(전부 ◐) · tsc 0 · eslint 0
+web-spa 147 files / 1014 passed 무변경 · api-stub 무변경
+
+
+23절. 과제 검증 (전부 실행 — D-4 이후 16연속)
+---------------------------------------------
+[과제 1] 저장할 때도 걸러보기 — 액션에 sanitizeComment 를 넣고 실제로 제출
+  저장된 값:  10 @jaehoon: '<b>굵게</b> 좋아요'      ← <script> 가 저장에서 사라짐
+  그 상태로 CommentSection 의 살균을 빼면:
+    새 댓글(3번 게시물)   → 안전
+    옛 댓글(1번 게시물)   → 실행 가능한 <script> True · onerror= True   ← 되살아난다
+  => 저장할 때만 걸러도 이미 저장된 것은 못 막는다. 지문이 의도한 결과 그대로.
+  답안 보관: scratch/g4-hw1-answer-comment-action.ts.txt
+
+[과제 2] 링크를 허용했더니 — 우리 설정(ALLOWED_ATTR:['href'])으로
+  javascript:document.title=1      → <a>눌러보세요</a>     (href 제거)
+  JaVaScRiPt:alert(1)              → <a>대소문자 섞기</a>   (제거)
+  "  javascript:alert(1)" (앞 공백) → <a>앞 공백</a>        (제거)
+  data:text/html,<script>…         → <a>data 주소</a>      (제거)
+  https://example.com              → href 유지             ← 넷 중 하나만 통과
+  ⚠ 초안 지문은 javascript: 하나만 넣게 했는데, 변형 넷을 재보게 고쳤다.
+    도구가 주소 스킴까지 본다는 것이 그때만 드러난다.
+    => 답: 위험하지 않았다. 단 우리가 잘 정해서가 아니라 도구가 한 겹 더 해준 것.
+
+[과제 3] 두 도구 대조 — 21절 표. 다섯 입력 기준 갈리는 곳 2군데(style · img)
+
+[과제 4] 전수 점검
+  grep -rn "dangerouslySetInnerHTML" app lib → 1건 (CommentSection.tsx:18, 살균을 거침)
+  사용자 입력이 그려지는 자리 8군데 중 7이 중괄호:
+    [username]/layout.tsx:16  @{username}
+    FeedList.tsx:28           {post.content}
+    FeedList.tsx:21           alt={post.content}        ← 속성 자리
+    SignInFields.tsx:43       {state.message}
+    SignUpFields.tsx:40       {state.message}
+    CommentForm.tsx:30        {state.message}
+    FollowButton.tsx:24       {state.message}
+    CommentSection.tsx:18     dangerouslySetInnerHTML (살균)
+
+
+24절. 자체 적발 — 회차 귀속 오류 2건
+------------------------------------
+① 답안이 «E-5 에서 들여온 파일의 <div> 를 <article> 로 고치고 영어를 우리말로» 라고 썼는데
+   E5-lecture.md 에 article·Close·닫기가 0건이고 E6-lecture.md:543·980 에 있다.
+   => 들이는 일이 E-5, 열어서 고치는 일이 E-6. 「E-6 에서」로 정정.
+② 교안이 «D-8 에서 팔로우 버튼에 쓴 useActionState» 라고 썼는데
+   git log --diff-filter=A 로 확인하니
+     FollowButton.tsx / follow.ts → D7 Step 3
+     SubmitButton.tsx             → D8 Step 2
+   => 「D-7 에서 팔로우 버튼에 쓴 것과 같고, SubmitButton 은 D-8」로 정정.
+
+이 종류는 grep 게이트가 원리적으로 못 잡는다(금지어가 아니다).
+D-1 의 「지난 과목 17건」· C-1 검수 FAIL1 과 같은 계열.
