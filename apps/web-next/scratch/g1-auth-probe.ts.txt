@@ -1,0 +1,14 @@
+// apps/web-next/lib/auth.ts
+import { betterAuth } from 'better-auth';
+import { memoryAdapter } from 'better-auth/adapters/memory';
+import { nextCookies } from 'better-auth/next-js';
+import { username } from 'better-auth/plugins/username';
+
+// 강의용 저장소. 서버를 끄면 사라진다.
+const db = { user: [], session: [], account: [], verification: [] };
+
+export const auth = betterAuth({
+  database: memoryAdapter(db),
+  emailAndPassword: { enabled: true },
+  plugins: [username(), nextCookies()],
+});
