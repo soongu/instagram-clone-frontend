@@ -23,9 +23,13 @@ export async function proxy(request: NextRequest) {
   // 개발 서버에서만 'unsafe-eval' 을 연다.
   // React 가 서버 오류를 브라우저에서 다시 보여주려고 eval 을 쓰기 때문이고,
   // 프로덕션에서는 쓰지 않는다.
+  //
+  // 'strict-dynamic' 은 일부러 뺐다. 그것을 넣으면 'self' 가 무효가 되는데,
+  // 우리는 미리 만들어둔 화면 조각에 번호표 없는 script 태그가 남는다.
+  // 그 태그들이 전부 거절돼 앱 자바스크립트가 한 바이트도 안 실린다.
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' blob: data: https://picsum.photos`,
     `font-src 'self'`,
