@@ -130,3 +130,37 @@ G-1 채증 — 프론트엔드 인증 ① 진짜 로그인을 만든다
     eslint 의 minimatch/eslintrc, postcss 의 nanoid. better-auth 무관.
   next start 는 output:'standalone' 경고를 낸다
     → D-10 이 가르친 node .next/standalone/server.js 가 정본.
+
+■ 10. Step 2 실측 — /api/auth 아래에 무엇이 생기나
+  GET  /api/auth/ok             → 200 {"ok":true}
+  GET  /api/auth/get-session    → 200 null      (세션 없을 때)
+  GET  /api/auth/sign-up/email  → 404 · POST → 400 (빈 본문)
+  GET  /api/auth/sign-in/email  → 404 · POST → 400
+  GET  /api/auth/sign-out       → 404 · POST → 200
+  ★ POST 전용 주소에 GET 하면 404 다(405 아님).
+    D-7 의 손으로 만든 Route Handler 는 405 였다 — 만든 쪽이 정한다.
+  라우트 표: ƒ /api/auth/[...all] 한 줄만 늘고 나머지 기호 무변경.
+
+■ 11. Step 3 실측 — 아이디와 비밀번호
+  씨앗 계정(jaehoon·minji, 비밀번호 hunter22!) 로그인 → 200 + 세션 쿠키
+  틀린 비밀번호        → 401 {"code":"INVALID_USERNAME_OR_PASSWORD"}
+  없는 아이디(nobody)  → 401 **같은 메시지**
+    ★ 계정이 있는지 없는지를 안 알려준다. 공격자에게 "이 아이디는 있다"
+      를 알려주지 않는 설계이고, 스텁의 "그런 사람이 없습니다"(404)와 대비된다.
+
+  아이디 규칙(username 플러그인 기본값 — 영숫자와 밑줄, 3자 이상):
+    aa        → USERNAME_TOO_SHORT
+    jae_hoon  → 통과 (밑줄 OK)
+    jae hoon  → INVALID_USERNAME (공백)
+    재훈       → USERNAME_TOO_SHORT   ← 2자라 길이에서 먼저 걸린다
+    재훈이      → INVALID_USERNAME     ← 3자여도 한글은 막힌다
+    ★ 한국 학생이 반드시 밟는 자리. 기본 검증기는 한글을 안 받는다.
+      바꾸려면 usernameValidator 를 직접 준다.
+  비밀번호: 1234 → PASSWORD_TOO_SHORT · hunter22! → 통과
+
+■ 12. 시크릿 없이 dev 는 돈다 (Step 5 의 전제)
+  .env.local 없이 dev: GET /api/auth/ok 200 · POST sign-up 200
+  경고만 나온다: "Base URL is not set..."
+  → 기본 시크릿은 isProduction 일 때만 던진다. dev 에서는 안 터진다.
+  ⚠️ .gitignore 에 .env* 가 있어 시크릿 파일은 커밋되지 않는다.
+     학생은 직접 만들어야 하고, 교안이 그것을 명시해야 한다.
