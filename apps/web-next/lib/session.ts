@@ -1,5 +1,6 @@
 // apps/web-next/lib/session.ts
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth';
 
 /**
  * 지금 요청을 보낸 사람. 로그인 안 했으면 null.
@@ -8,5 +9,6 @@ import { cookies } from 'next/headers';
  * 그 값은 브라우저를 한 번 다녀온 값이라 누구든 고쳐 보낼 수 있다.
  */
 export async function currentUser(): Promise<string | null> {
-  return (await cookies()).get('me')?.value ?? null;
+  const session = await auth.api.getSession({ headers: await headers() });
+  return session?.user.username ?? null;
 }

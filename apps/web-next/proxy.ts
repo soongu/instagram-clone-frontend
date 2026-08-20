@@ -1,6 +1,7 @@
 // apps/web-next/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getSessionCookie } from 'better-auth/cookies';
 import { API_BASE } from './lib/config';
 
 // 이 파일은 app 폴더 밖, 프로젝트 뿌리에 둔다.
@@ -14,7 +15,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // 들어와도 되는 사람인지부터 본다. 네트워크를 타기 전에 끝나는 검사라 여기가 가장 싸다.
-  if (request.cookies.get('me') === undefined) {
+  // 세션 쿠키가 있는지만 본다 — 진짜인지는 화면과 액션이 각자 확인한다.
+  if (getSessionCookie(request) === null) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 

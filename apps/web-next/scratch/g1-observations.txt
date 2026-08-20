@@ -164,3 +164,76 @@ G-1 채증 — 프론트엔드 인증 ① 진짜 로그인을 만든다
   → 기본 시크릿은 isProduction 일 때만 던진다. dev 에서는 안 터진다.
   ⚠️ .gitignore 에 .env* 가 있어 시크릿 파일은 커밋되지 않는다.
      학생은 직접 만들어야 하고, 교안이 그것을 명시해야 한다.
+
+■ 13. Step 4 척추 재측정 (대조군을 살린 뒤 · dev)
+  Set-Cookie: better-auth.session_token=<32자 토큰>.<46자 서명>;
+              Max-Age=604800; Path=/; HttpOnly; SameSite=Lax
+  GET /api/auth/get-session 에 실어 보내면
+    진짜 (대조군)          → 세션 반환    ← 이것이 통과해야 나머지가 의미를 갖는다
+    쓰레기 값              → null
+    서명을 떼어냄           → null
+    토큰 진짜 + 서명 위조    → null
+    서명 진짜 + 토큰만 바꿈  → null
+
+■ 14. Step 5 재측정 — 순서가 중요하다
+  .env.local 없이:
+    next build            → BUILD EXIT 0 · 출력에 Base URL 경고 하나뿐
+    프로덕션 GET /         → 200  (모든 화면 정상)
+    프로덕션 GET  /api/auth/ok        → 500
+    프로덕션 POST sign-in/username    → 500
+    서버 로그에만 ⨯ BetterAuthError
+  .env.local 을 준 뒤: ok 200 · sign-in 200 · 로그 에러 0
+
+  ⚠️⚠️ 우리가 쓴 .catch(() => undefined) 가 라이브러리의 경고를 삼킨다.
+     씨앗 심기의 catch 를 빼고 빌드하면 출력에 BetterAuthError 가 1건 찍힌다.
+     catch 를 두면 0건. 어느 쪽이든 BUILD EXIT 는 0.
+     → 라이브러리는 알려주려 했고 우리 한 줄이 그것을 삼킨 자리.
+
+  ⚠️ 측정 사고 — 시크릿을 준 뒤에도 500 이 나와서 한참 헤맸다.
+     원인은 옛 서버가 3000 을 잡고 있어 새 서버가 EADDRINUSE 로 죽은 것
+     (D-3 재현). curl 은 기본 시크릿을 쓰는 옛 서버를 재고 있었다.
+     lsof -nP -iTCP:3000 -sTCP:LISTEN -t 로 죽이고 다시 잰다.
+
+■ 15. Step 3 결함 — 씨앗 심기와 첫 요청의 경쟁 (고침)
+  서버 기동 직후 첫 로그인이 씨앗보다 먼저 도착하면 401 이 난다.
+  서버 로그에 WARN [Better Auth]: User not found.
+  두 번째 시도부터는 200 이라 눈치채기 어렵다.
+  고침: 라우트 핸들러가 await demoUsersReady 한 뒤 넘긴다.
+  확인: 기동 직후 첫 요청부터 200 · 로그의 User not found 0건.
+
+■ 16. Step 6 최대 발견 — 메모리 저장소가 여러 개가 된다
+  증상: 라우트로 로그인하면 200 이고 GET /api/auth/get-session 도 세션을
+       주는데, 서버 컴포넌트(SignInForm)에서 부른 getSession 은 null.
+       쿠키 헤더는 정상 도착(찍어서 확인).
+  원인: Next 가 lib/auth.ts 를 한 번만 만들지 않는다.
+       모듈에 표식(Math.random)을 심어 찍으니 인스턴스 ID 가 셋 나왔다
+       (ebra71 · aykips · 3yujz3). 저장소가 모듈 안 지역 변수라
+       인스턴스마다 다른 저장소를 들고 있었다.
+  고침: globalThis 에 매단다 —
+       const store = globalThis as typeof globalThis & { __authDb?: AuthDb };
+       const db = (store.__authDb ??= { user: [], session: [], account: [], verification: [] });
+  ★★ dev 만의 문제가 아니다 — 일부러 되돌려 프로덕션 빌드로 재확인:
+     globalThis 없이 next build + next start → 머리말이 여전히 로그인 폼
+     (세션을 못 본다). globalThis 판으로 되돌리면 @jaehoon.
+
+■ 17. Step 6 최종 실측 (dev · 프로덕션 양쪽 동일)
+  로그아웃 상태 머리말  → 아이디·비밀번호 칸 + 로그인 버튼
+                       ("재훈으로 보기" 버튼은 사라졌다)
+  로그인 뒤 머리말      → @jaehoon + 나가기
+  /jaehoon  (세션)     → 200
+  /zzzzz    (세션)     → 404      ← D-7 이 405ms 주고 산 404 가 살아 있다
+  me=jaehoon           → 307      ← 옛 위조가 막혔다
+  me=nobody            → 307
+  (쿠키 없음)           → 307
+
+  ★ 로그인 폼은 진짜 HTML 폼이다:
+      <form action="" encType="multipart/form-data" method="POST">
+    같은 화면의 좋아요 버튼은 D-8 이 기록한 그 모양이다:
+      <form action="javascript:throw new Error('React form unexpectedly submitted.')">
+    한 화면에 두 모양이 나란히 있다 — useActionState 에 서버 함수를 그대로
+    건네면 평범한 폼으로 남고, 클라이언트 함수로 감싸면 자바스크립트 전용이 된다.
+
+  틀린 비밀번호로 폼 제출 → 200 + 응답에 "아이디 또는 비밀번호가 올바르지 않아요"
+  팔로우 액션(새 세션)   → minji 8500 → 8501
+    ★ app/actions/follow.ts · like.ts 는 한 글자도 안 고쳤다.
+      D-8 이 신원을 currentUser() 하나로 모아둔 값이 여기서 드러난다.
