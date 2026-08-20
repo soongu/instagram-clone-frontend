@@ -11,17 +11,6 @@ const nextConfig: NextConfig = {
     // 여기 적힌 주소에서 온 사진만 다시 만들어 준다. 나머지는 400 으로 거절한다.
     remotePatterns: [new URL('https://picsum.photos/seed/**')],
   },
-  // 모든 주소에 같은 헤더를 붙인다. 여기서는 요청마다 다른 값을 만들 수 없다.
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'Content-Security-Policy', value: "default-src 'self'" },
-        ],
-      },
-    ];
-  },
 };
 
 export default nextConfig;
