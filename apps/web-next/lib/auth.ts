@@ -19,6 +19,15 @@ export const auth = betterAuth({
   database: memoryAdapter(db),
   // 비밀번호로 로그인하겠다는 선언.
   emailAndPassword: { enabled: true },
+  // 남의 집 열쇠로 우리 집에 들어오는 길.
+  // 진짜 열쇠는 GitHub 에 앱을 등록해야 나온다 — 없으면 강의용 가짜 값으로 둔다.
+  // 가짜 값이어도 「어디로 보낼지」까지는 진짜로 만들어진다.
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID ?? 'demo-client-id',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? 'demo-secret',
+    },
+  },
   // session.cookieCache 는 켜지 않는다.
   // 켜보고 잰 결과, 저장소를 비운 서버에서도 유효기간 동안은 통과했다.
   // 우리 앱에는 나가기 버튼이 있고, 나가는 순간 끝나는 쪽이 더 중요하다.

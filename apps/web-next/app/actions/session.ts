@@ -70,6 +70,25 @@ function insideOurApp(next: FormDataEntryValue | null): string | null {
   }
 }
 
+/**
+ * 남의 집 열쇠로 들어오기. 우리가 하는 일은 「어디로 보낼지」를 정하는 데까지다.
+ *
+ * signInSocial 은 로그인을 시키지 않는다 — GitHub 으로 가는 주소를 만들어 줄 뿐이다.
+ * 그 주소로 보내면 그다음은 GitHub 의 화면이고, 확인이 끝나면 우리 콜백 주소로 돌아온다.
+ */
+export async function signInWithGitHub() {
+  const { url } = await auth.api.signInSocial({
+    body: { provider: 'github', callbackURL: '/' },
+  });
+
+  if (url === undefined) {
+    return;
+  }
+
+  // 우리 앱 밖의 주소라 Route 목록에 없다. 만든 쪽이 GitHub 이므로 여기서만 단언한다.
+  redirect(url as Route);
+}
+
 export async function signOut() {
   // 어느 세션을 지울지는 요청에 실려온 쿠키를 봐야 안다.
   await auth.api.signOut({ headers: await headers() });
