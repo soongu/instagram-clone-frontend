@@ -4,6 +4,7 @@
 import { updateTag } from 'next/cache';
 import { currentUser } from '@/lib/session';
 import { API_BASE } from '@/lib/config';
+import { backendTokenFor } from '@/lib/backend-token';
 
 export type FollowState = {
   /** 아직 눌러본 적이 없으면 null */
@@ -23,9 +24,16 @@ export async function follow(username: string, previous: FollowState): Promise<F
     return { ...previous, message: '로그인이 필요해요' };
   }
 
+  // 이름 대신 백엔드가 발급한 출입증을 보낸다.
+  const token = await backendTokenFor(me);
+
+  if (token === null) {
+    return { ...previous, message: '백엔드에 신원을 확인받지 못했어요' };
+  }
+
   const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}/follow`, {
     method: 'POST',
-    headers: { 'X-Actor': me },
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   const envelope = await response.json();
