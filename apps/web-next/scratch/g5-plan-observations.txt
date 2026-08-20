@@ -1,0 +1,215 @@
+G-5 계획 단계 실행 채증 (2026-08-20)
+=====================================
+목적: 커리큘럼 G-5 행 + G-4 채증 4~13절의 전제를 착수 전에 재현·검증한다.
+환경: next 16.3.1 · react 19.2.8 · Chrome · api-stub :8090 · web-next :3000
+      로그인 jaehoon / hunter22!
+주의: 브라우저 탭은 내내 visibilityState:'hidden'. 배치·자원 타임라인은 유효하지만
+      하이드레이션 여부는 이 조건에서 판정 불가(과목 캐논 D-8).
+
+
+1절. 기준선 재현 — 전부 일치
+----------------------------
+web-spa  npm test        147 files / 1014 passed   (핸드오프 값과 일치)
+web-next tsc --noEmit    exit 0
+web-next eslint          exit 0
+web-next build           exit 0 · 라우트 표 전부 ◐ · 무변경
+
+
+2절. ⚠️ 전제가 움직였다 — 인라인 스크립트가 12개가 아니다
+---------------------------------------------------------
+G-4 채증 5절: 홈 화면 32,387 B · script 27 = 외부 15 + 인라인 12
+이번 실측    : 홈 화면 46,518 B · script 49~50 = 외부 15 + 인라인 34~35
+
+원인: G-4 가 CommentSection 을 FeedList 에 넣었다(게시물 10장 × 댓글 영역).
+      외부는 15 로 그대로이고 인라인만 약 3배가 됐다.
+      34/35 를 오가는 것은 스트리밍 타이밍(3회 측정: 35,34,34).
+
+=> 커리큘럼 G-5 행의 「인라인이 12개라」 는 G-4 집필 전 숫자다. 교안은 34~35 로 쓴다.
+
+
+3절. 문지기는 정말 홈을 안 본다 — 표시로 갈랐다
+-----------------------------------------------
+proxy.ts 에 임시로 x-proxy-ran 헤더를 달고 측정(측정 후 제거, git diff 0):
+
+  /          <문지기 안 거침>
+  /explore   <문지기 안 거침>
+  /jaehoon   x-proxy-ran: /jaehoon
+  /signup    x-proxy-ran: /signup      ← 거치고 통과시킨 것
+  /zzzzz     x-proxy-ran: /zzzzz
+
+⚠ 상태 코드만 보면 /, /explore, /signup 이 전부 200 이라 구별이 안 된다.
+  「안 봐서 통과」와 「보고 통과」가 같은 200 으로 보인다(과목 캐논).
+  matcher 패턴 끝의 .+ 가 한 글자 이상을 요구해 / 가 빠지고, explore 는 명시 제외.
+
+
+4절. matcher 를 넓히면 — 무한 리다이렉트는 안 났다. 대신 다른 것이 났다
+-----------------------------------------------------------------------
+matcher: ['/((?!api|_next|favicon.ico).*)']  +  PUBLIC_PATHS 에 '/', '/explore' 추가
+
+  로그아웃 상태: /  200 · /explore 200 · /signup 200 · /jaehoon 307 · /zzzzz 307
+  => D-8 채증의 「'/(.*)'로 넓히면 로그인이 무한 리다이렉트」는 PUBLIC_PATHS 로 풀린다.
+
+⚠⚠ 그런데 목록에 없는 새 주소는 D-7 의 404 회복이 삼킨다.
+   탐침 페이지 /g5probe 를 만들었더니 로그인 상태에서 404.
+   문지기가 「g5probe 라는 사람 있나」를 묻고(GET /api/users/g5probe → 404)
+   그대로 _not-found 로 rewrite 한 것. G-2 의 /signup 함정이 그대로 재현된다.
+   => matcher 를 넓히는 순간 "새 주소를 만들 때마다 PUBLIC_PATHS 를 챙겨야 한다"
+      는 부채가 생긴다. 교안이 이 대가를 정직하게 말해야 한다.
+
+
+5절. nonce — 개발은 전부 붙는다
+-------------------------------
+공식 문서(node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md)
+예제 그대로 proxy 에서 nonce 생성 → 요청 헤더 x-nonce + Content-Security-Policy,
+응답 헤더에도 같은 값.
+
+  개발 서버 /   : script 49 = 외부 15/15 nonce · 인라인 34/34 nonce   (49/49)
+
+
+6절. 🚨🚨🚨 프로덕션에서 뒤집혔다 — 공식 예제 그대로 하면 앱의 JS 가 0개 실린다
+--------------------------------------------------------------------------------
+같은 빌드에서 CSP 만 토글해 A/B(측정 방법 동일 · 자원 타임라인의 decodedBodySize>0):
+
+  CSP 없음                                   바이트 받은 JS 청크  9
+  nonce + 'self' + 'strict-dynamic' (공식)   바이트 받은 JS 청크  0   ← CSS 1개만
+  nonce + 'self' (strict-dynamic 제거)       바이트 받은 JS 청크  8
+
+프로덕션 홈의 nonce 분포: 외부 1/10 · 인라인 31/32
+nonce 를 못 받은 10개의 정체:
+  - 외부 9개 = turbopack-*.js 포함 프레임워크 런타임 청크 전부(정적 껍데기에 박혀 있다)
+  - 인라인 1개 = <Suspense> 자리의 $RT 성능 측정(D-5 가 넣은 자리)
+
+'strict-dynamic' 은 script-src 의 호스트 표현('self')을 무효화한다.
+그래서 정적 껍데기에 박힌 nonce 없는 <script src> 가 전부 거절된다.
+
+⚠ 공식 문서가 이미 말하고 있었다 (같은 파일 397행):
+  "Partial Prerendering (PPR) is incompatible with nonce-based CSP
+   since static shell scripts won't have access to the nonce"
+  그리고 181행: 정적 페이지는 빌드 때 만들어져 nonce 를 넣을 수 없다.
+  우리는 D-5 에서 cacheComponents: true 를 켰다 = 전 라우트가 ◐(PPR).
+
+=> G-4 채증 7·8절의 결론 「cacheComponents 와 충돌 없음 / 막히는 것은 성능 측정
+   스크립트 하나뿐이고 화면과 무관하다」는 틀렸다. 근거가 두 가지로 좁았다:
+     (a) 빌드 종료 코드로 판정했다 — 빌드는 실제로 exit 0 이고 라우트 표도 무변경이다
+     (b) 인라인만 셌다 — 외부 1/10 을 적어두고도 그 뜻을 안 따라갔다
+   빌드·라우트 표·상태 코드·화면(서버 HTML)이 전부 정상이라 아무도 안 알려준다.
+
+
+6-2절. 원인을 갈랐다 — standalone 이 아니라 PPR 이다
+----------------------------------------------------
+검색으로 후보 원인이 둘 나왔다. 둘 다 열려 있는 upstream 이슈다.
+  (a) PPR/cacheComponents 와 nonce 의 불화 — 공식 문서 397행 + issue #89754
+      "Nonce-based CSP with inline <head> scripts is incompatible with cacheComponents"
+      (2026-02-10 접수 · 열림 · Next 팀이 linear: next 라벨로 확인)
+  (b) Turbopack + output:'standalone' 에서 nonce 가 안 붙는 버그 — issue #96063
+      (16.2.10·16.2.11 재현 · 열림 · "the only way to keep an App Router app working
+       is to keep 'unsafe-inline'")
+  우리 앱은 Turbopack(16 기본) + output:'standalone' 이라 (b) 에 정확히 해당한다.
+
+[갈랐다] 같은 빌드를 next start(비-standalone)로 띄워 재측정:
+  standalone   외부 1/10 · 인라인 31/32
+  next start   외부 1/10 · 인라인 31/32   ← 완전히 같다
+=> (b) 는 우리 증상의 원인이 아니다. standalone 을 빼도 그대로다.
+
+[확인] (a) 를 직접 끄려 했으나 끌 수 없다:
+  cacheComponents: false 로 빌드 → exit 1.
+  lib/api.ts 의 cacheLife/cacheTag 가 이 스위치를 전제로 한다(D-6 이 넣은 코드).
+  => 「PPR 을 끄고 공식 예제를 쓴다」는 설정 한 줄이 아니라 D-6 을 걷어내는 일이다.
+
+[확인] 완전 동적 라우트로 도망갈 수도 없다:
+  문서는 "your page must be dynamically rendered" 라고 처방하는데,
+  cacheComponents: true 에서는 페이지 라우트가 전부 ◐ 다(라우트 표 실측).
+  ƒ 는 /api/* 두 개뿐이고 그것은 화면이 아니다.
+  /explore 에 connection() 만 넣으면 프리렌더 단계에서 exit 1,
+  <Suspense> 로 감싸도 D-5 canon 대로 ○→◐ 일 뿐 껍데기는 그대로 생긴다.
+
+=> 원인은 (a) 로 확정. 그리고 문서의 처방은 우리 앱에서 도달 불가능하다.
+   해법은 strict-dynamic 을 빼서 'self' 가 살아나게 하는 것이다(6절 표의 셋째 줄).
+   ⚠ 대가: 'self' 는 같은 출처 스크립트를 전부 허용한다. 인라인 주입(G-4 페이로드)은
+     여전히 막지만, 우리 출처에 파일을 올릴 수 있게 되면 그것은 막지 못한다.
+     교안이 이 거래를 정직하게 말해야 한다.
+
+⚠ 문서의 또 다른 대안 SRI(experimental.sri)도 우리에겐 안 닿는다 —
+  webpack 전용이고 Turbopack(16 기본)에서 동작하지 않는다.
+
+
+7절. ⚠️⚠️ 측정 함정 — 확장 프로그램의 격리 세계는 CSP 를 안 받는다
+-------------------------------------------------------------------
+CSP 강제 여부를 확인하려고 페이지에 script 요소를 만들어 붙였더니:
+  nonce 없는 인라인 → 실행됨(true) · securitypolicyviolation 0건
+=> 「CSP 가 안 걸려 있다」는 정반대 결론이 나온다.
+
+원인: 도구가 주입한 코드는 확장 프로그램 격리 세계에서 돌아 페이지 CSP 를 안 받는다.
+
+바로잡은 방법: 서버가 그린 HTML 안에 nonce 없는 인라인을 넣고(탐침 페이지에서
+dangerouslySetInnerHTML 로 <script> 를 직접 그림 — Next 는 여기엔 nonce 를 안 붙인다)
+그 부작용을 DOM 속성으로 읽었다(DOM 읽기는 숨은 탭에서도 유효).
+  결과: data-inline-ran = null  →  차단됐다. CSP 는 실제로 강제되고 있다.
+
+=> 「재는 방법이 답을 바꾼다」의 세 번째 종류. 주입으로는 CSP 를 못 잰다.
+
+
+8절. CSRF — G-4 채증 13절 그대로 재현됐다
+------------------------------------------
+[서버 액션 · /minji 팔로우 · -F(multipart) 로 제출]
+  우리 Origin              curl 000(스트리밍)  스텁 도달 2건 → 실행됨
+  남의 Origin              curl 500            스텁 도달 0건 → 막힘
+  Origin 없음              curl 000            스텁 도달 1건 → 통과
+
+  서버 로그:
+    `x-forwarded-host` header with value `localhost:3000` does not match `origin`
+    header with value `evil.example.com` ... Aborting the action.
+    ⚠ Missing `origin` header from a forwarded Server Actions request.   ← 없으면 경고만
+
+[Route Handler · D-7 이 만든 /api/profiles/revalidate?username=jaehoon]
+  우리 Origin + 쿠키          200
+  남의 Origin + 쿠키          200
+  Origin 없음 + 쿠키          200
+  남의 Origin + 쿠키조차 없음  200   {"success":true,"data":{"username":"jaehoon"},...}
+
+⚠ 내 첫 측정이 전부 400 이었다 — JSON 본문으로 보냈는데 이 라우트는 searchParams 를
+  읽는다(route.ts:7). 계약을 안 읽고 짐작해서 「막혀 있다」로 읽을 뻔했다.
+
+
+9절. ⚠️⚠️ 측정 함정 — api-stub 로깅이 꺼져 있었다
+--------------------------------------------------
+CSRF 1차 측정에서 세 조건 모두 「스텁 도달 0건」이 나왔다.
+원인: api-stub 을 API_STUB_LOG=1 없이 띄웠다(server.mjs:25). 아무것도 안 찍힌다.
+=> 「전부 막혔다」로 읽힐 뻔했다. 침묵은 통과가 아니라 계측 실패다(과목 캐논).
+바로잡고 로깅 탐침(GET /api/posts 가 찍히는지)을 먼저 통과시킨 뒤 8절을 다시 쟀다.
+
+
+10절. 비밀은 어디에 두나 — 우리 앱은 NEXT_PUBLIC_ 이 0건
+--------------------------------------------------------
+  app · lib · proxy.ts · next.config.ts · .env.example · .env.local 전수:
+  NEXT_PUBLIC_  0건
+  탐침 대조: 같은 범위에 process.env 는 3건 → grep 은 실제로 돌았다
+
+=> D-10 canon(우리 앱은 NEXT_PUBLIC_ 이 0개라 그 문제가 없다)이 그대로 유효하다.
+   Step 6 은 D-10 의 실측 회수 + G-3 의 「뒷문이 한 칸 옮겨갔다」 상환으로 간다.
+
+
+11절. 자잘한 재현
+-----------------
+- 서버 액션 폼은 CSP 를 켜도 여전히 평범한 HTML 폼이다
+  (<form action="" encType="multipart/form-data" method="POST"> + hidden 4개)
+- 프로덕션 응답 헤더에 x-nextjs-prerender: 1 · x-nextjs-postponed: 1 (PPR 확인)
+- zsh 가 매치 없는 glob 에서 명령을 통째로 중단시켜 grep 이 「0건」처럼 보였다
+  (F-1~G-1 에 이어 7연속). 따옴표 + 대조 탐침으로 확인.
+- 측정 스크립트에서 객체 리터럴 키를 중복으로 써서 한 값이 조용히 덮였다.
+  숫자가 그럴듯해 보여서 하마터면 그대로 쓸 뻔했다.
+
+
+12절. raw granularity — 병합 없이 센다
+--------------------------------------
+ A 헤더를 어디에 둘까 — next.config headers() vs proxy, 문지기는 홈을 안 본다   20분
+ B matcher 를 넓힌다 — PUBLIC_PATHS, 새 주소가 404 로 먹히는 대가              20분
+ C nonce 를 붙인다 — 개발 49/49                                               20분
+ D 프로덕션에 올렸더니 앱이 죽었다 — JS 청크 0개                               25분
+ E 왜 죽었나 — strict-dynamic 이 'self' 를 무효화 · PPR 과 원리적 불화          20분
+ F G-4 페이로드가 실제로 막힌다 — DOM 엔 태그 그대로, 실행만 막는다             20분
+ G 남의 사이트가 대신 보낸다 — 액션은 Next 가 막고, Origin 없으면 통과          25분
+ H 우리가 연 문 — Route Handler 는 쿠키 없이도 200                             20분
+ I 비밀은 어디에 두나 — NEXT_PUBLIC_ 0건 · G-3 뒷문 상환                        15분
+
+ raw 9 활동 · 합계 약 185분 → 8 상한 초과 → 2강 분할이 필요하다.
