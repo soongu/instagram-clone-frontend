@@ -58,3 +58,40 @@ G-3 채증 — 신원을 어떻게 들고 다닐까 (2026-08-20)
    strategy?: "compact" | "jwt" | "jwe"   기본 "compact"
    refreshCache?: boolean | { updateAge?: number }   기본 false
    version?: …           (G-2 채증에 없던 옵션)
+
+
+[3] Step 2 — 서버가 잊어도 돌아온다 (코드 변경 없음 · 측정)
+----------------------------------------------------------------------
+절차: 로그인 → dev 서버 kill → 재시작(메모리 저장소 소멸 · 계정도 새 id 로 다시 심김)
+      → 같은 항아리로 계속 요청
+
+ 되살아난 쿠키가 말하는 사람 : userId mDMpdglQ8DKgpLnNQQk66xuWKPLtO3s8
+ 새 서버의 진짜 재훈          : userId x8cDlyubXHXVYzrAhE9rFEvrQ8M5Uos7
+ ⇒ 서버에 없는 사람으로 통과한다.
+
+ ★ 2x2 로 갈라야 정확하다 (한 축만 보면 틀린 결론이 난다)
+
+                        보내는 쿠키    get-session   /minji
+  저장소 O · 기간 안     token+data    세션있음       200
+  저장소 O · 기간 뒤     token 만      세션있음       200   ← 저장소로 되돌아갈 뿐, 아무 일 없음
+  저장소 X · 기간 안     token+data    세션있음       200   ← 되살아났다
+  저장소 X · 기간 뒤     token 만      null          200   ← 신원은 죽고 문지기는 통과
+
+ 실측 타임라인 (maxAge 60 · 저장소 비운 서버):
+   T+15/30/45/55s  세션있음 · /minji 200
+   T+62/70/80s     null    · /minji 200
+
+ ⚠️ 측정 함정 두 개를 직접 밟았다.
+   (1) 저장소가 살아 있는 서버에서 재면 만료돼도 계속 「세션있음」이라
+       "채증이 틀렸다" 고 결론 낼 뻔했다. 갈리는 것은 저장소가 비었느냐다.
+   (2) `curl -v` 출력을 통째로 grep 하면 응답의 Set-Cookie 까지 세어져
+       "만료 뒤에도 보낸다" 는 거짓이 나온다. `^> Cookie:` 로 시작하는 줄만 봐야 한다.
+       바로잡으면: 60초 뒤엔 정말 안 보낸다(Max-Age=60).
+
+ Set-Cookie 원문:
+   better-auth.session_token=…; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax
+   better-auth.session_data =…; Max-Age=60;     Path=/; HttpOnly; SameSite=Lax
+   ⇒ 쿠키 자체의 만료(60초)와 봉투 안의 "expiresAt"(60초)이 둘 다 걸려 있다.
+
+ ★ 마지막 줄이 G-2 Step 1 과 만나는 자리다 — 문지기는 session_token 의 존재만 보므로
+   신원이 사라져도 계속 통과시킨다. G-2 가 "낙관적" 이라 부른 성질 그대로.
