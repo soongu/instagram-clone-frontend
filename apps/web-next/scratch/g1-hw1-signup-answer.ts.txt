@@ -1,0 +1,29 @@
+// apps/web-next/app/actions/signup.ts
+'use server';
+
+import { APIError } from 'better-auth/api';
+import { auth } from '@/lib/auth';
+
+export type SignUpState = { message: string | null };
+
+export async function signUp(previous: SignUpState, formData: FormData): Promise<SignUpState> {
+  const username = formData.get('username');
+  const password = formData.get('password');
+
+  if (typeof username !== 'string' || typeof password !== 'string') {
+    return { message: '아이디와 비밀번호를 입력해주세요' };
+  }
+
+  try {
+    await auth.api.signUpEmail({
+      body: { email: `${username}@example.com`, password, name: username, username },
+    });
+  } catch (error) {
+    if (error instanceof APIError) {
+      return { message: error.body?.message ?? '가입하지 못했어요' };
+    }
+    throw error;
+  }
+
+  return { message: null };
+}
