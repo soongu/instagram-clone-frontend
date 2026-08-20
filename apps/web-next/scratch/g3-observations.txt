@@ -260,3 +260,45 @@ G-2 채증 4절은 이렇게 적었다:
    (2) `: > stub.log` 로 로그를 자르면 안 된다. node 가 옛 offset 에 계속 써서
        앞부분이 NUL 로 채워지고 `file` 이 "data" 라고 답한다(grep 이 조용해진다).
        자르지 말고 `wc -l` 로 기준선을 잡고 `tail -n +N` 으로 새 줄만 본다.
+
+
+[10] Step 8 — 백엔드를 같은 규칙으로 + 만료를 서버가 넘긴다
+----------------------------------------------------------------------
+(가) 백엔드 고침 (apps/api-stub/server.mjs)
+  · resolveActor 에서 X-Actor 갈래를 걷어냈다 → 우리가 발급한 출입증만 신원으로 친다
+  · 팔로우 라우트가 resolveActor 를 부르게 했다 (좋아요와 같은 함수)
+
+  뒷문이 닫혔나            팔로우   좋아요
+  X-Actor: jaehoon        401     401     "로그인이 필요합니다"
+  Bearer <진짜>            200     200     ← 두 라우트가 같은 규칙이 됐다
+  Bearer nope             401     401     "토큰이 유효하지 않습니다"
+
+(나) 만료 넘기기 (apps/web-next/lib/backend-token.ts)
+  fetchAsUser(username, path, init) — 출입증을 붙여 부르고, 401 이면 갱신해 딱 한 번 재시도.
+  ⚠️ 「딱 한 번」이 중요하다. 새로 받은 것도 거절당하는 상황에서 계속 재시도하면
+     그대로 무한 반복이다 (C-5 canon: 재시도 표시를 빼면 vitest 워커가 통째로 죽었다).
+
+  앱에서 팔로우를 다섯 번 (출입증은 세 번 쓰면 만료):
+    1회  팔로워 8501 → 8500  ✅   토큰 발급·갱신 1건 (첫 발급)
+    2회  8500 → 8501         ✅   0건
+    3회  8501 → 8500         ✅   0건
+    4회  8500 → 8501         ✅   1건 (POST /api/auth/refresh)
+    5회  8501 → 8500         ✅   0건
+
+  ⇒ 다섯 번 다 성공한다. 만료는 서버 안에서 처리되고 화면에는 안 보인다.
+  ⇒ C-5 의 Axios 인터셉터가 하던 일이 그대로 서버로 옮겨왔다.
+     다른 점 하나 — 그때는 토큰이 브라우저 localStorage 에 있었고 지금은 서버에만 있다.
+
+
+[11] 최종 게이트 (마지막 커밋 뒤 재측정)
+----------------------------------------------------------------------
+web-next  build 0 · tsc 0 · eslint 0
+web-spa   npm test 147 files / 1014 passed (무변경 — 뒷문을 닫아도 SPA 는 안 깨진다)
+라우트 표 무변경 (G-3 은 라우트를 하나도 안 늘렸다)
+  ┌ ◐ /            ├ ◐ /_not-found   ├   /[username] │ └ ◐ /[username]
+  ├ ƒ /api/auth/[...all]   ├ ƒ /api/profiles/revalidate
+  ├ ◐ /explore     └ ◐ /signup       ƒ Proxy (Middleware)
+
+신설:  lib/backend-token.ts · app/actions/session.ts 의 signInWithGitHub
+변경:  lib/auth.ts(socialProviders) · SignInFields(GitHub 버튼) · 액션 둘(Bearer)
+      · api-stub 의 resolveActor·팔로우 라우트 · .env.example

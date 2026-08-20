@@ -150,17 +150,13 @@ function verifyAccessToken(header) {
   return { status: 'ok', username: found.username };
 }
 
-// 누가 보냈는지를 가린다. 토큰이 없으면 X-Actor 를 본다.
-// X-Actor 는 브라우저가 아니라 서버가 붙이는 헤더다 — 서버가 쿠키를 읽어 "이 사람" 이라고 말해준다.
+// 누가 보냈는지를 가린다. 우리가 발급한 출입증만 받는다.
+//
+// 예전에는 출입증이 없으면 X-Actor 헤더에 적힌 이름을 그대로 믿었다.
+// 목록에 있는 이름 한 줄이면 누구든 그 사람이 될 수 있었다는 뜻이다 — 뒷문이었다.
+// 이제는 우리가 발급하고 우리가 확인할 수 있는 것만 신원으로 친다.
 function resolveActor(headers) {
-  if (typeof headers.authorization === 'string') {
-    return verifyAccessToken(headers.authorization);
-  }
-  const actor = headers['x-actor'];
-  if (typeof actor !== 'string' || findUser(actor) === undefined) {
-    return { status: 'missing', username: null };
-  }
-  return { status: 'ok', username: actor };
+  return verifyAccessToken(headers.authorization);
 }
 
 function ok(res, data, status = 200) {
@@ -349,17 +345,17 @@ const routes = [
     },
   },
 
-  // 팔로우 — 누른 사람이 누구인지를 헤더로 받는다. 없으면 거절한다.
-  // 진짜 서비스라면 세션이나 토큰을 보겠지만, 여기서는 "서버가 직접 확인한다" 는
-  // 모양만 같으면 된다. 토큰 발급은 다른 시간에 다룬다.
+  // 팔로우 — 우리가 발급한 출입증을 확인하고, 없거나 만료됐으면 거절한다.
   {
     method: 'POST',
     match: (path) => /^\/api\/users\/[^/]+\/follow$/.test(path),
     handle: async (req, res, path) => {
-      const actor = req.headers['x-actor'];
-      if (typeof actor !== 'string' || findUser(actor) === undefined) {
-        return fail(res, 401, '로그인이 필요합니다');
-      }
+      // 좋아요와 같은 함수로 가린다. 라우트마다 규칙이 다르면 프런트에서는 그 차이가 안 보인다.
+      const auth = resolveActor(req.headers);
+      if (auth.status === 'missing') return fail(res, 401, '로그인이 필요합니다');
+      if (auth.status === 'invalid') return fail(res, 401, '토큰이 유효하지 않습니다');
+      if (auth.status === 'expired') return fail(res, 401, '액세스 토큰이 만료되었습니다');
+      const actor = auth.username;
 
       const target = decodeURIComponent(path.split('/').at(-2));
       if (!posts.some((it) => it.username === target)) {
@@ -433,8 +429,7 @@ const routes = [
   },
 
   // 좋아요 — 누가 눌렀는지를 확인하고, 다섯 번에 한 번은 서버가 실패한다.
-  // 누구인지 말하는 방법은 둘이다. 토큰을 들고 오거나(SPA), 서버가 대신 밝혀주거나(X-Actor).
-  // 팔로우와 같은 헤더를 쓴다 — 브라우저가 아니라 서버가 붙이는 값이다.
+  // 팔로우와 같은 함수로 신원을 가린다.
   {
     method: 'POST',
     match: (path) => /^\/api\/posts\/\d+\/like$/.test(path),

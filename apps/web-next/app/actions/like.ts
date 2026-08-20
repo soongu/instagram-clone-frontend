@@ -2,8 +2,7 @@
 'use server';
 
 import { currentUser } from '@/lib/session';
-import { API_BASE } from '@/lib/config';
-import { backendTokenFor } from '@/lib/backend-token';
+import { fetchAsUser } from '@/lib/backend-token';
 
 export type LikeState = {
   liked: boolean;
@@ -23,17 +22,12 @@ export async function toggleLike(postId: number, previous: LikeState): Promise<L
     return { ...previous, message: '로그인이 필요해요' };
   }
 
-  // 이름 대신 백엔드가 발급한 출입증을 보낸다.
-  const token = await backendTokenFor(me);
+  // 이름 대신 백엔드가 발급한 출입증을 붙여 보낸다. 만료됐으면 알아서 새로 받는다.
+  const response = await fetchAsUser(me, `/posts/${postId}/like`, { method: 'POST' });
 
-  if (token === null) {
+  if (response === null) {
     return { ...previous, message: '백엔드에 신원을 확인받지 못했어요' };
   }
-
-  const response = await fetch(`${API_BASE}/posts/${postId}/like`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  });
 
   const envelope = await response.json();
 
