@@ -1,0 +1,60 @@
+G-3 채증 — 신원을 어떻게 들고 다닐까 (2026-08-20)
+======================================================================
+환경: better-auth 1.7.1 · Next 16.3.1 (Turbopack) · api-stub 8090 · dev 3000
+기준선: npm test = 147 files / 1014 passed
+        (env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE · 저장소 뿌리에서 단독)
+시의성: better-auth 1.7.1 / next 16.3.1 / react 19.2.8 — 설치본과 npm registry 드리프트 0
+
+
+[1] 계획 단계 실행 — 착수 전제 반증
+----------------------------------------------------------------------
+채증(G-2) 6절은 백엔드가 resolveActor 로 신원을 가린다고 적었다.
+실제로는 resolveActor 를 부르는 라우트가 좋아요 하나뿐이다.
+
+  server.mjs:442  좋아요  → resolveActor(req.headers)      Bearer / X-Actor 둘 다
+  server.mjs:359  팔로우  → req.headers['x-actor'] 직접     X-Actor 만
+
+ 같은 신원, 같은 앱, 두 버튼:
+                              좋아요 /posts/1/like   팔로우 /users/minji/follow
+  X-Actor: jaehoon            200                    200
+  Authorization: Bearer <진짜>  200                    401   ← 갈린다
+  Authorization: Bearer nope   401                    401
+  (아무 헤더 없음)              401                    401
+
+ ⇒ 화해는 프런트만 고쳐서 되는 일이 아니다. 백엔드가 같은 규칙을 갖고 있어야 한다.
+   C-5 가 쓴 "프런트만으로는 못 정해요"(C5-lecture.md:702)가 과목 마지막 날 실물로 돌아온다.
+
+
+[2] Step 1 — 번호표 하나에서 두 개로
+----------------------------------------------------------------------
+설정: session: { cookieCache: { enabled: true, maxAge: 60 } }
+
+ 켜기 전 (기본값):  쿠키 1개
+   better-auth.session_token   79자(항아리 표기) = 토큰 32 + '.' + 서명 46
+
+ 켠 뒤:            쿠키 2개
+   better-auth.session_token   79자   (그대로)
+   better-auth.session_data   955자   (통째로 새로 생김)
+
+ ⚠️ 서명 길이 46 vs 44 — 둘 다 참이고 조건이 다르다.
+    항아리/개발자 도구에 적힌 그대로   = 46 (마지막 '=' 가 %3D 로 적힌다)
+    퍼센트 인코딩을 풀면              = 44
+    G-1 교안이 46 으로 적었으므로 G-3 도 같은 기준(항아리 표기)을 쓴다.
+
+ ⚠️ 955 는 재훈으로 로그인했을 때. 민지는 947 (아이디가 두 글자 짧고 네 군데에 들어간다).
+    같은 사람이 세 번 로그인해도 955 로 일정하다.
+
+ session_data 를 base64url 로 풀면 (마침표가 0개 — 통째로 한 덩어리):
+   {"session":{"session":{"expiresAt":"…","token":"…","userId":"…"},
+    "user":{"name":"재훈","email":"jaehoon@example.com",…,"username":"jaehoon",…},
+    "updatedAt":…,"version":"1"},"expiresAt":…,
+    "signature":"3DsZk5Ll1NaFdua_tfSz…"}
+   ⇒ 서명은 JSON 안에 들어 있다. 학생이 자기 이메일을 눈으로 읽을 수 있다.
+   ⇒ 서명은 "고쳤는지" 를 잡을 뿐 "못 읽게" 하지는 않는다.
+
+ 1.7.1 소스 실측 (node_modules/@better-auth/core/src/types/init-options.ts:1073)
+   maxAge?: number       기본 300 (5분)
+   enabled?: boolean     기본 false
+   strategy?: "compact" | "jwt" | "jwe"   기본 "compact"
+   refreshCache?: boolean | { updateAge?: number }   기본 false
+   version?: …           (G-2 채증에 없던 옵션)
