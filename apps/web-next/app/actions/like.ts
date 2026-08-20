@@ -2,8 +2,7 @@
 'use server';
 
 import { currentUser } from '@/lib/session';
-
-const API_BASE = 'http://localhost:8090/api';
+import { API_BASE } from '@/lib/config';
 
 export type LikeState = {
   liked: boolean;

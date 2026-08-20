@@ -3,8 +3,7 @@
 
 import { updateTag } from 'next/cache';
 import { currentUser } from '@/lib/session';
-
-const API_BASE = 'http://localhost:8090/api';
+import { API_BASE } from '@/lib/config';
 
 export type FollowState = {
   /** 아직 눌러본 적이 없으면 null */
