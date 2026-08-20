@@ -125,3 +125,118 @@ api-stub 의 resolveActor (server.mjs:153-163):
   redirect users" + "does not validate ... always validate on your server"
 - Next 16+ 의 Proxy(구 middleware) 를 문서가 명시적으로 다룸 — 우리 proxy.ts 와 정합
 - session.cookieCache.strategy 는 compact(기본)/jwt/jwe — 소스로 확인
+
+
+======================================================================
+[집필 단계 실측] Step 별 채증 (2026-08-20)
+======================================================================
+
+[8] Step 1 — 문지기와 화면이 서로 다른 답을 한다
+----------------------------------------------------------------------
+ 쿠키 값                    문지기(/minji)   get-session
+ 진짜 세션 쿠키             200              세션 있음
+ 토큰 맞고 서명만 위조      200              null
+ sdfsdfsdf                 200              null
+ (쿠키 없음)               307              —
+
+위조 쿠키로 연 /minji 화면에 있는 것:
+  로그인 폼(아이디 칸) 있음 · 나가기 버튼 없음 · @minji 있음 · 팔로우 버튼 있음
+  ⇒ 앱이 "로그아웃 상태" 라고 말하면서 프로필 내용은 그린다.
+
+액션은 막힌다 (G-1 의 currentUser 가 방어선):
+  위조 쿠키로 팔로우 제출 → api-stub follow 요청 0건
+  진짜 쿠키로 팔로우 제출 → POST /api/users/minji/follow   ← 대조군 통과 확인
+  ⚠️ Server Action 응답은 curl 로 못 받는다(스트리밍·타임아웃). 판정은 스텁 로그로.
+
+
+[9] Step 2 — /signup 두 겹 함정과 그 범인
+----------------------------------------------------------------------
+ 고치기 전:  로그아웃 307(location: /) · 로그인 404
+ 그 순간 스텁 로그:  [api-stub] GET /api/users/signup
+   ⇒ 문지기가 "signup 이라는 사람 있나" 를 물어 D-7 404 회복이 삼켰다.
+
+ PUBLIC_PATHS 한 줄 추가 후:
+   로그아웃 /signup 200 · 로그인 /signup 200
+   로그아웃 /minji 307 · 로그인 /minji 200 · 로그인 /zzzzz 404  (무회귀)
+
+가입 실패 코드 4종 (실제 응답 — 짐작한 셋이 틀렸다):
+  USERNAME_IS_ALREADY_TAKEN / USERNAME_TOO_SHORT / INVALID_USERNAME / PASSWORD_TOO_SHORT
+  ⚠️ 틀린 이름을 적어도 tsc·eslint·화면 전부 정상이고 default 로 조용히 떨어진다.
+
+
+[10] Step 3 — 되돌려보내기 왕복
+----------------------------------------------------------------------
+ GET  /minji            → 307  location: /?next=%2Fminji
+ 화면 소스              → <input type="hidden" name="next" value="/minji"/>
+ POST /?next=%2Fminji   → 303  Location: /minji + Set-Cookie 세션
+
+ 로그인 폼의 숨은 필드 5개: $ACTION_REF_1(value 속성 없음) · $ACTION_1:0 ·
+ $ACTION_1:1 · $ACTION_KEY · next
+
+
+[11] Step 4 — 열린 리다이렉트 (가드 붙이기 전/후)
+----------------------------------------------------------------------
+ 입력                        가드 전            가드 후
+ /minji                      303 → /minji       303 → /minji
+ /explore                    —                  303 → /explore
+ https://evil.example.com    303 → 그 사이트     200 (앱에 남는다)
+ //evil.example.com          303 → 그 사이트     200
+ /\/evil.example.com         303 → 그 사이트     200
+ javascript:alert(1)         —                  200
+
+글자 모양 검사가 뚫리는 표 (node 로 확인):
+ 입력                        startsWith("/")   +"//"차단   풀어서 비교
+ /minji                      true              true        /minji
+ https://evil.example.com    false             false       거절
+ //evil.example.com          TRUE              false       거절
+ /\/evil.example.com         TRUE              TRUE        거절
+   ⇒ 역슬래시 형태가 「//까지 막은」 가드도 통과한다.
+
+⚠️⚠️ BSD awk 가 IGNORECASE 를 모른다 — Location 추출이 조용히 실패해
+   "Location 없음" 이 나왔고 하마터면 「열린 리다이렉트가 없다」로 결론 낼 뻔했다.
+   탐침(`printf 'Location: /x' | awk 'BEGIN{IGNORECASE=1}...'`)이 0건인 것을 보고 적발.
+   grep -i 로 교체.
+
+🚨 typedRoutes 는 이것을 안 막는다 (탐침 파일 컴파일로 확인):
+   redirect('/minji')                    통과
+   redirect('https://evil.example.com')  통과   ← WithProtocol = `${string}:${string}`
+   redirect('javascript:alert(1)')       통과
+   redirect(runtimeValue)                TS2769 ← 넷 중 이것만 걸린다
+   ⇒ 타입이 막은 것은 「위험한 주소」가 아니라 「우리가 확인 안 한 값」.
+
+
+[12] 과제 실측
+----------------------------------------------------------------------
+과제1 (로그인한 사람 /signup 차단) — 공개 갈래 '안쪽'에 쿠키 검사:
+  로그아웃 /signup 200 · 로그인 /signup 307→/ · 로그아웃 /minji 307→/?next=%2Fminji
+  · 로그인 /minji 200
+
+과제3 (문지기 끄고 재기) — 로그아웃 /minji 3회씩:
+                  문지기 있음        문지기 없음
+  상태 코드        307               200
+  첫 바이트        0.003~0.05초      0.43~0.47초
+  전체             0.003~0.05초      약 1.67초
+  백엔드 요청(3회)  0건               13건
+  ⇒ 막고 있던 것은 화면 내용 자체. 단 「쿠키가 없는 사람」만 막는다.
+
+과제4 (검사를 통과한 앱 안 주소) — 되돌려보내진 뒤 실제 응답:
+  /api/auth/sign-out  → 404  (세션 살아 있음 — POST 전용 주소라 GET 은 404)
+  /zzzzz              → 404
+  /minji?a=1&a=2      → 200  (물음표 뒤가 pathname+search 로 살아남는다)
+  🚨 초안 지문의 "하나는 로그인하자마자 로그아웃된다" 는 거짓이었다 → 지문 교체.
+
+주제2 의 「400밀리초쯤」 근거 — 로그인 프로필 첫 바이트 0.437 / 0.505초
+  (/explore 는 0.041초 — 문지기가 안 문다)
+
+
+[13] 최종 게이트 (마지막 커밋 뒤 재측정)
+----------------------------------------------------------------------
+web-next build 0 · tsc 0 · eslint 0
+web-spa npm test 147 files / 1014 passed (무변경)
+라우트 표에 ◐ /signup 신설 · 나머지 무변경
+grep-check G2 FAIL 0 / WARN 0
+교안 729줄 + 답안 375줄 · 배점 25×4=100
+마감 요소 4/4·4·4·3 (D-4~G-1 패턴 유지)
+tic 0.20%/0.41% · italic 0/0 · 이모지 4종/3종 · 최장문장 104자/78자
+닫힌 ASCII 박스 폭 불일치 0 · 한 슬래시 주석 0
+코드 블록 Step 시점 대조 15/15
