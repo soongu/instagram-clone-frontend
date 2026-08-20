@@ -12,8 +12,9 @@ export async function CommentSection({ postId }: { postId: number }) {
         {comments.map((comment) => (
           <li key={comment.id} className="text-sm">
             <span className="mr-1 font-semibold">@{comment.username}</span>
-            {/* 중괄호로 넣는다. 여기가 오늘의 출발점이다. */}
-            <span>{comment.content}</span>
+            {/* 줄바꿈과 링크를 살리려고 글자가 아니라 HTML 로 넣는다.
+                이름이 길고 사나운 이유가 있다 — 이 한 줄이 오늘의 문제다. */}
+            <span dangerouslySetInnerHTML={{ __html: comment.content }} />
           </li>
         ))}
       </ul>
