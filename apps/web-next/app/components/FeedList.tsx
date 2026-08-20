@@ -1,6 +1,7 @@
 // apps/web-next/app/components/FeedList.tsx
 import Image from 'next/image';
 import { LikeButton } from './LikeButton';
+import { CommentSection } from './CommentSection';
 import { fetchPosts } from '@/lib/api';
 
 // 지시어가 없다. 그러니 서버 컴포넌트다.
@@ -26,6 +27,7 @@ export async function FeedList() {
           />
           <p className="mt-1">{post.content}</p>
           <LikeButton postId={post.id} likeCount={post.likeCount} liked={post.liked} />
+          <CommentSection postId={post.id} />
         </li>
       ))}
     </ul>

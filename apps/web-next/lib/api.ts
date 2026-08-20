@@ -86,6 +86,23 @@ export function fetchPostsByUsername(username: string): Promise<Post[]> {
   return get<Post[]>(`/posts?username=${encodeURIComponent(username)}`);
 }
 
+/** 게시물에 달린 댓글 한 줄 */
+export type Comment = {
+  id: number;
+  postId: number;
+  username: string;
+  content: string;
+  createdAt: string;
+};
+
+/**
+ * 댓글은 굳히지 않는다. 방금 단 것이 안 보이면 안 단 것과 같다.
+ * 그래서 'use cache' 도 이름표도 없다 — 피드와 같은 결이다.
+ */
+export function fetchComments(postId: number): Promise<Comment[]> {
+  return get<Comment[]>(`/posts/${postId}/comments`);
+}
+
 /** 자주 쓴 해시태그. 게시물을 전부 훑어 세는 집계라 다른 것보다 오래 걸린다. */
 export function fetchTopTags(username: string): Promise<string[]> {
   return get<string[]>(`/users/${encodeURIComponent(username)}/tags`);
