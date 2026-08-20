@@ -2,6 +2,8 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import type { Route } from 'next';
 import { APIError } from 'better-auth/api';
 import { auth } from '@/lib/auth';
 
@@ -12,6 +14,7 @@ export type SignInState = { message: string | null };
 export async function signIn(previous: SignInState, formData: FormData): Promise<SignInState> {
   const username = formData.get('username');
   const password = formData.get('password');
+  const next = formData.get('next');
 
   if (typeof username !== 'string' || typeof password !== 'string') {
     return { message: '아이디와 비밀번호를 입력해주세요' };
@@ -27,6 +30,13 @@ export async function signIn(previous: SignInState, formData: FormData): Promise
       return { message: '아이디 또는 비밀번호가 올바르지 않아요' };
     }
     throw error;
+  }
+
+  // 막혀서 온 사람이면 원래 가려던 곳으로 보낸다.
+  // redirect 는 값을 돌려주는 대신 던진다 — 이 아래는 실행되지 않는다.
+  if (typeof next === 'string' && next !== '') {
+    // 타입 검사는 "진짜 있는 주소" 목록과 대조하는데, 이 값은 요청 때 정해져서 대조할 수가 없다.
+    redirect(next as Route);
   }
 
   return { message: null };

@@ -2,6 +2,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { signIn, type SignInState } from '@/app/actions/session';
 import { SubmitButton } from './SubmitButton';
 
@@ -9,9 +10,12 @@ const initial: SignInState = { message: null };
 
 export function SignInFields() {
   const [state, formAction] = useActionState(signIn, initial);
+  // 문지기가 주소에 실어 보낸 값. 막힌 적이 없으면 없다.
+  const next = useSearchParams().get('next');
 
   return (
     <form action={formAction} className="ml-2 flex items-center gap-2">
+      {next !== null && <input type="hidden" name="next" value={next} />}
       <input
         name="username"
         aria-label="아이디"

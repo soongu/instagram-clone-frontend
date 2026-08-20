@@ -29,7 +29,11 @@ export async function proxy(request: NextRequest) {
   // 들어와도 되는 사람인지부터 본다. 네트워크를 타기 전에 끝나는 검사라 여기가 가장 싸다.
   // 세션 쿠키가 있는지만 본다 — 진짜인지는 화면과 액션이 각자 확인한다.
   if (getSessionCookie(request) === null) {
-    return NextResponse.redirect(new URL('/', request.url));
+    // 어디로 가려고 했는지를 주소에 실어 보낸다.
+    // 이 값을 안 남기면 로그인한 뒤에 되돌려 보낼 곳을 아무도 모른다.
+    const signInUrl = new URL('/', request.url);
+    signInUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   const username = pathname.slice(1);
