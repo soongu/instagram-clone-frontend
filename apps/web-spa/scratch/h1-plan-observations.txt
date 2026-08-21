@@ -1,0 +1,184 @@
+H-1 (에러 모니터링) 계획 단계 채증
+====================================
+측정일 2026-08-21 · 브랜치 module-H1-error-monitoring (module-G6-csrf-secrets 6043e9e 에서 분기)
+무대: apps/web-spa (사용자 결정) · 설계: 계정 없이 우리가 봉투를 받는다 (사용자 결정)
+
+
+1. 환경
+--------
+포트 3000 비었음 · 8090 비었음(api-stub 미기동) · 3001 은 다른 트랙 json-server(PID 8214, 무관)
+워킹트리는 G-6 종료 시점 그대로 깨끗했다.
+
+⚠️ node v23.6.0 은 Sentry 가 선언한 engines 밖이다(^20 || ^22 || >=24).
+   npm install 이 EBADENGINE 경고를 냈지만 설치·빌드·실행 전부 정상.
+   학생 환경이 20/22/24 면 이 경고 자체를 안 본다 → 교안에 숫자로 안 쓴다.
+
+npm audit high 3건은 G-1 이 기록한 기존 것 그대로(brace-expansion·js-yaml·nanoid).
+Sentry 설치로 늘지 않았다.
+
+
+2. 시의성 (npm registry 기준 — WebSearch 아님, C-4 교훈)
+--------------------------------------------------------
+@sentry/react      10.70.0  (2026-08-12)
+@sentry/nextjs     10.70.0  (2026-08-12)
+@sentry/browser    10.70.0  (2026-08-12)
+@sentry/vite-plugin 5.4.0   (2026-07-10)
+
+커리큘럼 H-1 행의 "현행 10.x" 유효 — 보정 없음.
+커리큘럼의 "SDK 7.47+ 필요(Debug ID)" 도 유효(우리는 10.70.0).
+
+⚠️ @sentry/react 의 react-router 통합은 v7 까지다.
+   내보내는 이름: reactRouterV3/V4/V5/V6/V7BrowserTracingIntegration,
+                  withSentryReactRouterV6Routing, withSentryReactRouterV7Routing,
+                  wrapReactRouterRouting
+   우리 react-router 는 8.3.0 이라 "V8" 은 없다.
+   단 이것들은 전부 *추적(tracing)* 용이고 H-1 은 오류가 주제라 이번 회차엔 안 쓴다.
+   H-2(성능)가 이 자리를 만나면 그때 다시 재야 한다.
+
+
+3. Next 16 + Turbopack 위험 (무대를 web-spa 로 고른 근거)
+----------------------------------------------------------
+getsentry/sentry-javascript#19367
+  - Turbopack 이 @opentelemetry/api 를 청크 둘로 복제 → .with() 상호 재귀
+    → RangeError: Maximum call stack size exceeded
+  - 영향: @sentry/nextjs 10.38.0 부터 (10.8.0 은 정상) → 우리 목표 10.70.0 은 영향권
+  - 상태: "Closed as not planned", 라벨 Unreproducible / Stale
+  - 유효한 회피책은 10.8.0 으로 내리는 것뿐(tracesSampleRate:0 · skipOpenTelemetrySetup 둘 다 무효)
+
+getsentry/sentry-javascript#18871
+  - Next 16 + Turbopack 에서 makeNodeTransport 가 서버 이벤트를 조용히 버린다.
+    전송은 200 을 돌려주는데 이벤트가 도착하지 않는다.
+  - 회피책: next dev --no-turbopack, 또는 fetch 기반 커스텀 전송
+
+⇒ 둘 다 "미해결로 닫힘" 이라 web-next 를 무대로 잡으면 세션을 태울 위험이 실재.
+   커리큘럼 H-1 행도 선수 C-6 · "번들러 플러그인(Vite/Rollup)" · 실습 "렌더 크래시 fallback"
+   으로 이미 web-spa 를 가리키고 있었다(RootErrorBoundary 가 거기 있다).
+   F-1~F-4 가 web-next → web-spa 복귀 선례를 이미 세웠다.
+
+
+4. 계정 없이 어디까지 되는가 (탐침 h1-envelope-probe.test.ts)
+--------------------------------------------------------------
+지어낸 공개키 + 로컬 주소 DSN:  http://abc123def456@localhost:9411/7
+
+결과: 실제로 POST 가 도착했다. flush() 반환 true.
+
+  주소: /api/7/envelope/?sentry_version=7&sentry_key=abc123def456
+        &sentry_client=sentry.javascript.react%2F10.70.0
+  본문 길이: 8,683 B  (오류 단 한 건)
+
+봉투 구조 = 줄바꿈으로 나뉜 세 덩어리(NDJSON):
+  1줄: {"event_id":"b8fe8f62dd9c4d9894fcb8a128c87db1","sent_at":"...","sdk":{...},"trace":{...}}
+  2줄: {"type":"event"}
+  3줄: {"exception":{"values":[{"type":"Error","value":"탐침용 오류입니다","stacktrace":{...}}]}}
+
+⇒ SDK 는 공개키를 서버에 확인하지 않는다. 주소만 우리 쪽으로 돌리면 그대로 보낸다.
+   sentry.io 가 가려주는 것을 학생이 바이트 단위로 읽을 수 있다.
+
+
+5. 라우터가 잡은 오류는 안 올라간다 ★ 이 회차의 척추
+-----------------------------------------------------
+탐침 h1-caught-error-probe.test.tsx
+
+  탐침A  라우터가 잡은 렌더 오류      → 나간 봉투 0건
+  탐침B  손으로 captureException     → 나간 봉투 1건
+
+탐침A 에서 화면은 정상으로 떴다("문제가 생겼어요" + "렌더 도중 터졌습니다" + "홈으로").
+콘솔에는 "React Router caught the following error during render" 가 찍힌다.
+
+원인: routes.ts 의 ErrorBoundary: RootErrorBoundary 는 라우터가 잡는 경계다.
+      라우터가 잡으면 오류가 window.onerror 까지 안 올라가고,
+      Sentry 의 전역 처리기는 거기에 붙어 있다.
+
+⇒ SDK 를 설치하고 init 만 하면 우리 앱에서 가장 중요한 오류(렌더 크래시)가
+   하나도 안 올라간다. 빌드·화면·상태 전부 정상이라 아무도 안 알려준다.
+   커리큘럼이 "Error Boundary를 Sentry에 연결" 을 항목으로 박아둔 진짜 이유.
+
+
+6. 잇는 방법 — 두 후보를 나란히 쟀다 (탐침 h1-wiring-probe.test.tsx)
+---------------------------------------------------------------------
+  방법 A  createRoot(el, { onCaughtError: Sentry.reactErrorHandler() })  → 봉투 1건
+  방법 B  아무것도 안 이음 (대조군)                                      → 봉투 0건
+
+★ 두 경우 화면 글자가 완전히 같다:
+    "문제가 생겼어요렌더 도중 터졌습니다홈으로"
+  갈리는 것은 봉투뿐이다. 눈으로는 구별할 방법이 없다.
+
+방법 A 는 main.tsx 의 createRoot 한 줄이다. RootErrorBoundary 는 안 건드린다.
+(@sentry/react 가 reactErrorHandler 를 내보낸다 — React 19 의 onCaughtError/onUncaughtError 용)
+
+
+7. 소스맵이 애초에 꺼져 있었다
+-------------------------------
+현재 dist/assets 에 .map 파일 0건. vite.config.ts 에 build.sourcemap 설정 자체가 없다.
+(현 dist 는 F-4 시점 산출물 — index 531,727 B 로 F-4 canon 과 일치)
+
+build.sourcemap: true 로 켜고 빌드하면:
+  index-*.js       532,185 B
+  index-*.js.map 2,541,257 B   ← 번들의 약 4.8배
+  SignUpPage-*.js  100.47 kB / map 567.86 kB
+
+⇒ 지도는 번들보다 훨씬 크다. 이것이 "어디에 둘 것인가" 를 결정 사항으로 만든다.
+
+
+8. authToken 없이 벌어지는 일 (탐침 h1-vite-sentry-probe.config.ts)
+--------------------------------------------------------------------
+sentryVitePlugin({ telemetry: false }) 만 두고 org·project·authToken 을 하나도 안 줬다.
+
+빌드: 성공. 경고 두 줄만 나온다.
+  [sentry-vite-plugin] Warning: No auth token provided. Will not create release.
+  [sentry-vite-plugin] Warning: No auth token provided. Will not upload source maps.
+
+번들에는 실제로 박혔다:
+  SENTRY_RELEASE = {id: `6043e9e36fec6c194d8a27b020cc644913e714ca`}   ← 우리 git 커밋 SHA
+  _sentryDebugIds[stack] = `9a74726a-e6a0-44bf-b3ee-388398ed07da`
+  _sentryDebugIdIdentifier = ...
+
+⚠️ 그런데 소스맵에는 debug_id 가 없다:
+  index-*.js.map 의 키 = version, mappings, names, ignoreList, sources, sourcesContent, file
+  'debug_id' in map === false · 'debugId' in map === false
+
+⇒ 짝의 반쪽만 됐다. 번들은 자기 이름표를 아는데 지도에는 그 이름표가 안 적혔다.
+   그리고 빌드는 종료 코드 0 이다.
+   이 과목이 반복해 만나온 「통과했는데 반쪽만」 모양.
+
+⚠️ 처음 grep 이 debug id 를 못 찾아 "주입 안 됨" 으로 읽을 뻔했다.
+   값이 큰따옴표가 아니라 백틱(템플릿 리터럴)으로 박혀서
+   '"[0-9a-f-]{36}"' 패턴이 0건이었다. 문맥을 넓혀 보고서야 찾았다.
+
+
+9. 지도를 손으로 대보면 되돌아온다 (Step 7 의 값)
+--------------------------------------------------
+node:module 의 SourceMap 은 내장이라 의존성 0 (api-stub 과 같은 결).
+
+  뭉개진 자리 → index-7-GGBL2F.js:24:48925
+  되돌린 자리 → ../../src/routes/RootErrorBoundary.tsx : 9 : 14
+
+RootErrorBoundary.tsx 9번 줄 실물 = `  let title = '문제가 생겼어요';`  ← 정확히 일치
+
+⇒ 계정 없이도 "지도를 대면 원래 줄이 나온다" 를 끝까지 보여줄 수 있다.
+   Sentry 서버가 하는 일이 바로 이것이다.
+
+
+10. 측정 함정 (전부 직접 밟음)
+-------------------------------
+① console.log 가 통째로 사라진다 — 에이전트 환경 기본 0줄.
+   env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE 로 걷어야 보인다.
+   F-1(커버리지 표 45↔103행) · F-2(watch 기본값) · F-3(console 0줄) 에 이어 4연속.
+
+② cwd 가 밀려 vite 설정을 못 읽었다 — "failed to load config from .../instagram-clone-frontend/vite.config.ts".
+   Bash 작업 디렉토리가 앞 명령에서 넘어온다. 반드시 apps/web-spa 에서.
+   F-3·F-4 재현.
+
+③ cd 실패 + && 단락으로 빌드가 안 돌았는데 뒤의 ls 는 돌아서
+   "빌드했는데 .map 이 없다" 로 읽힐 뻔했다. 실제로는 F-4 시점 dist 를 보고 있었다.
+
+④ dist-h1-probe 는 .gitignore 에 안 걸린다(gitignore 는 dist 만).
+   측정 후 삭제했다 — 커밋에 딸려 들어가면 안 된다.
+
+
+11. 남은 미검증 (집필 단계에서 확인할 것)
+------------------------------------------
+- 프로덕션 빌드에서 실제로 터뜨렸을 때 봉투에 실리는 스택 프레임의 실물 모양
+  (뭉개진 이름·줄번호가 얼마나 안 읽히는지 — Step 6 의 교보재)
+- api-stub 에 봉투 받는 자리를 신설했을 때의 동작 (Step 2)
+- 두 탭/새로고침 등 브라우저 실물 확인
