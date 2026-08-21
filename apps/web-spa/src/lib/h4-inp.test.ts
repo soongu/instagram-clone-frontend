@@ -37,6 +37,19 @@ function event(interactionId: number, duration: number, name = 'click') {
   return { interactionId, duration, name, startTime: 0, processingStart: 0, processingEnd: 0 };
 }
 
+/**
+ * 3분해가 보이도록 시각을 직접 적은 이벤트.
+ *
+ * startTime 에 눌렀고, processingStart 에 우리 코드가 시작해서 processingEnd 에 끝났고,
+ * startTime + duration 에 화면이 답했다.
+ */
+function timedEvent(
+  interactionId: number,
+  times: { startTime: number; processingStart: number; processingEnd: number; duration: number },
+) {
+  return { interactionId, name: 'click', ...times };
+}
+
 beforeEach(() => {
   observers.clear();
   globalThis.PerformanceObserver = FakePerformanceObserver as unknown as typeof PerformanceObserver;
@@ -151,6 +164,71 @@ describe('INP — 여럿 중 무엇이 답인가', () => {
 
     expect(last().interactions).toBe(51);
     expect(last().inp).toBe(40);
+  });
+});
+
+describe('INP 3분해 — 그 시간이 어디서 쓰였나', () => {
+  it('누른 뒤 답할 때까지를 세 칸으로 가른다', () => {
+    const { last } = collect();
+
+    emit('event', [
+      timedEvent(1, {
+        startTime: 1000, // 눌렀다
+        processingStart: 1002, // 2ms 기다렸다가 우리 코드가 시작
+        processingEnd: 1005, // 우리 코드는 3ms 만에 끝났다
+        duration: 32, // 화면은 32ms 뒤에 답했다
+      }),
+    ]);
+
+    expect(last().inpBreakdown).toEqual({
+      inputDelay: 2,
+      processing: 3,
+      presentation: 27,
+    });
+  });
+
+  it('아직 아무도 안 눌렀으면 분해도 없다', () => {
+    const { last } = collect();
+
+    window.dispatchEvent(new Event('load'));
+
+    expect(last().inpBreakdown).toBeNull();
+  });
+
+  it('INP 로 뽑힌 그 상호작용의 분해를 준다', () => {
+    // 평균이 아니다. 가장 나쁜 그 한 번이 어디서 시간을 썼는지를 봐야
+    // 무엇을 고칠지 정할 수 있다.
+    const { last } = collect();
+
+    emit('event', [
+      timedEvent(1, { startTime: 0, processingStart: 1, processingEnd: 2, duration: 24 }),
+      timedEvent(2, { startTime: 100, processingStart: 150, processingEnd: 190, duration: 248 }),
+      timedEvent(3, { startTime: 500, processingStart: 501, processingEnd: 502, duration: 24 }),
+    ]);
+
+    expect(last().inp).toBe(248);
+    expect(last().inpBreakdown).toEqual({
+      inputDelay: 50,
+      processing: 40,
+      presentation: 158,
+    });
+  });
+
+  it('같은 상호작용 안에서도 가장 긴 이벤트의 분해를 쓴다', () => {
+    const { last } = collect();
+
+    emit('event', [
+      timedEvent(9, { startTime: 0, processingStart: 1, processingEnd: 2, duration: 16 }),
+      timedEvent(9, { startTime: 0, processingStart: 4, processingEnd: 8, duration: 40 }),
+    ]);
+
+    expect(last().interactions).toBe(1);
+    expect(last().inp).toBe(40);
+    expect(last().inpBreakdown).toEqual({
+      inputDelay: 4,
+      processing: 4,
+      presentation: 32,
+    });
   });
 });
 

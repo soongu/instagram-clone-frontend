@@ -34,6 +34,7 @@ let latest: VitalsReport = {
   shifts: [],
   inp: null,
   interactions: 0,
+  inpBreakdown: null,
 };
 
 function printVitals(label: string, withSources = false) {
@@ -59,6 +60,17 @@ function printVitals(label: string, withSources = false) {
   // ⚠️ 여기 찍히는 것은 '민 것' 이 아니라 '밀린 것' 이다.
   //    밀어낸 쪽은 자기 자리에서 자랐을 뿐이라 움직이지 않았고, 그래서 목록에 안 나온다.
   //    고칠 데를 찾으려면 이 목록을 보고 "이것들 바로 위에 무엇이 있나" 를 거슬러 올라가야 한다.
+  // ⚠️ 여기 나오는 것은 평균이 아니라 INP 로 뽑힌 그 한 번의 내역이다.
+  //    가장 나쁜 그 한 번이 어디서 시간을 썼는지를 봐야 무엇을 고칠지 정해진다.
+  if (latest.inpBreakdown) {
+    const { inputDelay, processing, presentation } = latest.inpBreakdown;
+    console.log(
+      `         ↳ 기다림 ${inputDelay.toFixed(1)}ms` +
+        ` · 우리 코드 ${processing.toFixed(1)}ms` +
+        ` · 그리기 ${presentation.toFixed(1)}ms`,
+    );
+  }
+
   if (withSources) {
     for (const shift of latest.shifts) {
       console.log(`         ↳ ${shift.value.toFixed(4)} 밀렸다 · ${shift.sources.join(', ')}`);

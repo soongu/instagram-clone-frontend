@@ -29,6 +29,28 @@ export interface VitalsReport {
   inp: number | null;
   /** 지금까지 센 상호작용 수 */
   interactions: number;
+  /** INP 로 뽑힌 그 상호작용이 어디서 시간을 썼나. 평균이 아니다 */
+  inpBreakdown: InpBreakdown | null;
+}
+
+/**
+ * 누른 뒤 답할 때까지의 시간을 세 칸으로 가른 것.
+ *
+ * 셋을 갈라야 고칠 데가 정해진다. 앞의 두 칸이 크면 우리 코드가 할 일이 많다는 뜻이고,
+ * 마지막 칸이 크면 화면을 다시 그리는 일이 무겁다는 뜻이다.
+ */
+export interface InpBreakdown {
+  /** 눌렀는데 브라우저가 다른 일을 하고 있어서 기다린 시간 */
+  inputDelay: number;
+  /** 우리가 붙인 이벤트 처리 코드가 도는 시간 */
+  processing: number;
+  /** 그 결과가 화면에 그려져 눈에 닿기까지 */
+  presentation: number;
+}
+
+/** 상호작용 하나에 대해 기억해두는 것 — 가장 긴 이벤트 하나만 남긴다 */
+interface InteractionRecord extends InpBreakdown {
+  duration: number;
 }
 
 /** 요소를 사람이 알아볼 짧은 이름으로 — 개발자 도구에서 찾을 수 있을 만큼만 */
@@ -75,12 +97,12 @@ interface EventObserverInit extends PerformanceObserverInit {
  * 판정하지 않으려고, 상호작용이 50건 늘 때마다 가장 나쁜 것을 하나씩 걷어낸다.
  * 우리처럼 몇 번 안 눌렀으면 걷어낼 것이 없어서 **가장 나쁜 하나가 곧 INP** 다.
  */
-function worstInteraction(durations: Map<number, number>): number | null {
-  if (durations.size === 0) {
+function worstInteraction(records: Map<number, InteractionRecord>): InteractionRecord | null {
+  if (records.size === 0) {
     return null;
   }
 
-  const sorted = [...durations.values()].sort((a, b) => b - a);
+  const sorted = [...records.values()].sort((a, b) => b.duration - a.duration);
   const index = Math.min(sorted.length - 1, Math.floor(sorted.length / 50));
 
   return sorted[index];
@@ -101,11 +123,12 @@ export function observeVitals(report: (value: VitalsReport) => void): () => void
     shifts: [],
     inp: null,
     interactions: 0,
+    inpBreakdown: null,
   };
   const observers: PerformanceObserver[] = [];
 
   // 한 상호작용이 내는 이벤트 여러 건 중 가장 긴 것만 남긴다. interactionId 로 묶는다.
-  const interactions = new Map<number, number>();
+  const interactions = new Map<number, InteractionRecord>();
 
   if (canObserve('largest-contentful-paint')) {
     const lcpObserver = new PerformanceObserver((list) => {
@@ -153,7 +176,11 @@ export function observeVitals(report: (value: VitalsReport) => void): () => void
   if (canObserve('event')) {
     const inpObserver = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        const eventEntry = entry as PerformanceEntry & { interactionId?: number };
+        const eventEntry = entry as PerformanceEntry & {
+          interactionId?: number;
+          processingStart: number;
+          processingEnd: number;
+        };
 
         // 스크롤처럼 사용자가 답을 기다리지 않는 것도 event 로 들어온다.
         // 브라우저가 그런 것에는 interactionId 를 0 으로 줘서 갈라준다.
@@ -161,11 +188,32 @@ export function observeVitals(report: (value: VitalsReport) => void): () => void
           continue;
         }
 
-        const previous = interactions.get(eventEntry.interactionId) ?? 0;
-        interactions.set(eventEntry.interactionId, Math.max(previous, entry.duration));
+        const previous = interactions.get(eventEntry.interactionId);
+        if (previous && previous.duration >= entry.duration) {
+          continue;
+        }
+
+        interactions.set(eventEntry.interactionId, {
+          duration: entry.duration,
+          // 눌렀는데 브라우저가 다른 일을 하고 있어서 기다린 시간
+          inputDelay: eventEntry.processingStart - entry.startTime,
+          // 우리가 붙인 처리 코드가 도는 시간
+          processing: eventEntry.processingEnd - eventEntry.processingStart,
+          // 그 결과가 화면에 그려지기까지
+          presentation: entry.startTime + entry.duration - eventEntry.processingEnd,
+        });
       }
 
-      state.inp = worstInteraction(interactions);
+      const worst = worstInteraction(interactions);
+      state.inp = worst === null ? null : worst.duration;
+      state.inpBreakdown =
+        worst === null
+          ? null
+          : {
+              inputDelay: worst.inputDelay,
+              processing: worst.processing,
+              presentation: worst.presentation,
+            };
       state.interactions = interactions.size;
       report({ ...state, shifts: [...state.shifts] });
     });
