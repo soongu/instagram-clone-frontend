@@ -8,6 +8,7 @@ import * as Sentry from '@sentry/react';
 import { AppProviders } from './AppProviders';
 import { closeConfirmOnNavigate } from './lib/closeConfirmOnNavigate';
 import { startMonitoring } from './lib/monitoring';
+import { countFeedImages, observeVitals, onFeedImagesSettled } from './lib/h3-vitals';
 import { RealtimeBridge } from './realtime/RealtimeBridge';
 import { routes } from './routes/routes';
 import './styles/globals.css';
@@ -15,6 +16,31 @@ import './styles/globals.css';
 // 오류를 알아채는 일은 앱에서 가장 먼저 켠다.
 // 늦게 켜면 그 전에 터진 것은 아무도 못 본다.
 startMonitoring();
+
+// 재는 일도 그리기 전에 켠다. 늦게 켜면 그 전에 그려진 것은 못 본다.
+//
+// 개발 서버에서만 켜지 않는다. 사용자가 받는 것은 빌드된 배포본이고,
+// 개발 서버의 숫자는 그것과 다르기 때문이다 — 재려면 배포본에서 재야 한다.
+// 지금은 우리 콘솔로만 본다. 이 숫자를 실제 사용자에게서 모으는 것은 다음 시간에 한다.
+let latest = { lcp: 0, cls: 0 };
+
+function printVitals(label: string) {
+  const images = countFeedImages();
+  console.log(
+    `[성능] ${label} — LCP ${Math.round(latest.lcp)}ms · CLS ${latest.cls.toFixed(4)}` +
+      ` · 사진 ${images.loaded}/${images.total}` +
+      (images.allLoaded ? '' : ' ⚠️ 아직 다 안 왔어요'),
+  );
+}
+
+observeVitals((report) => {
+  latest = report;
+  printVitals('재는 중');
+});
+
+// 사진이 다 도착하는 순간. 밀림을 고치고 나면 관찰자가 안 울기 때문에
+// 이 줄이 없으면 "다 왔는데 안 밀렸다" 를 확인할 자리가 없다.
+onFeedImagesSettled(() => printVitals('사진 다 옴'));
 
 const rootElement = document.getElementById('root');
 
