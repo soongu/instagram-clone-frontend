@@ -6,9 +6,14 @@ import { RouterProvider } from 'react-router/dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AppProviders } from './AppProviders';
 import { closeConfirmOnNavigate } from './lib/closeConfirmOnNavigate';
+import { startMonitoring } from './lib/monitoring';
 import { RealtimeBridge } from './realtime/RealtimeBridge';
 import { routes } from './routes/routes';
 import './styles/globals.css';
+
+// 오류를 알아채는 일은 앱에서 가장 먼저 켠다.
+// 늦게 켜면 그 전에 터진 것은 아무도 못 본다.
+startMonitoring();
 
 const rootElement = document.getElementById('root');
 
