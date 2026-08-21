@@ -16,7 +16,11 @@ export default defineConfig({
   build: {
     // 배포본은 이름이 뭉개져 있어 그대로는 못 읽는다.
     // 뭉갠 것을 원래 줄로 되돌리는 지도를 함께 만들어 남긴다.
-    sourcemap: true,
+    //
+    // 'hidden' 은 지도를 만들되 배포본이 그것을 가리키는 주석을 안 남긴다.
+    // 지도에는 sourcesContent 로 원본이 통째로 들어 있어서,
+    // 배포본 옆에 그대로 올리면 누구나 우리 소스를 내려받을 수 있다.
+    sourcemap: 'hidden',
   },
   plugins: [
     react(),
