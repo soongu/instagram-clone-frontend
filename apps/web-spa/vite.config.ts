@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig({
   // '@/' 로 src 아래를 가리킨다 — 가져다 쓸 컴포넌트가 이 이름으로 서로를 부른다
@@ -24,5 +25,8 @@ export default defineConfig({
     await babel({
       presets: [reactCompilerPreset()],
     }),
+    // 번들과 지도에 같은 이름표(Debug ID)를 박아 짝을 맞춘다.
+    // 파일 이름은 빌드할 때마다 바뀌지만 이 이름표는 둘을 확실히 이어준다.
+    sentryVitePlugin({ telemetry: false }),
   ],
 });
