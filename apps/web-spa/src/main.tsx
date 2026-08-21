@@ -27,12 +27,31 @@ startMonitoring();
 // 개발 서버에서만 켜지 않는다. 사용자가 받는 것은 빌드된 배포본이고,
 // 개발 서버의 숫자는 그것과 다르기 때문이다 — 재려면 배포본에서 재야 한다.
 // 지금은 우리 콘솔로만 본다. 이 숫자를 실제 사용자에게서 모으는 것은 다음 시간에 한다.
-let latest: VitalsReport = { lcp: 0, lcpElement: null, cls: 0, shifts: [] };
+let latest: VitalsReport = {
+  lcp: 0,
+  lcpElement: null,
+  cls: 0,
+  shifts: [],
+  inp: null,
+  interactions: 0,
+};
 
 function printVitals(label: string, withSources = false) {
   const images = countFeedImages();
+
+  // 아직 아무도 안 눌렀으면 0ms 가 아니라 '아직 없음' 이다.
+  // 0 으로 찍으면 아주 빠른 앱처럼 보인다.
+  //
+  // 상호작용 수를 함께 찍는 이유는, 한 번 눌러도 줄이 여러 개 나오기 때문이다.
+  // 줄은 늘어나는데 이 숫자가 1 이면 그 여러 줄이 다 같은 한 번이라는 뜻이다.
+  const inp =
+    latest.inp === null
+      ? '아직 없음'
+      : `${Math.round(latest.inp)}ms (상호작용 ${latest.interactions}건)`;
+
   console.log(
-    `[성능] ${label} — LCP ${Math.round(latest.lcp)}ms · CLS ${latest.cls.toFixed(4)}` +
+    `[성능] ${label} — LCP ${Math.round(latest.lcp)}ms · INP ${inp}` +
+      ` · CLS ${latest.cls.toFixed(4)}` +
       ` · 사진 ${images.loaded}/${images.total}` +
       (images.allLoaded ? '' : ' ⚠️ 아직 다 안 왔어요'),
   );

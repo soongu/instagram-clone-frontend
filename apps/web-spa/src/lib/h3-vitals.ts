@@ -20,6 +20,15 @@ export interface VitalsReport {
   /** 밀린 정도의 합계 */
   cls: number;
   shifts: ShiftRecord[];
+  /**
+   * 누른 뒤 화면이 답할 때까지 가장 오래 걸린 시간(ms).
+   *
+   * ⚠️ 아직 아무도 안 눌렀으면 0 이 아니라 null 이다.
+   *    0 으로 두면 "아주 빠르다" 로 읽힌다. 잰 적이 없는 것과 빠른 것은 다르다.
+   */
+  inp: number | null;
+  /** 지금까지 센 상호작용 수 */
+  interactions: number;
 }
 
 /** 요소를 사람이 알아볼 짧은 이름으로 — 개발자 도구에서 찾을 수 있을 만큼만 */
@@ -50,14 +59,53 @@ function canObserve(type: string): boolean {
 }
 
 /**
- * LCP·CLS 를 관찰하고 값이 바뀔 때마다 알려준다. 관찰을 멈추는 함수를 돌려준다.
+ * 'event' 를 관찰할 때만 쓰는 옵션.
  *
- * 두 지표는 성격이 다르다. LCP 는 '마지막에 온 것' 이 답이고(더 큰 것이 나타나면
- * 그쪽으로 바뀐다), CLS 는 '지금까지 밀린 것의 합' 이다.
+ * 브라우저는 durationThreshold 를 받는데 타입 정의에는 아직 없다. 우리가 받는 모양을
+ * 한 번 적어주면 그 뒤로는 오타도 잡히고 값도 숫자로 검사된다.
+ */
+interface EventObserverInit extends PerformanceObserverInit {
+  durationThreshold: number;
+}
+
+/**
+ * 상호작용 여럿 중 무엇을 INP 로 삼을지 고른다.
+ *
+ * 오래 쓰는 사람일수록 딸꾹질을 한 번쯤 만날 확률이 높다. 그 한 번으로 앱 전체를
+ * 판정하지 않으려고, 상호작용이 50건 늘 때마다 가장 나쁜 것을 하나씩 걷어낸다.
+ * 우리처럼 몇 번 안 눌렀으면 걷어낼 것이 없어서 **가장 나쁜 하나가 곧 INP** 다.
+ */
+function worstInteraction(durations: Map<number, number>): number | null {
+  if (durations.size === 0) {
+    return null;
+  }
+
+  const sorted = [...durations.values()].sort((a, b) => b - a);
+  const index = Math.min(sorted.length - 1, Math.floor(sorted.length / 50));
+
+  return sorted[index];
+}
+
+/**
+ * LCP·CLS·INP 를 관찰하고 값이 바뀔 때마다 알려준다. 관찰을 멈추는 함수를 돌려준다.
+ *
+ * 셋은 성격이 다르다. LCP 는 '마지막에 온 것' 이 답이고(더 큰 것이 나타나면 그쪽으로
+ * 바뀐다), CLS 는 '지금까지 밀린 것의 합' 이다. 그리고 INP 는 앞의 둘과 달리
+ * **누가 눌러야 비로소 생긴다** — 브라우저가 알아서 기록해두는 값이 아니다.
  */
 export function observeVitals(report: (value: VitalsReport) => void): () => void {
-  const state: VitalsReport = { lcp: 0, lcpElement: null, cls: 0, shifts: [] };
+  const state: VitalsReport = {
+    lcp: 0,
+    lcpElement: null,
+    cls: 0,
+    shifts: [],
+    inp: null,
+    interactions: 0,
+  };
   const observers: PerformanceObserver[] = [];
+
+  // 한 상호작용이 내는 이벤트 여러 건 중 가장 긴 것만 남긴다. interactionId 로 묶는다.
+  const interactions = new Map<number, number>();
 
   if (canObserve('largest-contentful-paint')) {
     const lcpObserver = new PerformanceObserver((list) => {
@@ -100,6 +148,38 @@ export function observeVitals(report: (value: VitalsReport) => void): () => void
     });
     clsObserver.observe({ type: 'layout-shift', buffered: true });
     observers.push(clsObserver);
+  }
+
+  if (canObserve('event')) {
+    const inpObserver = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const eventEntry = entry as PerformanceEntry & { interactionId?: number };
+
+        // 스크롤처럼 사용자가 답을 기다리지 않는 것도 event 로 들어온다.
+        // 브라우저가 그런 것에는 interactionId 를 0 으로 줘서 갈라준다.
+        if (!eventEntry.interactionId) {
+          continue;
+        }
+
+        const previous = interactions.get(eventEntry.interactionId) ?? 0;
+        interactions.set(eventEntry.interactionId, Math.max(previous, entry.duration));
+      }
+
+      state.inp = worstInteraction(interactions);
+      state.interactions = interactions.size;
+      report({ ...state, shifts: [...state.shifts] });
+    });
+
+    // durationThreshold 는 "이만큼 넘는 것만 알려달라" 는 뜻이고, 규격이 허락하는
+    // 가장 낮은 값이 16 이다. 기본값(104)이나 흔히 쓰는 40 으로 두면 우리 앱은
+    // 아무것도 안 잡힌다 — 우리 상호작용은 대부분 16~32ms 안에서 끝나기 때문이다.
+    //
+    // ⚠️ 브라우저는 이 옵션을 받는데 타입 정의가 아직 안 따라왔다. 그대로 쓰면
+    //    TS2353 이 난다. 그래서 받는 모양을 우리가 한 번 더 적어준다.
+    const options: EventObserverInit = { type: 'event', buffered: true, durationThreshold: 16 };
+
+    inpObserver.observe(options);
+    observers.push(inpObserver);
   }
 
   // 관찰자는 새 엔트리가 있을 때만 운다. 밀림을 다 고쳐서 엔트리가 0건이면
