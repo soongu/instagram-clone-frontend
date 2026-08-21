@@ -1,0 +1,78 @@
+// 계획 단계 탐침 — 학생이 실제로 밟을 경로(연습용 서버가 꺼져 피드 읽기가 실패)가
+// 봉투를 내보내는가. throwOnError 는 렌더 중에 던지므로 경계가 잡는다 = onCaughtError 가 본다.
+import { createServer, type Server } from 'node:http';
+import { afterAll, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { createMemoryRouter, type RouteObject } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+import { RootErrorBoundary } from '@/routes/RootErrorBoundary';
+
+const PORT = 9416;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+function Feed() {
+  // 앱과 같은 설정 — 읽다가 실패하면 위로 던진다
+  const { data } = useQuery({
+    queryKey: ['posts'],
+    queryFn: async () => {
+      throw new Error('서버에 연결할 수 없어요');
+    },
+    retry: false,
+    throwOnError: true,
+  });
+  return <p>{String(data)}</p>;
+}
+
+it('연습용 서버가 꺼져 피드 읽기가 실패하면 봉투가 나간다', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const routes: RouteObject[] = [
+    { path: '/', Component: Feed, ErrorBoundary: RootErrorBoundary },
+  ];
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+
+  const root = createRoot(el, {
+    onCaughtError: Sentry.reactErrorHandler(),
+    onUncaughtError: Sentry.reactErrorHandler(),
+  });
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  });
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  await Sentry.flush(3000);
+
+  console.log('[읽기실패] 봉투:', envelopes.length, '| 화면:', el.textContent?.slice(0, 40));
+  const 오류봉투 = envelopes.filter((e) => e.includes('서버에 연결할 수 없어요'));
+  console.log('[읽기실패] 그중 그 오류가 담긴 봉투:', 오류봉투.length);
+  expect(오류봉투.length).toBeGreaterThan(0);
+});

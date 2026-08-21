@@ -1,0 +1,72 @@
+// 과제 검증 — 지문을 쓰기 전에 직접 풀어본다
+import { createServer, type Server } from 'node:http';
+import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9417;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+});
+
+afterAll(async () => {
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+beforeEach(() => {
+  envelopes = [];
+});
+
+const DSN = `http://demopublickey123@localhost:${PORT}/7`;
+
+it('과제1 — dsn 을 undefined 로 주면 조용히 아무것도 안 보내는가', async () => {
+  Sentry.init({ dsn: undefined, tracesSampleRate: 0 });
+  Sentry.captureException(new Error('개발 중 오류'));
+  const flushed = await Sentry.flush(2000);
+  console.log('[과제1 dsn undefined] 봉투:', envelopes.length, '| flush:', flushed);
+  await Sentry.close(1000);
+
+  // 대조군 — 주면 나간다
+  Sentry.init({ dsn: DSN, tracesSampleRate: 0 });
+  Sentry.captureException(new Error('배포본 오류'));
+  await Sentry.flush(2000);
+  console.log('[과제1 대조군] 봉투:', envelopes.length);
+  await Sentry.close(1000);
+});
+
+it('과제2 — setUser 가 봉투에 실리는가 · 로그아웃하면', async () => {
+  Sentry.init({ dsn: DSN, tracesSampleRate: 0 });
+
+  Sentry.setUser({ username: 'jaehoon' });
+  Sentry.captureException(new Error('재훈이 겪은 오류'));
+  await Sentry.flush(2000);
+  const a = envelopes.at(-1) ?? '';
+  console.log('[과제2 로그인] user 실렸나:', a.includes('jaehoon'), '| 조각:', (a.match(/"user":\{[^}]*\}/) ?? ['(없음)'])[0]);
+
+  // 로그아웃 흉내 — 지우지 않으면?
+  Sentry.captureException(new Error('로그아웃한 사람이 겪은 오류'));
+  await Sentry.flush(2000);
+  const b = envelopes.at(-1) ?? '';
+  console.log('[과제2 안 지움] 여전히 jaehoon:', b.includes('jaehoon'));
+
+  // 제대로 지우면
+  Sentry.setUser(null);
+  Sentry.captureException(new Error('지운 뒤 오류'));
+  await Sentry.flush(2000);
+  const c = envelopes.at(-1) ?? '';
+  console.log('[과제2 지운 뒤] jaehoon 남아 있나:', c.includes('jaehoon'));
+  await Sentry.close(1000);
+
+  expect(a).toContain('jaehoon');
+});

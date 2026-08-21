@@ -13,7 +13,7 @@ export function startMonitoring(): void {
   Sentry.init({
     dsn: DSN,
 
-    // 오류만 본다. 속도를 재는 일은 다음 시간의 몫이다.
+    // 오류만 본다. 속도를 재는 일은 나중에 따로 다룬다.
     tracesSampleRate: 0,
 
     // 어느 환경에서 온 오류인지 갈라 볼 수 있게 표시해둔다.

@@ -1,0 +1,54 @@
+// 계획 단계 탐침 — 진짜 sentry-stub(:9000)으로 보내서 교안에 인용할 로그 줄을 실측한다
+import { afterAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { createMemoryRouter, type RouteObject } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+import { RootErrorBoundary } from '@/routes/RootErrorBoundary';
+
+Sentry.init({ dsn: 'http://demopublickey123@localhost:9000/7', tracesSampleRate: 0 });
+
+afterAll(async () => {
+  await Sentry.close(3000);
+});
+
+function Feed() {
+  const { data } = useQuery({
+    queryKey: ['posts'],
+    queryFn: async () => {
+      // C-5 인터셉터가 연결 실패에 붙이는 우리말 문구 그대로
+      throw new Error('서버에 연결할 수 없어요');
+    },
+    retry: false,
+    throwOnError: true,
+  });
+  return <p>{String(data)}</p>;
+}
+
+it('진짜 스텁으로 보낸다', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const routes: RouteObject[] = [
+    { path: '/', Component: Feed, ErrorBoundary: RootErrorBoundary },
+  ];
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+  const root = createRoot(el, {
+    onCaughtError: Sentry.reactErrorHandler(),
+    onUncaughtError: Sentry.reactErrorHandler(),
+  });
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  });
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  await Sentry.flush(3000);
+  expect(el.textContent).toContain('문제가 생겼어요');
+});

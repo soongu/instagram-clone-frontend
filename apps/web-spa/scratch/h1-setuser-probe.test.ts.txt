@@ -1,0 +1,22 @@
+import { createServer, type Server } from 'node:http';
+import { afterAll, beforeAll, it } from 'vitest';
+import * as Sentry from '@sentry/react';
+const PORT = 9418; let env: string[] = []; let server: Server;
+beforeAll(async () => {
+  server = createServer((q, s) => { let b=''; q.on('data',c=>b+=c); q.on('end',()=>{env.push(b); s.writeHead(200); s.end('{}');}); });
+  await new Promise<void>(r => server.listen(PORT, r));
+});
+afterAll(async () => { await new Promise<void>(r => server.close(() => r())); });
+it('setUser(null) 이 무엇을 남기나', async () => {
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+  Sentry.setUser({ username: 'jaehoon' });
+  Sentry.captureException(new Error('A')); await Sentry.flush(2000);
+  Sentry.setUser(null);
+  Sentry.captureException(new Error('B')); await Sentry.flush(2000);
+  for (const [i, e] of env.entries()) {
+    const m = e.match(/"user":\{[^}]*\}/);
+    const where = e.indexOf('jaehoon');
+    console.log(`봉투${i}: user=${m?m[0]:'(없음)'} | jaehoon 위치=${where} | 주변=${where>0?JSON.stringify(e.slice(where-60,where+20)):'-'}`);
+  }
+  await Sentry.close(1000);
+});
