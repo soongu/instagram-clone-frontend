@@ -12,6 +12,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // 배포본은 이름이 뭉개져 있어 그대로는 못 읽는다.
+    // 뭉갠 것을 원래 줄로 되돌리는 지도를 함께 만들어둔다.
+    sourcemap: true,
+  },
   plugins: [
     react(),
     tailwindcss(),
