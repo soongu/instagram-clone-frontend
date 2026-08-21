@@ -79,9 +79,17 @@ const BRIDGE: Array<[string, string]> = [
   ['<section aria-label=', '<section class="section" aria-label='],
 ];
 
+// H-3 에서 사진에 width·height 를 달았다. 브라우저가 비율을 미리 알아야 사진이
+// 도착하기 전에 자리를 비워두고, 그래야 아래 글이 안 밀린다.
+// B-3 시점 코드에는 그 두 속성이 없으므로 그때와 견줄 때는 떼고 본다.
+// 화면에 보이는 것은 이 속성으로 달라지지 않는다 — 자리를 미리 잡느냐만 달라진다.
+export function withoutH3Sizing(html: string): string {
+  return html.replace(/ width="640" height="640"/g, '');
+}
+
 /** E-2 유틸리티를 B-3 시점 클래스 이름으로 되돌린 HTML */
 export function toB3Classes(html: string): string {
-  let out = html;
+  let out = withoutH3Sizing(html);
   for (const [utility, legacy] of BRIDGE) {
     out = out.split(utility).join(legacy);
   }

@@ -329,7 +329,21 @@ describe('사진이 다 오는 순간을 잡는다', () => {
   });
 });
 
-describe('앱이 실제로 재고 있는가', () => {
+describe('앱이 실제로 자리를 미리 잡아두는가', () => {
+  // 이 가드가 없으면 누가 width·height 를 지워도 아무도 안 알려준다.
+  // 화면은 똑같이 보이고 테스트도 전부 초록인 채로 밀림만 돌아온다.
+  it('PostImage 가 width 와 height 를 달고 있다', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const source = readFileSync(
+      resolve(import.meta.dirname, '../components/PostImage.tsx'),
+      'utf-8',
+    );
+
+    expect(source).toContain('width={640}');
+    expect(source).toContain('height={640}');
+  });
+
   // 재는 코드를 만들어만 두고 안 부르면 아무 숫자도 안 나온다.
   it('앱이 재기를 그리기 전에 켠다', async () => {
     const { readFileSync } = await import('node:fs');

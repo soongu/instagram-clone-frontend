@@ -17,6 +17,8 @@ export function PostImage({ imageUrl, username, onLike }: PostImageProps) {
     <img
       className="w-full cursor-pointer"
       src={imageUrl}
+      width={640}
+      height={640}
       alt={`${username} 의 게시물`}
       onDoubleClick={handleDoubleClick}
     />
