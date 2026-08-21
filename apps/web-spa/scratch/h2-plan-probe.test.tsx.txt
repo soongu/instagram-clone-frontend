@@ -1,0 +1,182 @@
+// 계획 단계 탐침 — H-2 의 네 전제를 실행으로 확인한다.
+// 1) HEAD 에서 세 경로의 봉투 수가 H-1 채증과 같은가
+// 2) 경계 안에서 보내면 한 번 보내지는가 (StrictMode 이중 렌더·리렌더에 몇 번?)
+// 3) 404 를 가려내는 조건이 실제로 통하는가
+// 4) 렌더 크래시가 경계까지 오면 두 번 세지는가 (onCaughtError + 경계 안 = 중복?)
+import { createServer, type Server } from 'node:http';
+import { StrictMode } from 'react';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import {
+  createMemoryRouter,
+  isRouteErrorResponse,
+  useRouteError,
+  type RouteObject,
+} from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9416;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+});
+
+// 오류 봉투만 센다 (init 직후 나가는 session 봉투를 빼야 한다 — H-1 채증 13절)
+function errorEnvelopes(): string[] {
+  return envelopes.filter((e) => e.includes('"type":"event"'));
+}
+
+const OPTIONS: RootOptions = {
+  onCaughtError: Sentry.reactErrorHandler(),
+  onUncaughtError: Sentry.reactErrorHandler(),
+};
+
+async function run(routes: RouteObject[], strict = false): Promise<string> {
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(
+      strict ? (
+        <StrictMode>
+          <RouterProvider router={router} />
+        </StrictMode>
+      ) : (
+        <RouterProvider router={router} />
+      ),
+    );
+  });
+  await Sentry.flush(2000);
+  const text = el.textContent ?? '';
+  act(() => root.unmount());
+  el.remove();
+  return text;
+}
+
+// 경계 안에서 직접 보내는 후보 A — 렌더 본문에서 바로 부른다
+function BoundarySendsInRender() {
+  const error = useRouteError();
+  if (!isRouteErrorResponse(error)) {
+    Sentry.captureException(error);
+  }
+  return <p>문제가 생겼어요</p>;
+}
+
+it('전제 1 — HEAD 에서 세 경로 재확인', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  await run([{ path: '/', Component: Explodes, ErrorBoundary: () => <p>화면</p> }]);
+  const render = errorEnvelopes().length;
+  envelopes = [];
+
+  await run([
+    {
+      path: '/',
+      loader: () => {
+        throw new Error('데이터를 못 가져왔습니다');
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: () => <p>화면</p>,
+    },
+  ]);
+  const loader = errorEnvelopes().length;
+  envelopes = [];
+
+  await run([
+    {
+      path: '/',
+      loader: () => {
+        throw new Response('그런 게시물이 없어요', { status: 404 });
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: () => <p>화면</p>,
+    },
+  ]);
+  const notFound = errorEnvelopes().length;
+
+  console.log(`[전제1] 렌더크래시=${render} loader=${loader} 404=${notFound}`);
+});
+
+it('전제 2 — 경계 렌더 본문에서 보내면 몇 번 나가나 (StrictMode 아님)', async () => {
+  await run([
+    {
+      path: '/',
+      loader: () => {
+        throw new Error('데이터를 못 가져왔습니다');
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: BoundarySendsInRender,
+    },
+  ]);
+  console.log(`[전제2 일반] 오류봉투=${errorEnvelopes().length}`);
+});
+
+it('전제 2b — 같은 것을 StrictMode 로 (이중 렌더)', async () => {
+  await run(
+    [
+      {
+        path: '/',
+        loader: () => {
+          throw new Error('데이터를 못 가져왔습니다');
+        },
+        Component: () => <p>안 그려짐</p>,
+        ErrorBoundary: BoundarySendsInRender,
+      },
+    ],
+    true,
+  );
+  console.log(`[전제2b StrictMode] 오류봉투=${errorEnvelopes().length}`);
+});
+
+it('전제 3 — 404 는 걸러지나', async () => {
+  await run([
+    {
+      path: '/',
+      loader: () => {
+        throw new Response('그런 게시물이 없어요', { status: 404 });
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: BoundarySendsInRender,
+    },
+  ]);
+  console.log(`[전제3 404] 오류봉투=${errorEnvelopes().length}`);
+});
+
+it('전제 4 — 렌더 크래시가 경계까지 오면 두 번 세지나', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  await run([{ path: '/', Component: Explodes, ErrorBoundary: BoundarySendsInRender }]);
+  const bodies = errorEnvelopes();
+  console.log(`[전제4 중복] 오류봉투=${bodies.length}`);
+  for (const b of bodies) {
+    const m = /"type":"([^"]+)","value":"([^"]*)"/.exec(b);
+    console.log(`   → ${m ? `${m[1]}: ${m[2]}` : '(파싱 실패)'}`);
+  }
+  expect(bodies.length).toBeGreaterThan(0);
+});

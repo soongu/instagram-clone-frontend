@@ -1,0 +1,134 @@
+// 계획 단계 탐침 ⑥ — 두 번째 봉투를 누가 보내는가
+import { createServer, type Server } from 'node:http';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import { createMemoryRouter, isRouteErrorResponse, useRouteError } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9420;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+});
+
+function errorCount(): number {
+  return envelopes.filter((e) => e.includes('"type":"event"')).length;
+}
+
+it('우리 코드가 captureException 을 몇 번 부르나 vs 봉투가 몇 개 나가나', async () => {
+  let sentCount = 0;
+  const alreadySent = new WeakSet<object>();
+  const calls: string[] = [];
+
+  function reportOnce(error: unknown, from: string): void {
+    if (typeof error === 'object' && error !== null) {
+      if (alreadySent.has(error)) {
+        calls.push(`${from}: 건너뜀`);
+        return;
+      }
+      alreadySent.add(error);
+    }
+    calls.push(`${from}: 보냄`);
+    sentCount += 1;
+    Sentry.captureException(error);
+  }
+
+  function Boundary() {
+    const error = useRouteError();
+    if (!isRouteErrorResponse(error)) reportOnce(error, '경계');
+    return <p>문제가 생겼어요</p>;
+  }
+
+  const OPTIONS: RootOptions = {
+    onCaughtError: (error) => reportOnce(error, 'onCaughtError'),
+    onUncaughtError: (error) => reportOnce(error, 'onUncaughtError'),
+  };
+
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter([{ path: '/', Component: Explodes, ErrorBoundary: Boundary }], {
+    initialEntries: ['/'],
+  });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+
+  console.log(`\n[우리 코드] ${calls.join(' | ')}`);
+  console.log(`[captureException 호출 횟수] ${sentCount}`);
+  console.log(`[나간 오류 봉투] ${errorCount()}`);
+  expect(calls.length).toBeGreaterThan(0);
+});
+
+it('경계 없이 onCaughtError 만 있을 때 봉투 수 (대조군)', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(
+    [{ path: '/', Component: Explodes, ErrorBoundary: () => <p>문제가 생겼어요</p> }],
+    { initialEntries: ['/'] },
+  );
+  const root = createRoot(el, {
+    onCaughtError: Sentry.reactErrorHandler(),
+    onUncaughtError: Sentry.reactErrorHandler(),
+  });
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+  console.log(`\n[대조군 onCaughtError 만] 봉투=${errorCount()}`);
+});
+
+it('아무 배선도 없을 때 (전역 처리기만)', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(
+    [{ path: '/', Component: Explodes, ErrorBoundary: () => <p>문제가 생겼어요</p> }],
+    { initialEntries: ['/'] },
+  );
+  const root = createRoot(el);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+  console.log(`\n[배선 없음] 봉투=${errorCount()}`);
+});

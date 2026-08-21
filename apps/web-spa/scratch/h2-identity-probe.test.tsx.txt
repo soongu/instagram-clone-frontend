@@ -1,0 +1,53 @@
+// 계획 단계 탐침 ⑤ — 두 자리가 받는 것이 같은 객체인가
+import { expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import { createMemoryRouter, useRouteError } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+
+const seen: { where: string; obj: unknown }[] = [];
+
+function Boundary() {
+  const error = useRouteError();
+  seen.push({ where: '경계', obj: error });
+  return <p>문제가 생겼어요</p>;
+}
+
+const OPTIONS: RootOptions = {
+  onCaughtError: (error) => {
+    seen.push({ where: 'onCaughtError', obj: error });
+  },
+  onUncaughtError: (error) => {
+    seen.push({ where: 'onUncaughtError', obj: error });
+  },
+};
+
+it('렌더 크래시 — 경계가 받는 것과 onCaughtError 가 받는 것', async () => {
+  const thrown = new Error('그리다가 터졌습니다');
+  function Explodes(): never {
+    throw thrown;
+  }
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter([{ path: '/', Component: Explodes, ErrorBoundary: Boundary }], {
+    initialEntries: ['/'],
+  });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  act(() => root.unmount());
+  el.remove();
+
+  console.log(`\n[받은 것 ${seen.length}개]`);
+  for (const s of seen) {
+    const o = s.obj as Error;
+    console.log(
+      `  ${s.where.padEnd(14)} | 던진것과 같은 객체? ${o === thrown} | name=${o?.name} | message=${o?.message}`,
+    );
+  }
+  // 서로 같은 객체인지 짝지어 본다
+  const uniq = new Set(seen.map((s) => s.obj));
+  console.log(`  서로 다른 객체 개수: ${uniq.size}`);
+  expect(seen.length).toBeGreaterThan(0);
+});

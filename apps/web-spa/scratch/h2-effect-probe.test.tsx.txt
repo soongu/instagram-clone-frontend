@@ -1,0 +1,138 @@
+// 계획 단계 탐침 ⑦ — 렌더 본문에서 보내기 vs effect 에서 보내기
+import { createServer, type Server } from 'node:http';
+import { useEffect } from 'react';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import {
+  createMemoryRouter,
+  isRouteErrorResponse,
+  useRouteError,
+  type RouteObject,
+} from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9421;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+});
+
+function errorCount(): number {
+  return envelopes.filter((e) => e.includes('"type":"event"')).length;
+}
+
+const OPTIONS: RootOptions = {
+  onCaughtError: Sentry.reactErrorHandler(),
+  onUncaughtError: Sentry.reactErrorHandler(),
+};
+
+async function run(routes: RouteObject[]): Promise<void> {
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+}
+
+// 후보 A — 렌더 본문
+function BoundaryInRender() {
+  const error = useRouteError();
+  if (!isRouteErrorResponse(error)) Sentry.captureException(error);
+  return <p>문제가 생겼어요</p>;
+}
+
+// 후보 B — effect
+function BoundaryInEffect() {
+  const error = useRouteError();
+  useEffect(() => {
+    if (!isRouteErrorResponse(error)) Sentry.captureException(error);
+  }, [error]);
+  return <p>문제가 생겼어요</p>;
+}
+
+function explodingRoute(Boundary: () => React.JSX.Element): RouteObject[] {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  return [{ path: '/', Component: Explodes, ErrorBoundary: Boundary }];
+}
+
+function loaderRoute(Boundary: () => React.JSX.Element): RouteObject[] {
+  return [
+    {
+      path: '/',
+      loader: () => {
+        throw new Error('데이터를 못 가져왔습니다');
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: Boundary,
+    },
+  ];
+}
+
+function notFoundRoute(Boundary: () => React.JSX.Element): RouteObject[] {
+  return [
+    {
+      path: '/',
+      loader: () => {
+        throw new Response('그런 게시물이 없어요', { status: 404 });
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: Boundary,
+    },
+  ];
+}
+
+it('렌더 본문 — 세 경로', async () => {
+  await run(explodingRoute(BoundaryInRender));
+  const a = errorCount();
+  envelopes = [];
+  await run(loaderRoute(BoundaryInRender));
+  const b = errorCount();
+  envelopes = [];
+  await run(notFoundRoute(BoundaryInRender));
+  const c = errorCount();
+  console.log(`\n[렌더 본문] 렌더크래시=${a} loader=${b} 404=${c}`);
+});
+
+it('effect — 세 경로', async () => {
+  await run(explodingRoute(BoundaryInEffect));
+  const a = errorCount();
+  envelopes = [];
+  await run(loaderRoute(BoundaryInEffect));
+  const b = errorCount();
+  envelopes = [];
+  await run(notFoundRoute(BoundaryInEffect));
+  const c = errorCount();
+  console.log(`[effect]    렌더크래시=${a} loader=${b} 404=${c}`);
+  expect(b).toBe(1);
+  expect(c).toBe(0);
+});

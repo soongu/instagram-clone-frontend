@@ -1,0 +1,144 @@
+// 계획 단계 탐침 ② — 중복 봉투 두 개가 무엇으로 갈리나, 그리고 StrictMode 는 왜 1건인가
+import { createServer, type Server } from 'node:http';
+import { StrictMode } from 'react';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import {
+  createMemoryRouter,
+  isRouteErrorResponse,
+  useRouteError,
+  type RouteObject,
+} from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9417;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+});
+
+function errorEvents(): Record<string, unknown>[] {
+  return envelopes
+    .filter((e) => e.includes('"type":"event"'))
+    .map((e) => {
+      // NDJSON — 봉투 머리 / 항목 머리 / 내용 세 줄
+      const lines = e.split('\n').filter(Boolean);
+      return JSON.parse(lines[lines.length - 1]) as Record<string, unknown>;
+    });
+}
+
+function describeEvent(ev: Record<string, unknown>): string {
+  const exception = ev.exception as { values?: Record<string, unknown>[] } | undefined;
+  const v = exception?.values?.[0] ?? {};
+  const mech = v.mechanism as Record<string, unknown> | undefined;
+  const st = v.stacktrace as { frames?: { function?: string }[] } | undefined;
+  const top = st?.frames?.slice(-3).map((f) => f.function ?? '?') ?? [];
+  return [
+    `type=${String(v.type)}`,
+    `value=${String(v.value)}`,
+    `mechanism=${mech ? JSON.stringify(mech) : 'none'}`,
+    `frames=${st?.frames?.length ?? 0}`,
+    `top3=${top.join(' < ')}`,
+    `contexts.react=${JSON.stringify((ev.contexts as Record<string, unknown> | undefined)?.react ?? null)}`,
+  ].join('\n     ');
+}
+
+const OPTIONS: RootOptions = {
+  onCaughtError: Sentry.reactErrorHandler(),
+  onUncaughtError: Sentry.reactErrorHandler(),
+};
+
+async function run(routes: RouteObject[], strict = false): Promise<void> {
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(
+      strict ? (
+        <StrictMode>
+          <RouterProvider router={router} />
+        </StrictMode>
+      ) : (
+        <RouterProvider router={router} />
+      ),
+    );
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+}
+
+function BoundarySends() {
+  const error = useRouteError();
+  if (!isRouteErrorResponse(error)) {
+    Sentry.captureException(error);
+  }
+  return <p>문제가 생겼어요</p>;
+}
+
+it('중복 두 봉투가 무엇으로 갈리나', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  await run([{ path: '/', Component: Explodes, ErrorBoundary: BoundarySends }]);
+  const evs = errorEvents();
+  console.log(`\n[중복] 오류 이벤트 ${evs.length}개`);
+  evs.forEach((ev, i) => console.log(`  (${i + 1}) ${describeEvent(ev)}`));
+  expect(evs.length).toBe(2);
+});
+
+it('dedupe 가 StrictMode 중복을 먹는가 — 같은 자리에서 두 번 부르면', async () => {
+  const err = new Error('똑같은 오류');
+  Sentry.captureException(err);
+  Sentry.captureException(err);
+  await Sentry.flush(2000);
+  console.log(`\n[같은 오류 두 번] 오류 이벤트 ${errorEvents().length}개`);
+});
+
+it('dedupe 통합이 실제로 켜져 있나', async () => {
+  const client = Sentry.getClient();
+  const names = client
+    ? Object.keys((client as unknown as { _integrations: Record<string, unknown> })._integrations)
+    : [];
+  console.log(`\n[통합 목록] ${names.join(', ')}`);
+});
+
+it('loader 오류 하나만 — 경계가 보낸 것의 정체', async () => {
+  await run([
+    {
+      path: '/',
+      loader: () => {
+        throw new Error('데이터를 못 가져왔습니다');
+      },
+      Component: () => <p>안 그려짐</p>,
+      ErrorBoundary: BoundarySends,
+    },
+  ]);
+  const evs = errorEvents();
+  console.log(`\n[loader 만] 오류 이벤트 ${evs.length}개`);
+  evs.forEach((ev, i) => console.log(`  (${i + 1}) ${describeEvent(ev)}`));
+});

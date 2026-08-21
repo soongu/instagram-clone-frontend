@@ -1,0 +1,212 @@
+H-2 (에러 모니터링 ② — 나머지 절반과 읽을 수 있게) 채증
+========================================================
+브랜치 module-H2-sourcemaps (module-H1-error-monitoring 2d0376b 에서 분기)
+
+
+1. 착수 확인 — 환경과 기준선
+-----------------------------
+포트 3000 / 8090 / 9000 전부 비어 있음 (lsof LISTEN 0건).
+워킹트리 깨끗. vite.config.ts 는 G-6 시점 그대로(소스맵 꺼짐).
+
+npm test 기준선을 두 번 재서 두 번 다 일치 — 148 files / 1019 passed
+  (19.50s / 23.20s). 「같은 입력에 다른 답」이 아닌 것을 확인.
+
+빌드 확인: 번들 617,660 B · CSS 43,981 B · .map 0건 — 핸드오프와 일치.
+
+
+2. 게이트가 이 회차를 볼 수 있는가 (탐침)
+------------------------------------------
+grep-check.sh 는 모듈별 규칙이 아니라 파일명으로만 대상을 고른다
+  ("$LECTURE_DIR/${MODULE_ID}-lecture.md").
+
+탐침으로 갈랐다:
+  grep-check H2 (파일 없음) → "검증 대상 파일이 없습니다" + 종료코드 0
+  grep-check H1 (파일 있음) → "대상: 2 파일" + FAIL 0 / WARN 0
+
+⇒ 지금의 H2 통과는 「보고 통과」가 아니라 「볼 게 없어서 통과」다.
+   교안을 만든 뒤 반드시 "대상: 2 파일" 이 찍히는지 확인하고 센다.
+
+⚠️ 이 회차의 핵심 주장(소스맵·Debug ID·중복 봉투)에 대한 규칙은 게이트에 0건이다.
+   게이트 소관이 아니니 정상이지만, H-2 는 게이트가 원리적으로 못 보는 회차다.
+   판정은 전부 실행과 빌드 산출물로 한다.
+
+
+3. 시의성 (npm registry 기준 — WebSearch 아님, C-4 교훈)
+---------------------------------------------------------
+@sentry/react       설치본 10.70.0 / registry latest 10.70.0  → 드리프트 0
+@sentry/vite-plugin 설치본  5.4.0  / registry latest  5.4.0   → 드리프트 0
+(둘 다 H-1 이 이미 package.json 에 넣어뒀다. H-1 은 vite.config.ts 사용만 되돌렸다.)
+
+⚠️⚠️ 커리큘럼 H-2 행의 「Release 방식 폐기」는 너무 세다.
+   @sentry/vite-plugin README 에 release 옵션이 지금도 문서화돼 있고
+   (name / inject / create / finalize) 타입에 deprecated 표시가 0건이다.
+   실제로 이번 빌드에서도 SENTRY_RELEASE 가 번들에 박혔다.
+   ⇒ 교안은 「Debug ID 가 짝을 맞추는 자동 장치」로만 쓰고
+      "release 는 폐기됐다" 는 서술을 넣지 않는다.
+      (릴리스는 H-1 이 이미 본 session 봉투 = 릴리스 헬스 쪽 일을 한다.)
+
+
+4. ★★★ 계획 단계 실행이 척추를 바꿨다 (D-5 이후 14연속)
+--------------------------------------------------------
+핸드오프는 "useRouteError() 안에서 잡는다" 까지였다.
+그대로 짜서 돌려보니 앞 회차가 이어둔 onCaughtError 와 겹친다.
+
+탐침 h2-effect-probe — 경계 안에서 보내는 자리만 바꿔 세 경로를 각각 쟀다:
+
+                        렌더 크래시   loader 실패   404
+  렌더 본문에서 보냄        2건          1건        0건   ← 중복
+  useEffect 에서 보냄       1건          1건        0건
+
+순서(탐침 h2-order-probe): 경계 렌더 → 경계 렌더 → onCaughtError
+  ⇒ 경계가 두 번 그려지고 렌더 본문에 두면 두 번 다 보낸다.
+
+⚠️ 이 중복이 조용한 이유가 고약하다 (탐침 h2-dupe-probe · h2-dedupe-why):
+   두 봉투는 보이는 칸이 전부 같다 —
+     type=Error · value=그리다가 터졌습니다
+     mechanism={"type":"generic","handled":true}
+     frames=14 · top3=renderWithHooks < react_stack_bottom_frame < Explodes
+     contexts.react={"version":"19.2.8"}
+   시각·event_id 를 뺀 JSON 통짜 비교 → false. 갈리는 칸은 세 개:
+     breadcrumbs(한쪽만 있음) · contexts.trace.span_id · exception.stacktrace
+   Sentry 의 Dedupe 통합은 켜져 있다(통합 목록에 Dedupe 확인).
+   같은 오류를 연달아 두 번 보내면 실제로 1건으로 합쳐진다(대조군).
+   그런데 이 둘은 exception.stacktrace 가 갈려서 그 그물을 빠져나간다.
+
+⚠️ 첫 후보였던 「이미 보낸 오류를 WeakSet 으로 기억하기」는 실패했다(여전히 2건).
+   탐침 h2-identity-probe 로 세 자리(경계 ×2, onCaughtError)가 받는 것이
+   전부 같은 객체(서로 다른 객체 개수: 1)인 것까지 확인했는데도 그렇다.
+   ⇒ 답은 기억하는 것이 아니라 보내는 일을 렌더에서 빼내는 것이었다.
+      B-4 의 「부수효과는 effect 로」가 여기서 값을 한다.
+
+⚠️ Sentry.captureException 은 vi.spyOn 이 안 된다 —
+   "Cannot spy on export ... Module namespace is not configurable in ESM".
+   호출 횟수는 우리 카운터로 셌다.
+
+
+5. Step 1~3 구현 (커밋 a7d7c5f)
+--------------------------------
+monitoring.ts 에 reportRouteError(error) 신설 —
+  isRouteErrorResponse(error) && error.status === 404 이면 안 보낸다.
+  다른 번호(예: 500)는 보낸다. 잡는 일과 보내는 일을 가른 자리.
+RootErrorBoundary 는 useEffect(() => reportRouteError(error), [error]).
+
+TDD Red 확인: loader 두 판이 정확히 그 구멍에서 실패(봉투 0건).
+Green: 4/4.
+
+가드는 일부러 깨서 확인 — 둘 다 잡히고 되돌리면 4/4:
+  보내는 일을 렌더 본문으로 되돌림 → "한 번만 올라간다" 1건 FAIL (expected 2 to be 1)
+  404 거르는 조건 제거          → "404 는 안 나간다" 1건 FAIL (expected 1 to be 0)
+
+
+6. ⚠️ blast radius 1건 — 앞 회차의 판이 물었다
+-----------------------------------------------
+h1-monitoring.test.tsx > "안 이어두면 화면만 바뀌고 아무것도 안 나간다" FAIL
+  (expected [ Array(1) ] to have a length of +0 but got 1)
+
+원인은 회귀가 아니라 설계다 — 그 판이 재는 것은 H-1 시절의 성질
+("경계가 잡으면 아무것도 안 나간다") 인데 H-2 가 바로 그 사실을 바꾼다.
+
+C-6 의 「박제 후 전환」대로 처리했다:
+  scratch/h2-root-error-boundary-before.tsx 에 H-1 시점 경계를 얼리고
+  (RootErrorBoundaryBeforeReporting 으로 이름만 갈아 충돌 방지)
+  h1-monitoring 의 import 한 줄만 그쪽으로 돌렸다.
+  ★ 단언은 한 줄도 안 고쳤다. 5/5 복귀.
+
+⚠️ 앞으로 이 자리를 건드릴 때 — 살아 있는 경계로 되돌리면 다시 1건 FAIL 이다.
+   그것이 이 박제가 실제로 일하고 있다는 증거다.
+
+
+7. Step 4 — 올라왔는데 못 읽는다 (그 Step 시점 빌드에서 잼)
+------------------------------------------------------------
+Step 5 가 소스맵을 켜기 전 상태여야 하므로 a7d7c5f 의 vite.config.ts 로
+되돌려 빌드해서 쟀다(측정 후 복원 · git diff 0).
+
+  번들 index-CxYRxVfV.js  617,804 B · 전체 38줄 · .map 0개
+  오류 화면 글자 위치: 38행 49,029칸
+
+  그 앞 120자 (뭉개진 모습):
+    =(0,J.c)(11),t=Er(),n,r;e[0]===t?(n=e[1],r=e[2]):(n=()=>{HC(t)},
+    r=[t],e[0]=t,e[1]=n,e[2]=r),(0,N.useEffect)(n,r);let i=`문제가 생겼어요`,a;Ue
+
+  이름이 이렇게 뭉개졌다:
+    useRouteError        → Er
+    reportRouteError     → HC
+    isRouteErrorResponse → Ue
+    RootErrorBoundary    → (함수 이름 자체가 사라짐)
+
+  ⇒ 줄 번호는 38 로 쓸모가 없고 칸 번호만 49,029 로 커진다.
+     H-1 마무리가 약속한 "한 글자로 뭉개져 있고 줄 번호는 수만 번째" 가 그대로다.
+
+(참고) G-6 시점 번들에서 같은 자리를 재면 RootErrorBoundary 가 pA 였다.
+       이름은 빌드마다 갈리므로 교안에는 이번 빌드 값을 쓴다.
+
+
+8. Step 5 — 지도를 만든다 (커밋 59715ab)
+-----------------------------------------
+build.sourcemap: true 한 줄. 기본값이 false 라 켜기 전엔 .map 이 0건이었다.
+
+  번들 617,847 B
+  지도 3,296,229 B — 번들의 5.34배
+  sources 422개 · sourcesContent 422개 (원본이 통째로 들어간다)
+  지도 키: file · ignoreList · mappings · names · sources · sourcesContent · version
+  debug_id 있나: False  ← 플러그인이 박는 것이라 아직 없다
+  sources[418] = ../../src/routes/RootErrorBoundary.tsx
+    그 원본 9번째 줄 = "  const error = useRouteError();"
+  SignUpPage 청크도 자기 지도를 갖는다 (567,866 B)
+  CSS 43,981 B 불변
+
+
+9. Step 6 — 이름표를 박는다 (커밋 1917338)
+-------------------------------------------
+sentryVitePlugin({ telemetry: false }) — org·project·authToken 을 하나도 안 준다.
+
+  번들 617,847 → 618,262 B (+415 = 플러그인이 박은 것)
+  지도 3,296,229 B 불변 · CSS 43,981 B 불변
+  _sentryDebugIds[t] = `7ef0eb62-3747-4e58-9020-951f3ee57a65`
+  번들에 sentry-dbid-7ef0eb62-... 문자열 1건
+  SENTRY_RELEASE = {id: `59715ab3acdc210651ff8f2c090c16aa5bb8ba6e`}
+    ← 직전 커밋(Step 5) SHA 를 스스로 읽는다. git 을 안 알려줬는데도.
+  ★ 지도에는 debug_id 가 여전히 없다 — 짝의 반쪽만 됐다 (Step 7 의 본체)
+
+  빌드는 종료코드 0 이고 경고가 정확히 두 줄:
+    [sentry-vite-plugin] Warning: No auth token provided. Will not create release.
+    [sentry-vite-plugin] Warning: No auth token provided. Will not upload source maps.
+
+⚠️ 플러그인에 apply 를 안 걸어 판을 돌릴 때도 낀다. 그런데 재보니
+   149/1023 무변경이고 25.0s 라 조건을 걸지 않았다(H-1 과 같은 판단).
+
+
+10. Step 8 — 지도로 되돌려본다 (node:module · 의존성 0)
+--------------------------------------------------------
+scratch/h2-unminify.mjs (인자 없으면 오류 화면 글자 자리를 스스로 찾는다)
+
+  배포본  : dist/assets/index-B0C2AadU.js:38:49029
+  되돌리면: ../../src/routes/RootErrorBoundary.tsx : 17행 15칸
+  그 줄   :   let title = '문제가 생겼어요';
+
+★ Step 4 에서 못 읽던 자리(38행 49,029칸)와 정확히 같은 위치다 —
+  플러그인이 박는 415 B 가 뒤쪽에 붙어 앞 오프셋이 안 밀린다.
+  회차가 「못 읽는다 → 읽힌다」 한 줄로 이어진다.
+
+
+11. 측정 함정 (이번 회차에서 밟은 것)
+--------------------------------------
+- cwd 가 밀려 파일을 못 찾음 (F-3·F-4·H-1 재현) — 세션 초반 1회. 절대 경로로 해소
+- zsh 가 매치 없는 glob 에서 명령 전체를 죽임 — **7연속**.
+  이번엔 `ls dist/assets/*.map` 과 node_modules 경로 두 곳에서.
+  "no matches found" 가 나오면 그 줄의 앞 명령도 안 돈 것이다. 따옴표 필수
+- console.log 가 에이전트 환경에서 사라짐 (F-1~F-3·H-1 에 이어 5연속) —
+  모든 탐침을 env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE 로 돌렸다
+- vi.spyOn 이 ESM 네임스페이스에서 실패 (신규) — 자체 카운터로 대체
+- 백그라운드 실행 출력을 tail 로 잘라 실패 상세를 잃음 (신규) —
+  전체 판 실패 1건이 났는데 어느 판인지 못 봐서 다시 돌렸다.
+  게이트 출력은 자르지 말고 파일로 남긴다
+
+
+12. 게이트 (Step 6 커밋 뒤 재측정)
+-----------------------------------
+npm test (뿌리에서 단독)  149 files / 1023 passed   (H-1: 148/1019 · +1 파일 +4 판)
+tsc --noEmit  0   (apps/web-spa 에서)
+eslint src scratch vite.config.ts  0
+npm run build  exit 0 · 경고는 authToken 두 줄 + 500 kB 안내
+web-next · api-stub  무변경

@@ -1,0 +1,123 @@
+// 계획 단계 탐침 ③ — 두 봉투가 같아 보이는데 dedupe 가 왜 안 먹나
+import { createServer, type Server } from 'node:http';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import { createMemoryRouter, isRouteErrorResponse, useRouteError } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9418;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+});
+
+function errorEvents(): Record<string, unknown>[] {
+  return envelopes
+    .filter((e) => e.includes('"type":"event"'))
+    .map((e) => {
+      const lines = e.split('\n').filter(Boolean);
+      return JSON.parse(lines[lines.length - 1]) as Record<string, unknown>;
+    });
+}
+
+const OPTIONS: RootOptions = {
+  onCaughtError: Sentry.reactErrorHandler(),
+  onUncaughtError: Sentry.reactErrorHandler(),
+};
+
+function BoundarySends() {
+  const error = useRouteError();
+  if (!isRouteErrorResponse(error)) {
+    Sentry.captureException(error);
+  }
+  return <p>문제가 생겼어요</p>;
+}
+
+it('두 이벤트의 JSON 을 통째로 비교한다', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter([{ path: '/', Component: Explodes, ErrorBoundary: BoundarySends }], {
+    initialEntries: ['/'],
+  });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+
+  const evs = errorEvents();
+  expect(evs.length).toBe(2);
+
+  // 이벤트마다 다를 수밖에 없는 칸(시각·id)을 빼고 비교한다
+  const strip = (ev: Record<string, unknown>): Record<string, unknown> => {
+    const c = JSON.parse(JSON.stringify(ev)) as Record<string, unknown>;
+    delete c.event_id;
+    delete c.timestamp;
+    return c;
+  };
+  const a = JSON.stringify(strip(evs[0]));
+  const b = JSON.stringify(strip(evs[1]));
+  console.log(`\n[통짜 비교] 시각·id 를 뺀 나머지가 같은가: ${a === b}`);
+  console.log(`  길이: ${a.length} vs ${b.length}`);
+
+  if (a !== b) {
+    // 어느 키에서 갈리는지 찾는다
+    const ka = Object.keys(strip(evs[0])).sort();
+    const kb = Object.keys(strip(evs[1])).sort();
+    console.log(`  키 목록 같은가: ${JSON.stringify(ka) === JSON.stringify(kb)}`);
+    for (const k of ka) {
+      const va = JSON.stringify((strip(evs[0]) as Record<string, unknown>)[k]);
+      const vb = JSON.stringify((strip(evs[1]) as Record<string, unknown>)[k]);
+      if (va !== vb) {
+        console.log(`  ▸ 갈리는 칸: ${k}`);
+        console.log(`     (1) ${String(va).slice(0, 300)}`);
+        console.log(`     (2) ${String(vb).slice(0, 300)}`);
+      }
+    }
+  }
+});
+
+it('Dedupe 는 바로 직전 것하고만 비교한다 — 사이에 다른 오류를 끼워본다', async () => {
+  const err = new Error('같은 오류');
+  Sentry.captureException(err);
+  Sentry.captureException(err);
+  await Sentry.flush(2000);
+  const backToBack = errorEvents().length;
+  envelopes = [];
+
+  Sentry.captureException(err);
+  Sentry.captureException(new Error('사이에 낀 다른 오류'));
+  Sentry.captureException(err);
+  await Sentry.flush(2000);
+  const interleaved = errorEvents().length;
+
+  console.log(`\n[Dedupe 범위] 연달아 두 번=${backToBack}건 / 사이에 하나 끼우면=${interleaved}건`);
+});

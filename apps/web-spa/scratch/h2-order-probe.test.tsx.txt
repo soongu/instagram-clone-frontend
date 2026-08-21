@@ -1,0 +1,183 @@
+// 계획 단계 탐침 ④ — onCaughtError 와 경계 렌더 중 무엇이 먼저 도는가,
+// 그리고 「이미 보낸 오류」를 기억해두면 중복이 사라지는가
+import { createServer, type Server } from 'node:http';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import {
+  createMemoryRouter,
+  isRouteErrorResponse,
+  useRouteError,
+  type RouteObject,
+} from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+
+const PORT = 9419;
+let envelopes: string[] = [];
+let server: Server;
+let order: string[] = [];
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+  order = [];
+});
+
+function errorCount(): number {
+  return envelopes.filter((e) => e.includes('"type":"event"')).length;
+}
+
+// 순서를 재기 위해 reactErrorHandler 를 감싼다 (동작은 그대로 흘려보낸다)
+const reactHandler = Sentry.reactErrorHandler();
+const OPTIONS_ORDER: RootOptions = {
+  onCaughtError: (error, info) => {
+    order.push('onCaughtError');
+    reactHandler(error, info);
+  },
+  onUncaughtError: (error, info) => {
+    order.push('onUncaughtError');
+    reactHandler(error, info);
+  },
+};
+
+async function run(routes: RouteObject[], options: RootOptions): Promise<void> {
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+  const root = createRoot(el, options);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  act(() => root.unmount());
+  el.remove();
+}
+
+function BoundaryLogs() {
+  const error = useRouteError();
+  order.push('경계 렌더');
+  if (!isRouteErrorResponse(error)) {
+    Sentry.captureException(error);
+  }
+  return <p>문제가 생겼어요</p>;
+}
+
+it('순서 — 렌더 크래시', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  await run([{ path: '/', Component: Explodes, ErrorBoundary: BoundaryLogs }], OPTIONS_ORDER);
+  console.log(`\n[순서 렌더크래시] ${order.join(' → ')}  | 봉투=${errorCount()}`);
+});
+
+it('순서 — loader 실패', async () => {
+  await run(
+    [
+      {
+        path: '/',
+        loader: () => {
+          throw new Error('데이터를 못 가져왔습니다');
+        },
+        Component: () => <p>안 그려짐</p>,
+        ErrorBoundary: BoundaryLogs,
+      },
+    ],
+    OPTIONS_ORDER,
+  );
+  console.log(`\n[순서 loader] ${order.join(' → ')}  | 봉투=${errorCount()}`);
+});
+
+// ── 후보: 이미 보낸 오류를 기억해두고 건너뛴다 ──────────────
+const alreadySent = new WeakSet<object>();
+
+function reportOnce(error: unknown): void {
+  if (typeof error === 'object' && error !== null) {
+    if (alreadySent.has(error)) return;
+    alreadySent.add(error);
+  }
+  Sentry.captureException(error);
+}
+
+const OPTIONS_ONCE: RootOptions = {
+  onCaughtError: (error) => {
+    order.push('onCaughtError');
+    reportOnce(error);
+  },
+  onUncaughtError: (error) => {
+    order.push('onUncaughtError');
+    reportOnce(error);
+  },
+};
+
+function BoundaryReportsOnce() {
+  const error = useRouteError();
+  order.push('경계 렌더');
+  if (!isRouteErrorResponse(error)) {
+    reportOnce(error);
+  }
+  return <p>문제가 생겼어요</p>;
+}
+
+it('후보 — 렌더 크래시가 한 번만 나가나', async () => {
+  function Explodes(): never {
+    throw new Error('그리다가 터졌습니다');
+  }
+  await run([{ path: '/', Component: Explodes, ErrorBoundary: BoundaryReportsOnce }], OPTIONS_ONCE);
+  console.log(`\n[후보 렌더크래시] ${order.join(' → ')}  | 봉투=${errorCount()}`);
+  expect(errorCount()).toBe(1);
+});
+
+it('후보 — loader 실패는 그대로 한 번 나가나', async () => {
+  await run(
+    [
+      {
+        path: '/',
+        loader: () => {
+          throw new Error('데이터를 못 가져왔습니다');
+        },
+        Component: () => <p>안 그려짐</p>,
+        ErrorBoundary: BoundaryReportsOnce,
+      },
+    ],
+    OPTIONS_ONCE,
+  );
+  console.log(`\n[후보 loader] ${order.join(' → ')}  | 봉투=${errorCount()}`);
+  expect(errorCount()).toBe(1);
+});
+
+it('후보 — 404 는 여전히 0건인가', async () => {
+  await run(
+    [
+      {
+        path: '/',
+        loader: () => {
+          throw new Response('그런 게시물이 없어요', { status: 404 });
+        },
+        Component: () => <p>안 그려짐</p>,
+        ErrorBoundary: BoundaryReportsOnce,
+      },
+    ],
+    OPTIONS_ONCE,
+  );
+  console.log(`\n[후보 404] ${order.join(' → ')}  | 봉투=${errorCount()}`);
+  expect(errorCount()).toBe(0);
+});
