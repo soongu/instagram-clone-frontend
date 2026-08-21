@@ -1,0 +1,296 @@
+H-3 (웹 성능 측정 — Core Web Vitals) 계획 단계 채증
+====================================================
+측정일 2026-08-21 · 브랜치 module-H3-core-web-vitals (module-H2-sourcemaps fbb3d15 에서 분기)
+기계: 14코어 / 32GB / Chrome 151.0.7922.172 / node v23.6.0
+
+
+1. 착수 기준선 (두 번 재서 일치)
+--------------------------------
+npm test (저장소 뿌리, 단독):  149 files / 1023 passed  — 2회 동일
+tsc --noEmit (apps/web-spa):   0
+eslint:                        0
+npm run build:                 exit 0
+  번들 dist/assets/index-*.js  618.21 kB (gzip 199.83) · map 3,294.91 kB
+  CSS  dist/assets/index-*.css  44.00 kB (gzip 8.86)
+  SignUpPage 청크            100.42 kB
+포트: 3000 / 8090 / 9000 전부 비어 있었다.
+
+
+2. 게이트가 이 회차를 보는가 (탐침)
+-----------------------------------
+grep-check.sh H3  →  "검증 대상 파일이 없습니다" · 종료 코드 0
+  = 「보고 통과」가 아니라 「볼 게 없어서 통과」. H-2 와 같은 자리.
+
+⚠️ 이 회차의 핵심 주장(LCP·INP·CLS·field vs lab)에 대한 규칙은 게이트에 0건이다.
+   판정은 전부 실행과 빌드 산출물로 해야 한다. 게이트를 고쳐서 될 일이 아니다
+   — 성능 수치는 문자열 규칙으로 잡을 수 있는 종류가 아니다.
+
+tsc 가 실제로 그 파일을 보는지도 따로 확인했다(F-4 의 「뿌리에서 부르면 조용히 통과」 함정):
+  monitoring.ts 끝에 `const broken: number = "글자";` 를 넣으니
+  TS2322 를 그 파일 그 줄로 잡았다 → 앞의 exit 0 은 진짜 통과였다.
+
+
+3. 시의성 — 커리큘럼이 박아둔 착수 재확인의 답
+----------------------------------------------
+npm registry (설치본과 드리프트 0):
+  @sentry/react        10.70.0 = latest
+  @sentry/vite-plugin   5.4.0  = latest
+  react-router          8.3.0  = latest
+  react                19.2.8  = latest
+  web-vitals            6.1.1  (설치 안 돼 있음 — Sentry 가 포크를 품고 있다)
+
+★★★ 핸드오프·커리큘럼의 전제가 「반대 방향으로」 낡아 있었다.
+
+  적혀 있던 것: "react-router 통합은 v7 까지고 우리는 8.3.0 이라 그 자리를 다시 재야 한다"
+  실물(build/types/reactrouterv7.d.ts):
+    reactRouterV7BrowserTracingIntegration  →  @deprecated
+      "Use `reactRouterBrowserTracingIntegration` instead."
+    wrapCreateBrowserRouterV7               →  @deprecated → wrapCreateBrowserRouter
+    withSentryReactRouterV7Routing          →  @deprecated → wrapReactRouterRouting
+  실물(build/types/reactrouter.compat.d.ts) — 버전 접미사가 없는 후계:
+    reactRouterBrowserTracingIntegration    "Works with React Router v6+."
+
+  즉 v7 이 상한이라 막힌 게 아니라, SDK 가 버전 접미사를 버려서
+  라우터 메이저를 더 안 따라다니게 된 것이다.
+
+★ 그리고 실제로 붙는지를 실행으로 확인했다(읽어서 판단하지 않았다).
+  monitoring.ts 에 reactRouterBrowserTracingIntegration 을 임시로 배선:
+    react-router 8.3.0 이 요구 이름을 전부 내보낸다
+      useLocation ✓ useNavigationType ✓ createRoutesFromChildren ✓ matchRoutes ✓
+      (useEffect 는 react 쪽이다)
+    tsc --noEmit  0
+    eslint        0
+    npm run build exit 0 · 번들 618.21 → 679.68 kB (+61.47 kB)
+    봉투 도착 ✓  sentry-stub(:9000) 에 type=transaction 1건 (36,905 B)
+      contexts.trace.data["sentry.origin"] = "auto.pageload.react.reactrouter"
+      contexts.trace.data["sentry.op"]     = "pageload"
+  ⇒ 결론: 붙는다. 커리큘럼 H-3 행의 ⚠️ 는 갱신 대상.
+  (확인 후 전부 되돌렸다 — git status 빈 출력, diff 0)
+
+
+4. 봉투가 실어 오는 것 (위 transaction 실측)
+--------------------------------------------
+measurements:
+  fp    72 ms      fcp  120 ms      lcp 1080 ms
+  cls   0.221428163864972            ttfb 1.7 ms
+  connection.rtt 100 ms
+contexts.trace.data:
+  lcp.element  img.w-full.cursor-pointer[alt="minji 의 게시물"]
+  lcp.url      https://picsum.photos/seed/post2/640/640
+  lcp.loadTime 1054.8 · lcp.renderTime 1080 · lcp.size 220900
+  cls.source.1 div.px-(--card-spacing)
+  cls.source.2 div.flex.items-center.rounded-b-xl.border-t.bg-muted/50.p-(--card-spacing)
+  cls.source.3 button#base-ui-_r_2_.cursor-pointer.px-3.pt-1.pb-3...
+  effectiveConnectionType 4g · deviceMemory 32 GB · hardwareConcurrency 14
+spans 34개:  resource.img 19 · paint 2 · browser.* 8 · resource.script/css/link/other 4 · http.client 1 · mark 1
+
+★ 숫자만 오는 게 아니라 범인을 CSS 선택자로 지목한다.
+★ INP 는 measurements 에 없다 — 아무도 안 눌렀기 때문이다. 이것이 field 지표의 성질.
+
+
+5. 측정 환경 — 에이전트 브라우저로는 원리적으로 못 잰다
+--------------------------------------------------------
+확장 프로그램 탭에서 재보니 document.visibilityState = "hidden" 이고
+  performance.getEntriesByType('paint')                    → 0건
+  performance.getEntriesByType('largest-contentful-paint')  → 0건
+  performance.getEntriesByType('layout-shift')              → 0건
+화면은 정상으로 그려져 있다(카드 10 · img 20 · docHeight 8564).
+
+D-9 채증은 "CLS 엔트리가 안 쌓인다" 까지였는데, 실제로는 paint·LCP 도 0건이다.
+= 세 지표 중 하나도 못 잰다. 「0 이 나왔다」가 아니라 「기록 자체가 없다」.
+
+탭을 앞으로 못 꺼냈다:
+  스크린샷 → 여전히 hidden
+  System Events 로 process "Google Chrome" frontmost → 크롬은 앞에 오는데 탭은 hidden
+  AppleScript 로 탭 활성화 → 문법 오류 3연속(-2740/-2741, 한국어 로캘)
+★ 원인 하나가 확정됐다: 이 맥의 앱 번들은 /Applications/Google Chrome 2.app 이다.
+  (메모리에 "Google Chrome 2 일 수 있다" 로 적혀 있던 것이 실물로 확인됨)
+
+우회: 헤드리스 크롬 + CDP 직접(의존성 0, node 내장 WebSocket).
+  scratch/vitals-probe.mjs · scratch/inp-probe.mjs
+  헤드리스는 페이지를 visible 로 다뤄 세 지표가 전부 기록된다.
+
+
+6. 무대는 실재한다 — 고칠 것이 진짜로 있다
+------------------------------------------
+apps/web-spa/src/components/PostImage.tsx
+  <img className="w-full cursor-pointer" src={imageUrl} ... />
+  → width/height 도 aspect-ratio 도 없다. 640x640 사진이 늦게 오면 카드가 자란다.
+  D-9 이 web-next 에서 next/image 로 고친 그 밀림이 SPA 에는 그대로 남아 있다.
+Avatar.tsx 는 size-8 로 CSS 가 크기를 정해둬서 안 민다.
+
+실측 (헤드리스 · 창 1200x900 · 사진 10/10 도착한 회차만):
+  회차      FCP    LCP                          CLS      shifts
+  1        112   1080  IMG post1/640/640      0.2214      2
+  2        116   1116  IMG post1/640/640      0.2726      3
+  3        112   1088  IMG post2/640/640      0.2214      2
+  4        108   1068  IMG post1/640/640      0.2214      2
+  (추적 켠 빌드)  120   1080  IMG post2/640/640      0.2214      2
+
+  LCP 1.07~1.12s  ≤ 2.5s   → 통과
+  CLS 0.22~0.27   ≤ 0.1    → 실패 (기준의 2배 이상)
+  INP (아래 7)             → 통과
+
+★ 세 지표 중 하나만 실패한다. "다 고쳐야 한다" 가 아니라 "재보니 하나였다" 가 서사.
+★ 밀림을 만드는 것은 LI(댓글 줄) 와 카드 아래 구역이다 — 사진이 자리를 넓히면서 아래를 민다.
+
+
+7. INP — 진짜 입력을 넣어야 나온다
+-----------------------------------
+element.click() 은 브라우저 입력 파이프라인을 건너뛰어 interactionId 가 안 붙는다.
+CDP Input.dispatchMouseEvent 로 진짜 좌표를 눌렀다.
+
+⚠️ 첫 시도는 엉뚱한 것을 눌렀다 — button[aria-pressed] 의 첫 번째를 집었더니
+   머리말 테마 토글(x956,y36)이었다. 하트도 테마 토글도 aria-pressed 를 갖는다.
+   aria-label="좋아요" 로 좁히니 10개가 잡혔다(F-3 canon 대로 글자가 아니라 이름으로).
+
+기본 CPU:   INP  40ms · 상호작용 18건 · target 은 svg(버튼 안 하트)
+  분해: inputDelay 0 / processing 0~1 / presentation 16~24
+  → 거의 전부 「그리기」다. 우리 코드가 느린 게 아니다.
+
+CPU 조이기:  4x → 40ms · 10x → 224ms · 20x → 144ms
+⚠️ 10x 가 20x 보다 나쁘다 = 단발 노이즈. 이대로는 교안 수치로 못 쓴다.
+   쓰려면 회차를 늘려 분포로 말하거나, 조인 배율을 하나로 고정하고 반복해야 한다.
+
+
+8. ⚠️⚠️ picsum 이 측정을 거짓말하게 만든다
+-------------------------------------------
+처음 3회 측정에서 CLS 0 · LCP 536ms(LCP 요소가 P) 가 나왔다.
+"밀림이 없다" 로 읽힐 뻔했는데 사실은 사진이 한 장도 안 온 것이었다.
+
+curl 로 picsum 을 5번 재보니:
+  522  16B   51.5s     ← 첫 번째
+  200  74427B  2.9s
+  200  74427B  1.3s
+  200  74427B  1.3s
+  200  74427B  1.2s
+
+★ 사진이 안 오면 밀림도 없다. CLS 0 은 「좋다」가 아니라 「못 쟀다」다.
+탐침을 고쳐 둘을 갈랐다 — feedImgsLoaded/feedImgs 를 함께 재고
+  전부 도착 안 했으면 valid:false + WARN 을 찍는다. (계측이 실패하는 방법은 하나가 아니다)
+SETTLE_MS 를 6s → 12s 로 올린 뒤 4회 연속 10/10 도착.
+
+⇒ 학생이 그대로 따라 하면 사진이 안 와서 CLS 0 을 보고 "통과네" 할 수 있다.
+   교안이 이 갈림을 반드시 짚어야 하고, 실습 절차에 "사진이 다 왔는지부터 확인" 이 들어가야 한다.
+
+
+9. 폰트 — 한국어 앱인데 받아오는 폰트에 한글이 없다
+----------------------------------------------------
+globals.css:5  @import "@fontsource-variable/geist";
+빌드 결과 woff2 5개 · 합계 76.41 kB:
+  latin        29.40 kB
+  latin-ext    16.51 kB
+  cyrillic     15.08 kB
+  cyrillic-ext  7.42 kB
+  vietnamese    8.00 kB
+빌드 CSS 의 @font-face 5개 · unicode-range 전수 확인:
+  U+460-52F, U+1C80-1C8A, U+20B4, ... (키릴)
+  U+301, U+400-45F, ... (키릴)
+  U+102-103, U+110-111, ... U+1EA0-1EF9 (베트남)
+  U+100-2BA, ... (라틴 확장)
+  U+??, U+131, U+152-153, ... (라틴)
+★ 한글(U+AC00–D7A3)이 다섯 개 어디에도 없다.
+  → 화면의 한국어는 전부 fallback(system-ui / Apple SD Gothic Neo)으로 그려진다.
+  → 76 kB 를 받아서 쓰는 곳은 사용자 이름(jaehoon)·숫자 같은 라틴 문자뿐이다.
+  실습 「폰트 개선」의 출발점이 여기다.
+
+
+10. 결정 (사용자 승인 2026-08-21)
+---------------------------------
+(a) picsum 은 그대로 둔다 — 「못 쟀다」를 교보재로. 앱 코드 변경 0.
+(b) Sentry 추적을 켠다 — field 는 Sentry, lab 은 Lighthouse.
+(c) 폰트는 「필요 없는 subset 을 걷어낸다」로 정했는데 — 11절에서 그 전제가 반증됐다.
+
+
+11. ⚠️⚠️⚠️ 폰트 — 고를 때 깔았던 전제가 실행에 반증됐다
+--------------------------------------------------------
+9절의 "5개 76 kB 를 받아온다" 는 빌드 산출물 크기였지 다운로드가 아니다.
+헤드리스로 실제 요청을 세어보니:
+
+  선언된 @font-face          5개
+  실제로 내려받은 woff2      1개  (geist-latin-wght-normal, 29,400 B)
+  페이지의 키릴 문자          0
+  페이지의 베트남 문자        0
+  페이지의 한글              270      라틴 130
+
+★ unicode-range 가 이미 그 일을 하고 있다. 그 문자가 페이지에 없으면 브라우저가 안 받는다.
+  ⇒ "필요 없는 subset 을 걷어낸다" 는 실제로 0 바이트를 아낀다. CSS 선언 몇 줄뿐.
+  (@font-face 선언은 다운로드 지시가 아니라 "이 문자가 나오면 이걸 써라" 는 조건부 등록이다)
+
+그럼 폰트에서 고칠 것이 있나 — 통째로 떼고 재봤다(globals.css 의 @import 한 줄 제거):
+
+                     폰트 있음            폰트 뗌
+  다운로드 woff2      1개 29,400 B        0개 0 B
+  CSS                44.00 kB            42.50 kB
+  FCP                108~116 ms          108~136 ms
+  LCP                1068~1116 ms        1076~1120 ms
+  CLS / shifts       (이미지 고친 뒤) 0 / 0    0 / 0
+
+★ 세 지표가 하나도 안 움직인다.
+  이유: fontsource 가 이미 font-display: swap 을 걸어둬 FOIT 가 없고,
+        폰트는 141ms 에 시작해 16ms 만에 끝나 LCP(1.1s 짜리 사진)의 임계 경로가 아니며,
+        화면 글자의 대부분인 한글은 애초에 이 폰트를 안 쓴다.
+
+⇒ 정직한 결론: 폰트는 이 앱의 Core Web Vitals 를 못 움직인다.
+  「측정 먼저」의 교보재로는 오히려 이쪽이 낫다 — 학생의 직관(쓰지도 않는 폰트 5개를 걷어내자)이
+  두 번 틀린다. 안 받고 있었고, 떼도 지표가 그대로다.
+  이 과목이 반복해 만난 「안 줄어드는 것이 정답」(D-3 과제2 · D-4 Step7 · F-1 과제2) 계열.
+  ⇒ Step 이 아니라 [탐구] 과제로 돌리는 것을 제안한다.
+
+⚠️ 측정 흠 하나: probeKorean/probeLatin 을 getComputedStyle 로 읽었는데 그것은
+   선언된 스택을 돌려줄 뿐 「실제로 쓰인」 폰트가 아니다. 결론은 다운로드 0 으로 확정했으니
+   안 흔들리지만, 교안이 "한글은 fallback 으로 그려진다" 를 주장하려면 다른 방법으로 다시 재야 한다.
+
+
+12. 이미지 개선 — 실제로 듣는다 (확인 후 되돌림, diff 0)
+---------------------------------------------------------
+PostImage 에 aspect-square + width/height 640 을 붙였다.
+
+              고치기 전                      고친 뒤
+  CLS         0.2214 / 0.2726 / 0.2214 / 0.2214    0 / 0 / 0
+  shifts      2 / 3 / 2 / 2                        0 / 0 / 0
+  사진        10/10 (전부 유효)                     10/10 (전부 유효)
+  LCP         1068~1116 ms                         1128 / 1216 / 1144 ms
+  번들        618.21 kB                            618.25 kB (+40 B)
+
+★★ 8절과 짝이 되는 자리 — 여기서도 CLS 0 이 나오는데 뜻이 정반대다.
+   8절의 0 = 사진이 안 와서 못 잰 것(사진 0/10)
+   12절의 0 = 사진이 다 왔는데 안 민 것(사진 10/10)
+   유효성 확인이 없으면 두 0 을 구별할 방법이 없다.
+
+
+13. Lighthouse (lab) — 같은 앱, 같은 순간, 5배
+-----------------------------------------------
+npx lighthouse@13.4.1 (설치 안 하고 npx 캐시로 실행 · CHROME_PATH 로 Chrome 2.app 지정)
+설정: formFactor mobile · throttlingMethod simulate · cpuSlowdown 4x · rtt 150ms · 1638 kbps
+
+                    내 헤드리스(실제 조건)      Lighthouse(모바일 흉내)
+  FCP               108~136 ms                 2.1 s
+  LCP               1068~1116 ms               5.3 s          ← 약 5배
+  CLS               0.221~0.273                0.289
+  성능 점수          —                          64
+
+Lighthouse 가 지목한 것:
+  image-delivery-insight    Est savings of 108 KiB   score 0.5
+  layout-shifts             1 layout shift found     score 0
+  render-blocking-insight   Est savings of 300 ms    score 0
+  unused-javascript         Est savings of 93 KiB    score 0
+
+★★★ 성능 점수의 가중치 5개에 INP 가 없다:
+  first-contentful-paint 10 · largest-contentful-paint 25 ·
+  total-blocking-time 30 · cumulative-layout-shift 25 · speed-index 10
+  INP 는 inp-breakdown-insight 라는 「참고」로만 있고 점수에 안 들어간다.
+
+★★★ 그런데 우리 TBT 는 0 ms · score 1.0 (만점) 이다.
+  = lab 은 "반응성 완벽" 이라고 말한다. 그런데 TBT 는 INP 가 아니다.
+    INP 는 누가 실제로 눌러야 나오고, 그것은 원리적으로 lab 이 못 만든다.
+  ⇒ 커리큘럼의 "Lighthouse 100점도 field 실패 가능" 이 우리 앱 숫자로 재현됐다.
+
+
+14. 남은 확인
+-------------
+- INP 를 교안 수치로 쓸 형태로 안정화 (7절의 10x/20x 역전)
+- 폰트가 실제로 쓰이는지를 getComputedStyle 아닌 방법으로 (11절 측정 흠)
+- 개선 후 Lighthouse 재측정 (점수가 얼마나 오르나)
+- H-1 복선 회수 확인: monitoring.ts 의 tracesSampleRate: 0 +
+  "오류만 본다. 속도를 재는 일은 나중에 따로 다룬다" 주석이 이 회차를 가리킨다
