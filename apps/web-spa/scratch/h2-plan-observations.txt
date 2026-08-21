@@ -168,6 +168,15 @@ sentryVitePlugin({ telemetry: false }) — org·project·authToken 을 하나도
     ← 직전 커밋(Step 5) SHA 를 스스로 읽는다. git 을 안 알려줬는데도.
   ★ 지도에는 debug_id 가 여전히 없다 — 짝의 반쪽만 됐다 (Step 7 의 본체)
 
+★★ Debug ID 는 빌드마다 안 바뀐다 (신규 측정).
+   같은 소스로 두 번 빌드 → 7ef0eb62-3747-4e58-9020-951f3ee57a65 동일.
+   그리고 커밋이 바뀌어 SENTRY_RELEASE 문자열이 갈리면서
+   파일 이름 해시는 index-B0C2AadU → index-UTwUUrA0 로 바뀌었는데
+   Debug ID 는 그대로였다.
+   ⇒ 파일 이름은 내용이 바뀌면 갈리고 Debug ID 는 안 갈린다.
+      짝을 맞추는 데 파일 이름이 아니라 이 이름표를 쓰는 이유다.
+   릴리스는 반대로 빌드 시점 HEAD 를 그대로 읽는다(6cf96b0 확인).
+
   빌드는 종료코드 0 이고 경고가 정확히 두 줄:
     [sentry-vite-plugin] Warning: No auth token provided. Will not create release.
     [sentry-vite-plugin] Warning: No auth token provided. Will not upload source maps.
@@ -180,12 +189,13 @@ sentryVitePlugin({ telemetry: false }) — org·project·authToken 을 하나도
 --------------------------------------------------------
 scratch/h2-unminify.mjs (인자 없으면 오류 화면 글자 자리를 스스로 찾는다)
 
-  배포본  : dist/assets/index-B0C2AadU.js:38:49029
+  배포본  : dist/assets/index-UTwUUrA0.js:38:49029
   되돌리면: ../../src/routes/RootErrorBoundary.tsx : 17행 15칸
   그 줄   :   let title = '문제가 생겼어요';
 
-★ Step 4 에서 못 읽던 자리(38행 49,029칸)와 정확히 같은 위치다 —
-  플러그인이 박는 415 B 가 뒤쪽에 붙어 앞 오프셋이 안 밀린다.
+★ Step 4 에서 못 읽던 곳(38행 49,029칸)과 정확히 같은 위치다 —
+  플러그인이 더하는 415 B 가 뒤쪽에 붙어 앞 오프셋이 안 밀린다.
+  파일 이름이 바뀌어도 이 위치는 그대로였다(B0C2AadU → UTwUUrA0 재확인).
   회차가 「못 읽는다 → 읽힌다」 한 줄로 이어진다.
 
 

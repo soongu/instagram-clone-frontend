@@ -15,7 +15,7 @@ export default defineConfig({
   },
   build: {
     // 배포본은 이름이 뭉개져 있어 그대로는 못 읽는다.
-    // 뭉갠 것을 원래 줄로 되돌리는 지도를 함께 만들어둔다.
+    // 뭉갠 것을 원래 줄로 되돌리는 지도를 함께 만들어 남긴다.
     sourcemap: true,
   },
   plugins: [
@@ -25,7 +25,7 @@ export default defineConfig({
     await babel({
       presets: [reactCompilerPreset()],
     }),
-    // 번들과 지도에 같은 이름표(Debug ID)를 박아 짝을 맞춘다.
+    // 번들과 지도에 같은 이름표(Debug ID)를 붙여 짝을 맞춘다.
     // 파일 이름은 빌드할 때마다 바뀌지만 이 이름표는 둘을 확실히 이어준다.
     sentryVitePlugin({ telemetry: false }),
   ],
