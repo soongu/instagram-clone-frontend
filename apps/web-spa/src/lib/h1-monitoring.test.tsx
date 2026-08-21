@@ -14,7 +14,10 @@ import { createRoot, type RootOptions } from 'react-dom/client';
 import { createMemoryRouter, type RouteObject } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import * as Sentry from '@sentry/react';
-import { RootErrorBoundary } from '@/routes/RootErrorBoundary';
+// ⚠️ 살아 있는 RootErrorBoundary 가 아니라 H-1 시점의 얼려둔 사본을 쓴다.
+// 이 판들이 재는 것은 "경계가 잡으면 아무것도 안 나간다" 는 그때의 성질이고,
+// H-2 가 살아 있는 쪽을 바꿔서 그 성질이 사라졌기 때문이다. 단언은 그대로 둔다.
+import { RootErrorBoundaryBeforeReporting } from '@/../scratch/h2-root-error-boundary-before';
 
 const PORT = 9414;
 
@@ -58,7 +61,7 @@ function Explodes(): never {
 }
 
 const routes: RouteObject[] = [
-  { path: '/', Component: Explodes, ErrorBoundary: RootErrorBoundary },
+  { path: '/', Component: Explodes, ErrorBoundary: RootErrorBoundaryBeforeReporting },
 ];
 
 /** 앱과 같은 모양으로 띄운다 — 라우터가 잡는 경계를 그대로 쓴다. */

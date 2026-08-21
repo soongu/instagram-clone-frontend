@@ -1,18 +1,15 @@
-// apps/web-spa/src/routes/RootErrorBoundary.tsx
-import { useEffect } from 'react';
+// H-1 시점의 오류 화면을 그대로 얼려둔 것.
+//
+// H-2 에서 살아 있는 RootErrorBoundary 는 경계 안에서 오류를 직접 내보내게 됐다.
+// 그런데 H-1 이 재던 것은 "경계가 잡으면 아무것도 안 나간다" 는 그 시절의 성질이라,
+// 살아 있는 쪽을 쓰면 그 판이 재는 대상 자체가 사라진다.
+// 그래서 그때의 파일을 여기 얼려두고 H-1 의 판만 이것을 쓴다.
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router';
-import { reportRouteError } from '@/lib/monitoring';
 
-export function RootErrorBoundary() {
+export function RootErrorBoundaryBeforeReporting() {
   // 무엇이 던져질지 라우터도 모른다. 그래서 돌려주는 타입이 unknown 이다.
   // unknown 은 좁히기 전에는 아무것도 못 꺼낸다 — 점 하나도 못 찍는다.
   const error = useRouteError();
-
-  // 보내는 일은 그리는 일이 아니라서 effect 로 옮긴다.
-  // 이 화면은 한 번 뜨는 동안 두 번 그려지므로, 렌더 본문에서 보내면 같은 오류가 두 번 올라간다.
-  useEffect(() => {
-    reportRouteError(error);
-  }, [error]);
 
   let title = '문제가 생겼어요';
   let detail: string;
