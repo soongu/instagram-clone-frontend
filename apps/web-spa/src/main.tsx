@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import * as Sentry from '@sentry/react';
 import { AppProviders } from './AppProviders';
 import { closeConfirmOnNavigate } from './lib/closeConfirmOnNavigate';
 import { startMonitoring } from './lib/monitoring';
@@ -46,7 +47,12 @@ async function startMockingIfAsked(): Promise<void> {
 
 // 밝기는 라우터보다 바깥에 있다. 어느 주소로 들어오든, 오류 화면이 떠도 그대로다.
 void startMockingIfAsked().then(() => {
-  createRoot(rootElement).render(
+  // 라우터가 오류를 잡으면 화면은 멀쩡히 바뀌지만 밖으로는 아무것도 안 나간다.
+  // React 가 "경계가 잡았다" 고 알려주는 이 자리에서 넘겨줘야 우리가 알게 된다.
+  createRoot(rootElement, {
+    onCaughtError: Sentry.reactErrorHandler(),
+    onUncaughtError: Sentry.reactErrorHandler(),
+  }).render(
     <StrictMode>
       <AppProviders>
         {/* 통로도 라우터·캐시와 같은 자리다. 앱에 한 번만 열고, 어느 화면에 있든 열려 있다.
