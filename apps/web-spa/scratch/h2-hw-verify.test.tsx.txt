@@ -1,0 +1,121 @@
+// 과제 검증 — 지문을 쓰기 전에 직접 풀어본다.
+// 과제1: 라우트에 새 오류 화면을 달면 그 화면에서 난 오류도 올라가는가
+import { createServer, type Server } from 'node:http';
+import { useEffect } from 'react';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { act } from 'react';
+import { createRoot, type RootOptions } from 'react-dom/client';
+import { Outlet, createMemoryRouter, useRouteError, type RouteObject } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import * as Sentry from '@sentry/react';
+import { RootErrorBoundary } from '@/routes/RootErrorBoundary';
+import { reportRouteError } from '@/lib/monitoring';
+
+const PORT = 9423;
+let envelopes: string[] = [];
+let server: Server;
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      envelopes.push(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+  });
+  await new Promise<void>((r) => server.listen(PORT, r));
+  Sentry.init({ dsn: `http://demopublickey123@localhost:${PORT}/7`, tracesSampleRate: 0 });
+});
+
+afterAll(async () => {
+  await Sentry.close(2000);
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+afterEach(() => {
+  envelopes = [];
+});
+
+function errorCount(): number {
+  return envelopes.filter((e) => e.includes('"type":"event"')).length;
+}
+
+const OPTIONS: RootOptions = {
+  onCaughtError: Sentry.reactErrorHandler(),
+  onUncaughtError: Sentry.reactErrorHandler(),
+};
+
+async function render(routes: RouteObject[], at: string): Promise<string> {
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  const router = createMemoryRouter(routes, { initialEntries: [at] });
+  const root = createRoot(el, OPTIONS);
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+  });
+  await Sentry.flush(2000);
+  const text = el.textContent ?? '';
+  act(() => root.unmount());
+  el.remove();
+  return text;
+}
+
+/** 학생이 흔히 만들 법한 새 오류 화면 — 보내는 줄이 없다 */
+function PostErrorWithoutReporting() {
+  return <p>이 게시물을 불러오지 못했어요</p>;
+}
+
+/** 고친 것 — RootErrorBoundary 와 같은 모양으로 보내는 줄을 넣었다 */
+function PostErrorWithReporting() {
+  const error = useRouteError();
+  useEffect(() => {
+    reportRouteError(error);
+  }, [error]);
+  return <p>이 게시물을 불러오지 못했어요</p>;
+}
+
+function routesWith(Boundary?: () => React.JSX.Element): RouteObject[] {
+  return [
+    {
+      path: '/',
+      Component: () => (
+        <>
+          <p>껍데기</p>
+          <Outlet />
+        </>
+      ),
+      ErrorBoundary: RootErrorBoundary,
+      children: [
+        {
+          path: 'p/:postId',
+          loader: () => {
+            throw new Error('서버에 연결할 수 없어요');
+          },
+          Component: () => <p>상세</p>,
+          ...(Boundary ? { ErrorBoundary: Boundary } : {}),
+        },
+      ],
+    },
+  ];
+}
+
+it('새 오류 화면을 안 달면 — 위쪽 화면이 받아서 봉투가 온다', async () => {
+  const text = await render(routesWith(), '/p/999');
+  console.log(`[과제1 안 달았을 때] 화면=${text.slice(0, 24)} · 봉투=${errorCount()}`);
+  expect(errorCount()).toBe(1);
+});
+
+it('★ 새 오류 화면을 달면 — 그 화면이 받고 봉투는 0건', async () => {
+  const text = await render(routesWith(PostErrorWithoutReporting), '/p/999');
+  console.log(`[과제1 달았을 때]   화면=${text.slice(0, 24)} · 봉투=${errorCount()}`);
+  expect(text).toContain('이 게시물을 불러오지 못했어요');
+  expect(errorCount()).toBe(0);
+});
+
+it('보내는 줄을 넣으면 다시 온다', async () => {
+  const text = await render(routesWith(PostErrorWithReporting), '/p/999');
+  console.log(`[과제1 고친 뒤]     화면=${text.slice(0, 24)} · 봉투=${errorCount()}`);
+  expect(errorCount()).toBe(1);
+});
