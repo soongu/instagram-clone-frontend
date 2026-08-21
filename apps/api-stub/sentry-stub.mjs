@@ -1,6 +1,6 @@
 // apps/api-stub/sentry-stub.mjs
 //
-// 오류를 받아주는 연습용 서비스.
+// 오류와 속도를 받아주는 연습용 서비스.
 //
 // 진짜 오류 추적 서비스는 우리 API 서버와 다른 회사가 다른 주소에서 운영한다.
 // 그래서 이 파일도 server.mjs 와 따로 있고 포트도 다르다.
@@ -53,13 +53,44 @@ function parseEnvelope(raw) {
   return { header: parsed[0] ?? null, items: parsed.slice(1) };
 }
 
+/**
+ * 무엇이 왔는지 한 단어로.
+ *
+ * 처음에는 오류만 왔기 때문에 전부 '오류받음' 이라고 찍었다. 속도를 함께 보내기
+ * 시작하면서 그 말이 거짓이 됐다 — 속도 봉투에는 오류가 없다.
+ */
+function labelOf(envelope) {
+  if (envelope.items.some((item) => item?.exception)) {
+    return '오류받음';
+  }
+
+  const type = envelope.items.find((item) => item?.type)?.type;
+  if (type === 'transaction' || type === 'span') {
+    return '속도받음';
+  }
+
+  return '받음';
+}
+
 /** 사람이 읽을 한 줄로 줄인다. */
 function summarize(envelope) {
   const exception = envelope.items.find((item) => item?.exception)?.exception;
   const value = exception?.values?.[0];
   if (value === undefined) {
+    const measurements = envelope.items.find((item) => item?.measurements)?.measurements;
     const type = envelope.items.find((item) => item?.type)?.type ?? '알 수 없음';
-    return `${type}`;
+
+    if (measurements === undefined) {
+      return `${type}`;
+    }
+
+    // 속도 봉투는 무엇이 얼마로 왔는지가 본체다
+    const numbers = Object.entries(measurements)
+      .filter(([name]) => ['lcp', 'inp', 'cls', 'fcp'].includes(name))
+      .map(([name, item]) => `${name.toUpperCase()} ${item.value.toFixed(name === 'cls' ? 4 : 0)}`)
+      .join(' · ');
+
+    return numbers === '' ? `${type}` : `${type} — ${numbers}`;
   }
   const frames = value.stacktrace?.frames ?? [];
   const top = frames[frames.length - 1];
@@ -97,6 +128,7 @@ const server = createServer(async (req, res) => {
       receivedAt: new Date().toISOString(),
       bytes: Buffer.byteLength(raw),
       eventId: parsed.header?.event_id ?? null,
+      label: labelOf(parsed),
       summary: summarize(parsed),
       raw,
     };
@@ -107,7 +139,7 @@ const server = createServer(async (req, res) => {
     }
 
     console.log(
-      `[오류받음] ${record.bytes.toLocaleString()} B · ${record.eventId ?? '(id 없음)'}\n` +
+      `[${record.label}] ${record.bytes.toLocaleString()} B · ${record.eventId ?? '(id 없음)'}\n` +
         `          ${record.summary}`,
     );
 
@@ -120,6 +152,6 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`오류 받는 연습용 서비스가 http://localhost:${PORT} 에서 기다리고 있어요.`);
+  console.log(`오류와 속도를 받는 연습용 서비스가 http://localhost:${PORT} 에서 기다리고 있어요.`);
   console.log(`받은 것을 다시 보려면 http://localhost:${PORT}/envelopes`);
 });

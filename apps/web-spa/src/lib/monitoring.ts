@@ -1,6 +1,13 @@
 // apps/web-spa/src/lib/monitoring.ts
+import { useEffect } from 'react';
 import * as Sentry from '@sentry/react';
-import { isRouteErrorResponse } from 'react-router';
+import {
+  createRoutesFromChildren,
+  isRouteErrorResponse,
+  matchRoutes,
+  useLocation,
+  useNavigationType,
+} from 'react-router';
 
 // DSN 은 "어디로 보낼지" 하나만 정한다. 우리는 연습용 서비스를 우리 노트북에 띄워두고
 // 그쪽을 가리킨다. 공개 키 자리는 서버가 확인하지 않지만 모양은 검사한다
@@ -10,12 +17,35 @@ import { isRouteErrorResponse } from 'react-router';
 // 그래서 DSN 은 비밀이 아니다 — 비밀이었다면 여기 두면 안 됐다.
 const DSN = import.meta.env.VITE_SENTRY_DSN ?? 'http://demopublickey123@localhost:9000/7';
 
+/**
+ * 방문 몇 번에 한 번 속도를 보낼까.
+ *
+ * 1 은 전부 보낸다는 뜻이라 연습할 때만 쓴다. 봉투 하나가 수십 kB 라서
+ * 사람이 많은 서비스가 이 값을 1 로 두면 우리 사용자의 데이터 요금과
+ * 우리 요금이 함께 오른다. 실무에서는 0.1(열 번에 한 번)쯤에서 시작해
+ * 숫자가 흔들리지 않을 만큼만 올린다.
+ */
+const TRACES_SAMPLE_RATE = 1;
+
 export function startMonitoring(): void {
   Sentry.init({
     dsn: DSN,
 
-    // 오류만 본다. 속도를 재는 일은 나중에 따로 다룬다.
-    tracesSampleRate: 0,
+    // 속도도 함께 본다. 우리 화면에서 재던 것을 이제 사용자에게서 모은다.
+    tracesSampleRate: TRACES_SAMPLE_RATE,
+
+    // 주소가 바뀌는 것을 라우터에게 물어보는 통합.
+    // ⚠️ 이름에 버전이 붙은 것(...V7...)은 @deprecated 다. 접미사가 없는 이쪽이 후계이고
+    //    "React Router v6+" 라고 적혀 있다 — 우리 8.3.0 에도 붙는다.
+    integrations: [
+      Sentry.reactRouterBrowserTracingIntegration({
+        useEffect,
+        useLocation,
+        useNavigationType,
+        createRoutesFromChildren,
+        matchRoutes,
+      }),
+    ],
 
     // 어느 환경에서 온 오류인지 갈라 볼 수 있게 표시해둔다.
     environment: import.meta.env.DEV ? 'development' : 'production',
