@@ -2,7 +2,27 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSessionCookie } from 'better-auth/cookies';
+import createIntlMiddleware from 'next-intl/middleware';
 import { API_BASE } from './lib/config';
+import { routing } from './i18n/routing';
+
+// 언어 라우팅을 맡는 조각. 주소에 언어 칸이 없으면 붙여서 되돌려보낸다.
+const handleI18nRouting = createIntlMiddleware(routing);
+
+// 주소에서 언어 칸을 떼어낸다.
+// 아래 검사들은 전부 언어를 «모르던 시절» 에 쓰인 주소로 판단하기 때문에,
+// 떼지 않으면 /ko/explore 가 공개 목록의 /explore 와 안 맞는다.
+function stripLocale(pathname: string) {
+  const segments = pathname.split('/');
+  const first = segments[1];
+  const isLocale = (routing.locales as readonly string[]).includes(first);
+
+  return {
+    locale: isLocale ? first : routing.defaultLocale,
+    // 언어 칸을 뗀 나머지. 떼고 나서 빈 문자열이면 그건 홈이다.
+    rest: isLocale ? `/${segments.slice(2).join('/')}`.replace(/\/$/, '') || '/' : pathname,
+  };
+}
 
 // 로그인 안 한 사람이 와야 하는 주소. 여기 없는 주소는 전부 보호된다.
 // 새 주소를 만들면 기본이 "보호" 라서, 공개할 것만 이 목록에 적는다.
@@ -50,19 +70,22 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Content-Security-Policy', csp);
     return response;
   };
-  const pass = () => withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
+  // 통과시킬 때는 우리가 응답을 만들지 않고 언어 라우팅에게 만들게 한다.
+  // 그래야 /ko 를 내부 라우트로 다시 쓰고, 언어 칸이 없으면 붙여서 되돌려보낸다.
+  const pass = () => withCsp(handleI18nRouting(request));
 
   // 화면을 달라는 요청에만 확인이 필요하다.
   // 폼을 제출하면 같은 주소로 POST 가 오는데, 거기까지 물어볼 이유는 없다.
   if (request.method !== 'GET') {
-    return pass();
+    return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
   }
 
-  const { pathname } = request.nextUrl;
+  // 언어 칸을 떼고 나서 판단한다. 아래 목록과 검사는 언어를 모르는 주소로 적혀 있다.
+  const { locale, rest } = stripLocale(request.nextUrl.pathname);
 
   // 공개 주소는 여기서 끝난다. 아래 두 검사를 둘 다 건너뛴다 —
   // 로그인을 요구하지도 않고, 사람 이름으로 착각해 404 를 얹지도 않는다.
-  if (PUBLIC_PATHS.includes(pathname)) {
+  if (PUBLIC_PATHS.includes(rest)) {
     return pass();
   }
 
@@ -71,12 +94,13 @@ export async function proxy(request: NextRequest) {
   if (getSessionCookie(request) === null) {
     // 어디로 가려고 했는지를 주소에 실어 보낸다.
     // 이 값을 안 남기면 로그인한 뒤에 되돌려 보낼 곳을 아무도 모른다.
-    const signInUrl = new URL('/', request.url);
-    signInUrl.searchParams.set('next', pathname);
+    // 되돌려보낼 곳도 그 사람이 보던 언어여야 한다.
+    const signInUrl = new URL(`/${locale}`, request.url);
+    signInUrl.searchParams.set('next', rest);
     return withCsp(NextResponse.redirect(signInUrl));
   }
 
-  const username = pathname.slice(1);
+  const username = rest.slice(1);
 
   const response = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`);
 
