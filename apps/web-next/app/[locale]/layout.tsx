@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Noto_Sans_KR } from 'next/font/google';
 import { HeaderNav } from '../components/HeaderNav';
 import { Providers } from '../components/Providers';
@@ -16,16 +16,24 @@ import '../globals.css';
 // subsets 는 "미리 받아둘 조각" 이다. 한글은 여기 못 적는다(뒤에서 이유를 본다).
 const notoSansKr = Noto_Sans_KR({ subsets: ['latin'], display: 'swap' });
 
-export const metadata: Metadata = {
-  title: '인스타그램 클론',
-  description: 'Next.js App Router 로 다시 짓는 인스타그램',
-  // 아래 화면이 자기 것을 안 주면 이게 쓰인다 — 링크가 맨몸으로 나가는 일은 없다.
-  openGraph: {
-    title: '인스타그램 클론',
-    description: 'Next.js App Router 로 다시 짓는 인스타그램',
-    type: 'website',
-  },
-};
+// metadata 는 컴포넌트가 아니다. 그래서 useTranslations 를 못 쓴다 —
+// 훅은 그리는 도중에만 부를 수 있는데 이건 그리기 전에 불린다.
+// 대신 기다렸다 받는 getTranslations 를 쓰고, 함수로 바꿔 params 를 받는다.
+export async function generateMetadata({ params }: LayoutProps<'/[locale]'>): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'Meta' });
+
+  return {
+    title: t('title'),
+    description: t('description'),
+    // 아래 화면이 자기 것을 안 주면 이게 쓰인다 — 링크가 맨몸으로 나가는 일은 없다.
+    openGraph: {
+      title: t('title'),
+      description: t('description'),
+      type: 'website',
+    },
+  };
+}
 
 // 어떤 언어들을 미리 그려둘지 알려준다. 이게 있어야 빌드가 언어별로 한 벌씩 만든다.
 export function generateStaticParams() {

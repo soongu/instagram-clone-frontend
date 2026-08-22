@@ -3,5 +3,11 @@
     "brand": "インスタグラムクローン",
     "home": "ホーム",
     "explore": "見つける"
+  },
+  "Meta": {
+    "title": "インスタグラムクローン",
+    "description": "Next.js App Router で作り直すインスタグラム",
+    "profileTitle": "@{username}・インスタグラムクローン",
+    "followers": "フォロワー{count}人"
   }
 }

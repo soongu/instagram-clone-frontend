@@ -1,23 +1,25 @@
-// apps/web-next/app/[username]/page.tsx
+// apps/web-next/app/[locale]/[username]/page.tsx
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { FollowButton } from '@/app/components/FollowButton';
 import { TagFilter } from '@/app/components/TagFilter';
+import { getTranslations } from 'next-intl/server';
 import { fetchPostsByUsername, fetchProfile, fetchTopTags } from '@/lib/api';
 
 // 화면을 그리기 전에 Next 가 이 함수를 먼저 부른다. 돌려준 값이 <head> 로 들어간다.
 // 굳혀둔 집계값을 그대로 다시 쓴다 — 제목 하나 때문에 서버를 또 부르지 않는다.
 export async function generateMetadata({ params }: PageProps<'/[locale]/[username]'>): Promise<Metadata> {
-  const { username } = await params;
+  const { locale, username } = await params;
   const profile = await fetchProfile(username);
+  const t = await getTranslations({ locale, namespace: 'Meta' });
 
   return {
-    title: `@${username} · 인스타그램 클론`,
-    description: `팔로워 ${profile.followerCount}명`,
+    title: t('profileTitle', { username }),
+    description: t('followers', { count: profile.followerCount }),
     // 우리 화면이 아니라 남의 화면에 뜨는 카드다. 크기까지 같이 줘야 자리를 잡는다.
     openGraph: {
       title: `@${username}`,
-      description: `팔로워 ${profile.followerCount}명`,
+      description: t('followers', { count: profile.followerCount }),
       images: [{ url: profile.profileImageUrl, width: 64, height: 64 }],
     },
   };

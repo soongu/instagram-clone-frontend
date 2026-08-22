@@ -3,5 +3,11 @@
     "brand": "Instagram Clone",
     "home": "Home",
     "explore": "Explore"
+  },
+  "Meta": {
+    "title": "Instagram Clone",
+    "description": "Rebuilding Instagram with the Next.js App Router",
+    "profileTitle": "@{username} · Instagram Clone",
+    "followers": "{count} followers"
   }
 }
