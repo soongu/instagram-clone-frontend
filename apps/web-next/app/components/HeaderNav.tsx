@@ -26,7 +26,9 @@ export function HeaderNav({ children }: { children?: ReactNode }) {
   const t = useTranslations('Nav');
 
   return (
-    <nav className="mx-auto flex max-w-3xl items-center gap-4 p-4 text-sm">
+    // flex-wrap 이 없으면 칸들이 제 너비보다 좁게 눌려서 «글자» 가 줄바꿈된다.
+    // 줄이 모자라면 글자를 쪼개지 말고 칸 단위로 다음 줄에 내려보낸다.
+    <nav className="mx-auto flex max-w-3xl flex-wrap items-center gap-4 p-4 text-sm">
       <span className="font-bold">{t('brand')}</span>
       {items.map((item) => {
         const active = pathname === item.href;
