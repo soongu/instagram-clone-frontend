@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import type { ReactNode } from 'react';
 import { useTextScale } from './Providers';
+import { LocaleSwitcher } from './LocaleSwitcher';
 import { UserSearch } from './UserSearch';
 
 // 글자를 여기 적어두지 않는다. 무슨 글자인지는 번역 파일이 정하고
@@ -44,6 +45,7 @@ export function HeaderNav({ children }: { children?: ReactNode }) {
         );
       })}
       <UserSearch />
+      <LocaleSwitcher />
       <button
         type="button"
         onClick={toggle}

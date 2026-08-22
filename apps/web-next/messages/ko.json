@@ -14,5 +14,8 @@
     "stats": "게시물 {posts, plural, other {#개}} · 팔로워 {followers, plural, other {#명}}",
     "likes": "좋아요 {count, plural, other {#}}",
     "countedAt": "({time} 기준)"
+  },
+  "LocaleSwitcher": {
+    "label": "언어 선택"
   }
 }

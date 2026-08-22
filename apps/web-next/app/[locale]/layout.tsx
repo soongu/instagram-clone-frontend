@@ -67,7 +67,9 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
         </Suspense>
         {/* 브라우저로 «넘겨보낼» 칸을 여기서 고른다.
             안 고르면 이 언어의 번역문이 통째로 넘어간다 — 서버만 쓰는 칸까지 같이. */}
-        <NextIntlClientProvider messages={{ Nav: messages.Nav }}>
+        <NextIntlClientProvider
+          messages={{ Nav: messages.Nav, LocaleSwitcher: messages.LocaleSwitcher }}
+        >
           {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
           <Providers>
             <header className="border-b border-black/10">
