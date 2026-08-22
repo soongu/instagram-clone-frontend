@@ -5,7 +5,7 @@ import { findProfile } from '@/lib/api';
 
 // 주소에서 이름을 꺼내 쓰는 일은 여기 안에서만 한다.
 // 이 조각만 요청 때 채워지고, 바깥 껍데기는 미리 그려진 채로 남는다.
-async function ProfileHeading({ params }: { params: LayoutProps<'/[username]'>['params'] }) {
+async function ProfileHeading({ params }: { params: LayoutProps<'/[locale]/[username]'>['params'] }) {
   const { username } = await params;
 
   // 모르는 사람이면 여기서 멈춘다 — 게시물 0장으로 그리면 안 된다.
@@ -20,7 +20,7 @@ async function ProfileHeading({ params }: { params: LayoutProps<'/[username]'>['
 // 바깥 껍데기(app/layout.tsx)는 그대로 있고, 그 안에 한 겹이 더 생긴다.
 //
 // 이제 이 함수는 async 가 아니다. 기다릴 것이 없으니 통째로 미리 그려진다.
-export default function ProfileLayout({ children, params }: LayoutProps<'/[username]'>) {
+export default function ProfileLayout({ children, params }: LayoutProps<'/[locale]/[username]'>) {
   return (
     <main className="mx-auto max-w-3xl p-6">
       <div className="mb-6 flex items-center gap-4">

@@ -1,9 +1,8 @@
 // apps/web-next/app/components/HeaderNav.tsx
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Link, usePathname } from '@/i18n/navigation';
 import type { ReactNode } from 'react';
 import { useTextScale } from './Providers';
 import { UserSearch } from './UserSearch';

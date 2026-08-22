@@ -7,7 +7,7 @@ import { fetchPostsByUsername, fetchProfile, fetchTopTags } from '@/lib/api';
 
 // 화면을 그리기 전에 Next 가 이 함수를 먼저 부른다. 돌려준 값이 <head> 로 들어간다.
 // 굳혀둔 집계값을 그대로 다시 쓴다 — 제목 하나 때문에 서버를 또 부르지 않는다.
-export async function generateMetadata({ params }: PageProps<'/[username]'>): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<'/[locale]/[username]'>): Promise<Metadata> {
   const { username } = await params;
   const profile = await fetchProfile(username);
 
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps<'/[username]'>): Pr
 
 // 대괄호 칸의 값은 props.params 로 들어온다.
 // params 를 기다렸다 받는 이유는 나중에 다룬다 — 지금은 await 를 붙인다.
-export default async function ProfilePage({ params }: PageProps<'/[username]'>) {
+export default async function ProfilePage({ params }: PageProps<'/[locale]/[username]'>) {
   const { username } = await params;
 
   // 셋 다 여기서 출발시킨다. 셋은 서로의 결과가 필요 없다.

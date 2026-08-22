@@ -1,10 +1,12 @@
 // apps/web-next/i18n/request.ts
+import { hasLocale } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
+import { routing } from './routing';
 
-// 이 앱이 무슨 언어로 그려질지를 정하는 곳이다.
-// 지금은 한국어로 고정해 둔다 — 어디서 알아낼지는 다음 시간에 정한다.
-export default getRequestConfig(async () => {
-  const locale = 'ko';
+export default getRequestConfig(async ({ requestLocale }) => {
+  // 주소의 첫 칸에서 온다. 쿠키와 달리 미리 그릴 때도 아는 값이다.
+  const requested = await requestLocale;
+  const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
 
   return {
     locale,

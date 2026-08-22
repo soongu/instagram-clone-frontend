@@ -1,13 +1,16 @@
-// apps/web-next/app/layout.tsx
+// apps/web-next/app/[locale]/layout.tsx
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { NextIntlClientProvider } from 'next-intl';
+import { notFound } from 'next/navigation';
+import { hasLocale, NextIntlClientProvider } from 'next-intl';
+import { setRequestLocale } from 'next-intl/server';
 import { Noto_Sans_KR } from 'next/font/google';
-import { HeaderNav } from './components/HeaderNav';
-import { Providers } from './components/Providers';
-import { SignInForm } from './components/SignInForm';
-import { TextScaleStyle } from './components/TextScaleStyle';
-import './globals.css';
+import { HeaderNav } from '../components/HeaderNav';
+import { Providers } from '../components/Providers';
+import { SignInForm } from '../components/SignInForm';
+import { TextScaleStyle } from '../components/TextScaleStyle';
+import { routing } from '../../i18n/routing';
+import '../globals.css';
 
 // 빌드할 때 폰트 파일을 받아와 우리 서버에서 준다 — 학생 브라우저가 구글을 부르지 않는다.
 // subsets 는 "미리 받아둘 조각" 이다. 한글은 여기 못 적는다(뒤에서 이유를 본다).
@@ -24,11 +27,28 @@ export const metadata: Metadata = {
   },
 };
 
+// 어떤 언어들을 미리 그려둘지 알려준다. 이게 있어야 빌드가 언어별로 한 벌씩 만든다.
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
 // 이 파일이 앱에서 가장 바깥 껍데기다.
 // html 과 body 를 여기서 직접 쓴다 — Next 가 대신 만들어주지 않는다.
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default async function LocaleLayout({ children, params }: LayoutProps<'/[locale]'>) {
+  // 언어가 주소 첫 칸으로 들어온다.
+  const { locale } = await params;
+
+  // 우리가 모르는 값이 첫 칸에 오면 그건 언어가 아니다.
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
+  // 이 요청이 무슨 언어인지 아래 조각들에게 알려둔다.
+  // 이 줄이 있어야 미리 그리는 동안에도 번역을 찾을 수 있다.
+  setRequestLocale(locale);
+
   return (
-    <html lang="ko" className={notoSansKr.className}>
+    <html lang={locale} className={notoSansKr.className}>
       <body className="min-h-screen bg-white text-black antialiased">
         {/* 쿠키를 읽는 조각 하나만 여기서 흘려보낸다. 나머지는 미리 그려진 채로 남는다. */}
         <Suspense fallback={null}>
