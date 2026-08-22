@@ -1,0 +1,253 @@
+H-5 (국제화 i18n) — 계획 단계 채증
+측정일 2026-08-22 · 브랜치 module-H5-i18n (module-H3c-unused-and-budget a83d064 에서 분기)
+무대: web-next (사용자 결정 — H-1~H-3c 는 web-spa 였다)
+
+================================================================
+1. 착수 기준선 (두 번 재서 대조)
+================================================================
+web-spa  npm test (저장소 뿌리, 단독 실행)
+  1회차: 152 files / 1061 passed
+  2회차: 152 files / 1061 passed          → 일치
+  ※ npm test 는 --workspaces --if-present 라 web-spa 만 돈다.
+     web-next 에는 test 스크립트가 없다(G-6 채증 기록과 동일).
+
+web-next 클린 빌드 (rm -rf .next && npm run build)
+  exit 0 · 라우트 8개 · 전부 ◐ · ƒ Proxy (Middleware)
+  ┌ ◐ /  ├ ◐ /_not-found  ├ ◐ /[username]
+  ├ ƒ /api/auth/[...all]  ├ ƒ /api/profiles/revalidate
+  ├ ◐ /explore  └ ◐ /signup
+
+포트: 3000·4173·5173·8090·9000·9222·9223 전부 비어 있음(착수 시)
+
+================================================================
+2. 시의성 (npm registry 가 정답 — C-4 교훈)
+================================================================
+next-intl   설치 전 latest 4.13.7 (2026-08-17)  → 설치본 4.13.7 · 드리프트 0
+use-intl    4.13.7 (next-intl 의 core · 함께 깔린다)
+react-i18next 17.0.12 (2026-08-20) · i18next 26.4.0 — 둘 다 살아 있다
+next        registry latest 16.3.2 (2026-08-21) / 코드베이스 16.3.1
+            → patch 뒤짐. 교안이 Next 패치 버전을 인용하지 않으므로 보정 안 함.
+
+★ G-1(Auth.js→Better Auth) 같은 교체가 필요한가 → 아니다.
+  next-intl 은 유지보수 모드도, 후계 라이브러리도 없다.
+  peerDependencies.next = "^12 || ^13 || ^14 || ^15 || ^16" — Next 16 정식 지원.
+  커리큘럼 H-5 행의 도구 선택은 오늘도 유효하다.
+
+⚠ 설치 부피: node_modules 793M → 822M (+29M).
+  그중 27M 이 @swc/core (메시지 추출기 플러그인이 쓰는 네이티브 컴파일러).
+  next-intl 자체는 1.3M · use-intl 308K.
+
+⚠ 커리큘럼/CLAUDE.md 의 낡은 표기 (H-1·H-3 분할이 안 따라온 자리)
+  CLAUDE.md 선택 모듈 스택 줄: "next-intl(H-4) · Module Federation 2.0(H-5)"
+  → 실제로는 next-intl 이 H-5 · MF 가 H-6. 두 분할 뒤처졌다.
+  (D-1·D-9 의 README 드리프트 · G-5 의 curriculum 자체 드리프트와 같은 계열)
+
+================================================================
+3. ★★★ 계획 단계 실행이 잡은 것 — 공식 문서 예제가 우리 앱을 통째로 깨뜨린다
+================================================================
+next-intl 의 "without i18n routing"(쿠키로 언어를 정하는) 설정을 문서 그대로 넣었다.
+
+  i18n/request.ts:
+    const store = await cookies();
+    const locale = store.get('locale')?.value === 'en' ? 'en' : 'ko';
+  app/layout.tsx:
+    const locale = await getLocale();
+    <html lang={locale}> ... <NextIntlClientProvider>
+
+결과: next build → exit 1
+
+  Error: Route "...": Next.js encountered uncached or runtime data during prerendering.
+    - [stream] Provide a placeholder with <Suspense fallback={...}>
+    - [cache]  For uncached data: cache the access with "use cache"
+    - [block]  Set `export const instant = false` to allow a blocking route
+
+  --debug-prerender 로 전수: 에러 5건 / 라우트 5개 = 앱의 모든 화면
+    /  ·  /_not-found  ·  /[username]  ·  /explore  ·  /signup
+
+  스택이 우리 파일을 정확히 지목한다:
+    at <anonymous> (i18n/request.ts:5:30)      ← await cookies()
+    at RootLayout (app/layout.tsx:31:24)       ← await getLocale()
+  ⚠ "next-intl"·"getLocale" 이라는 글자는 출력에 0건이다.
+    라이브러리 이름이 아니라 우리가 쓴 두 파일의 줄 번호로만 말한다.
+
+★ 이 세 갈래는 D-5·D-6 이 가르친 바로 그 셋이다.
+  그리고 [block] 은 쓸 수 없다 — D-6 이 코드베이스에서 instant=false 를
+  전부 걷어내며 "이제 어디에도 없다" 로 끝냈다. 되사는 셈이 된다.
+  [cache] 도 못 쓴다 — D-6 Step 5 가 'use cache' 안에서 cookies() 를
+  못 읽는다는 것을 이미 가르쳤다.
+
+================================================================
+4. 대조군 — 원인을 쿠키 하나로 좁혔다
+================================================================
+"next-intl 을 넣은 것" 과 "쿠키를 읽은 것" 두 가지를 동시에 바꿨으므로 통제했다.
+(캐논: 「안 바뀐다」를 주장하려면 그때 바뀐 것부터 통제한다)
+
+  i18n/request.ts 에서 cookies() 만 빼고 고정값 'ko' 를 주었다. 나머지 전부 동일.
+
+  | i18n/request.ts        | 빌드   | 라우트 표                    |
+  |------------------------|--------|------------------------------|
+  | 쿠키를 읽는다(문서 예제) | exit 1 · 5라우트 전부 | —              |
+  | 고정값 'ko'             | exit 0 | 전부 ◐ — 기준선과 완전 동일 |
+
+⇒ next-intl 자체는 라우트 모양을 한 칸도 안 바꾼다. 원인은 오직 쿠키 읽기.
+⇒ 이 회차의 척추: "언어를 어디서 알아내는가" 가 미리 그릴 수 있느냐를 정한다.
+   쿠키 = 요청이 와야 아는 값(런타임) / 주소 = 빌드 때 아는 값
+
+================================================================
+5. 라우팅 모드로 재편 — 실제로 통한다
+================================================================
+i18n/routing.ts   defineRouting({ locales: ['ko','en'], defaultLocale: 'ko' })
+i18n/request.ts   getRequestConfig(({requestLocale}) => ...)  ← 쿠키 대신 주소
+i18n/navigation.ts createNavigation(routing) → { Link, redirect, usePathname, useRouter, getPathname }
+
+  ※ API 는 설치본 d.ts 로 실재 확인(지어내지 않았다):
+     next-intl/routing    → defineRouting
+     next-intl/navigation → createNavigation
+     next-intl/server     → setRequestLocale (= setCachedRequestLocale 별칭)
+     hasLocale 은 use-intl/core 에 있고 next-intl 이 재수출한다
+
+폴더 재편: app/{page,layout,explore,signup,[username]} → app/[locale]/ 아래로
+  ★ import 는 하나도 안 깨졌다 — 앱이 전부 @/ 별칭을 쓴다.
+    상대 경로를 쓰던 것은 layout.tsx 하나뿐이었다.
+
+================================================================
+6. ★★ typedRoutes 가 재편 목록을 통째로 만들어줬다 (D-2 가 켜둔 것)
+================================================================
+재편 직후 next build → TypeScript 에러 9건. 세 종류다.
+
+  (1) 라우트 제네릭이 사라진 주소를 가리킨다
+      app/[locale]/[username]/layout.tsx(8,65): TS2344
+        Type '"/[username]"' does not satisfy the constraint 'LayoutRoutes'.
+      page.tsx 도 같은 모양 (AppRoutes)
+
+  (2) 그래서 params 가 unknown 이 된다  ← D-1 의 발견이 그대로 재현
+      TS2339: Property 'username' does not exist on type 'unknown'.
+
+  (3) ★ 하드코딩한 주소가 전부 타입 에러
+      app/components/HeaderNav.tsx(32,13): TS2322
+        Type '"/" | "/explore"' is not assignable to
+        type 'UrlObject | RouteImpl<"/" | "/explore">'
+      app/not-found.tsx(11,13): TS2322  Type '"/"' is not assignable ...
+      ⇒ "/" 라는 주소가 더는 없기 때문이다. 이제 "/ko" 와 "/en" 만 있다.
+
+★★ 그런데 타입이 못 잡는 것이 바로 옆에 있다:
+   HeaderNav 는 usePathname() === item.href 로 현재 위치를 판별한다.
+   next/navigation 의 usePathname 은 "/ko/explore" 를 돌려주므로
+   "/explore" 와 영영 안 맞는다 → aria-current 가 조용히 안 붙는다.
+   타입 에러 0건 · 런타임 오류 0건 · 화면도 멀쩡해 보인다.
+   ⇒ 같은 파일 안에서 Link 는 시끄럽게 깨지고 usePathname 은 조용히 깨진다.
+     (C-1 의 "같은 이름이 둘인데 틀려도 안 터진다" · D-2 의 typedRoutes 한계 계열)
+   고침 = 둘 다 i18n/navigation 것으로 바꿔 끼운다. 그게 next-intl 이
+     자기 Link/usePathname 을 따로 내주는 이유다.
+
+================================================================
+7. /_not-found 는 언어 밖에 산다
+================================================================
+위를 다 고쳐도 /_not-found 하나가 남아 exit 1.
+  스택: at main / at body / at html (익명)
+원인: [locale] 폴더 «밖» 이라 주소에서 언어를 못 받는다. 그 화면에서
+  i18n/navigation 의 Link 를 쓰면 언어를 요청에서 찾으려 해 런타임 데이터가 된다.
+고침: 이 화면만 평범한 <a href="/"> 로 되돌렸다.
+  ⇒ 결과적으로 ○ (완전 정적) 이 됐다. 아무것도 안 읽으니까.
+
+================================================================
+8. 최종 빌드 — 언어별로 한 벌씩 미리 그려진다
+================================================================
+next build → exit 0
+
+  ┌ ○ /_not-found                    ← 완전 정적
+  ├   /[locale]
+  │ ├ ◐ /[locale]   ├ ◐ /ko   └ ◐ /en
+  ├   /[locale]/[username]
+  │ ├ ◐ /[locale]/[username]  ├ ◐ /ko/[username]  └ ◐ /en/[username]
+  ├   /[locale]/explore
+  │ ├ ◐ /[locale]/explore  ├ ◐ /ko/explore  └ ◐ /en/explore
+  ├   /[locale]/signup
+  │ ├ ◐ /[locale]/signup  ├ ◐ /ko/signup  └ ◐ /en/signup
+  ├ ƒ /api/auth/[...all]  └ ƒ /api/profiles/revalidate
+
+  프리렌더 페이지 수 8 → 16 (언어 2벌)
+  generateStaticParams() 가 routing.locales 를 돌려주면 빌드가 언어별로 만든다.
+  setRequestLocale(locale) 이 있어야 미리 그리는 동안 번역을 찾을 수 있다.
+
+================================================================
+9. ★★★ 빌드는 초록인데 앱이 통째로 죽어 있었다 (proxy 를 안 고친 상태)
+================================================================
+빌드 exit 0 · 타입 0 · 린트 0 인 채로 standalone 서버를 띄우고 재보니:
+
+  로그아웃 상태
+    /              → 404
+    /ko            → 307 → /?next=%2Fko
+    /en            → 307 → /?next=%2Fen
+    /ko/explore    → 307 → /?next=%2Fko%2Fexplore
+    /ko/jaehoon    → 307 → /?next=%2Fko%2Fjaehoon
+    /ko/zzzzz      → 307 → /?next=%2Fko%2Fzzzzz
+  api-stub 이 받은 요청: 0건   ← 프로필 조회까지 아무도 못 갔다
+
+  즉 «모든 화면이 도달 불가» 다. G-5 의 "빌드 exit 0 인데 JS 청크가 0개" 와
+  정확히 같은 모양 — 빌드·타입·린트 어느 것도 안 알려준다.
+
+원인: proxy.ts 의 주소 목록이 «언어 칸이 없던 시절» 에 쓰였다.
+  PUBLIC_PATHS = ['/', '/explore', '/signup'] 인데 실제 주소는 /ko, /ko/explore …
+  → 공개 목록에 하나도 안 걸린다 → 전부 보호 대상 → 세션 없음 → 307
+  그리고 '/' 는 공개라 통과하지만 이제 «/ 라는 라우트가 없다» → 404
+
+================================================================
+10. proxy 합성 — 되살아났다
+================================================================
+next-intl 공식 문서의 합성 패턴(파일명은 Next 16 에서 proxy.ts).
+  const handleI18nRouting = createIntlMiddleware(routing);
+  stripLocale(pathname) → { locale, rest }   ← 아래 검사는 전부 rest 기준
+  공개 목록·세션 검사·사람 이름 조회를 «언어를 뗀 주소» 로 판단
+  통과 자리는 withCsp(handleI18nRouting(request)) 로 넘긴다
+
+  로그아웃 상태                       로그인 상태(jaehoon)
+    /            → 307 → /ko            /ko          → 200
+    /ko          → 200                  /ko/jaehoon  → 200
+    /en          → 200                  /en/jaehoon  → 200
+    /ko/explore  → 200                  /ko/zzzzz    → 404  ★
+    /en/explore  → 200                  /en/zzzzz    → 404  ★
+    /ko/signup   → 200
+    /ko/jaehoon  → 307 → /ko?next=%2Fjaehoon
+    /jaehoon     → 307 → /ko?next=%2Fjaehoon
+
+  ★ D-7 이 405ms 주고 산 404 가 두 언어 모두에서 살아 있다.
+  ★ 되돌려보낼 주소도 언어를 따라간다(/ko?next=…) — next 값은 언어를 뗀 것.
+
+================================================================
+11. 앞 회차가 산 것 재측정 (종료 전 확인 — 캐논)
+================================================================
+G-5 CSP nonce  응답 헤더에 CSP 존재 · script 태그 외부 1/11 · 인라인 32/33 에 nonce
+               → G-5 채증의 "외부 1/10 · 인라인 31/32" 와 같은 비율.
+               (분모가 하나씩 는 것은 이번 재편으로 스크립트가 하나 늘어서다)
+D-7 404        /ko/zzzzz · /en/zzzzz 둘 다 404 (위 10절)
+D-8 문지기     로그아웃이면 /ko/jaehoon 이 307 — 살아 있다
+D-9 <html lang> /ko → lang="ko" · /en → lang="en" 으로 갈린다 (하드코딩이던 것)
+
+================================================================
+12. 측정 사고 — 전부 코드가 아니라 재는 쪽 문제
+================================================================
+(1) ★ 옛 서버가 포트 3000 을 쥐고 있어 curl 이 «옛 빌드» 를 재고 있었다.
+    proxy 를 고치고 다시 쟀는데 결과가 한 글자도 안 바뀌어서 합성이
+    실패한 줄 알았다. 로그를 보니 EADDRINUSE 로 새 서버가 죽어 있었다.
+    → D-3 · G-1 에 이어 세 번째. "되돌려도 안 바뀌면 재는 환경을 의심한다"(D-2)
+    확인법: lsof -nP -iTCP:3000 -sTCP:LISTEN + 서버 로그의 EADDRINUSE
+(2) standalone 번들에 .env.local 이 안 딸려온다(D-10 캐논).
+    BETTER_AUTH_SECRET 이 없어 /api/auth/* 가 500 — G-1 이 기록한 그 증상.
+    앱 문제가 아니라 실행 방법 문제. set -a; . ./.env.local; set +a 로 해소.
+(3) 로그인 비밀번호를 짐작해서 401 을 받았다. lib/auth.ts:45 실측 = 'hunter22!'
+    (씨앗 계정은 jaehoon · minji 둘뿐)
+(4) zsh 가 매치 없는 glob 에서 명령 전체를 죽인다 — 10연속.
+    grep --include=*.tsx 를 따옴표 없이 써서 «결과 없음» 이 나왔다.
+(5) cwd 가 밀려 apps/web-next 로 cd 가 안 됐다. 절대 경로로 전환.
+
+================================================================
+13. 아직 안 한 것 (집필 단계 몫)
+================================================================
+- 실제 번역 적용 0건. messages/{ko,en}.json 은 탐침용 뼈대만 있었고
+  useTranslations 를 쓰는 컴포넌트를 하나도 안 만들었다.
+- ★ 미측정 핵심 수치: 번역 메시지가 클라이언트 경계를 넘는가.
+  커리큘럼의 헤드라인("RSC에서 번역 로드 · 하이드레이션 오버헤드 없음")이
+  이 숫자로만 참·거짓이 갈린다. D-3 의 바이트 세는 방법으로 재야 한다.
+- 날짜/숫자/통화 포맷(Intl) · RTL · 언어 전환 UI 미착수.
+- 계획 단계 작업분은 되돌렸고 패치로만 보관했다(Step 단위로 다시 쌓기 위해).
