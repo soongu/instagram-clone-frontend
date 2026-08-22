@@ -14,3 +14,20 @@ test('로그인하면 머리말에 내 이름이 뜬다', async ({ page }) => {
   // 이름만으로는 못 고르니 어느 구역에서 찾을지를 먼저 말한다.
   await expect(page.locator('header').getByText('jaehoon')).toBeVisible();
 });
+
+test('좋아요를 누르면 눌린 상태가 된다', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('article').first()).toBeVisible();
+
+  await page.getByRole('button', { name: '로그인' }).click();
+  await expect(page.locator('header').getByText('jaehoon')).toBeVisible();
+
+  const heart = page.getByRole('button', { name: '좋아요' }).first();
+
+  // 기다리라고 우리가 안 적는다. 이 단언이 될 때까지 스스로 다시 본다.
+  //
+  // 값을 한 번만 읽어서 비교하면(getAttribute 로 꺼내 놓고 expect) 실패한다.
+  // 누른 직후에는 아직 'false' 다 — 낙관적 업데이트도 다음 줄보다는 늦다.
+  await heart.click();
+  await expect(heart).toHaveAttribute('aria-pressed', 'true');
+});
