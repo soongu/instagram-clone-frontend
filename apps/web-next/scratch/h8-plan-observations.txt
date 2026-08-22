@@ -278,3 +278,45 @@ web-spa 152 files / 1061 passed — 착수 때 2회 + 종료 시 1회, 세 번 �
 · 파이프 뒤 $? 는 파이프 종료 코드 — tsc/eslint 는 단독 실행해 종료 코드를 봤다.
 · 서버 교체 6회 전부 kill → "3000 EMPTY" 확인 → 띄우기 → EADDRINUSE=0 확인.
 · `next start` 는 output:standalone 과 안 맞는다는 경고 → standalone 서버로 교체.
+
+================================================================
+16절. 과제 직접 풀이 (넷 다 실행 · D-4 이후 26연속)
+================================================================
+[과제1] SignInFields 5글자 옮기기
+  ★★★ 이번 회차 최대 발견 — build 가 «완전히 조용하다»
+    build exit 0 · MISSING_MESSAGE 0건
+    그런데 서버를 띄우면: 런타임 MISSING_MESSAGE: SignIn (en) 7번
+                        + 로그인 폼이 통째로 사라짐(Username/Password/Sign in 전부 0건)
+  원인: SignInFields 는 쿠키를 보는 조각이라 프리렌더 대상이 아니다 → 빌드가 안 그려본다.
+       Step 7 의 LocaleSwitcher 는 프리렌더되는 곳이라 빌드가 잡았다. 같은 실수인데 갈렸다.
+  ⇒ 빌드의 MISSING 검사는 «미리 그려지는 부분» 에만 걸린다.
+  고침: Provider 에 SignIn 추가 → 런타임 0건 · Username 2건(placeholder+aria-label) ·
+        Password 2건 · Sign in 1건 · Continue with GitHub 1건
+        페이로드 네임스페이스: Nav · LocaleSwitcher · SignIn
+  ⚠️ 확인 뒤 원복(git checkout) — 교안 종료 상태 유지
+
+[과제2] 독일어 추가
+  방향 안 적고 tsc → TS1360(routing.ts) + TS7053(layout.tsx) 두 곳. 화면이 아니라 타입이 먼저.
+  완성 후 build exit 0 · MISSING 0 · 프리렌더 24 → 28 페이지
+  ★ /en "1,240 followers" vs /de "1.240 Follower" — Step 2 의 주장을 «앱 실물» 로 확인
+    (Node 콘솔이 아니라 실제 화면 + <head> 양쪽)
+  ⚠️ 확인 뒤 원복 (messages/de.json 삭제 · routing.ts 되돌림)
+
+[과제3] 좁은 화면
+  ⚠️ resize_window 가 성공을 돌려주는데 innerWidth 가 안 바뀐다 → 고정폭 칸 측정으로 대체.
+    학생은 개발자도구 기기 모드로 하면 되지만 «실제 폭을 확인하고 재라» 를 답안에 명시.
+
+[과제4] # 대신 {n} 을 쓰면
+  ★ 자릿점만 조용히 사라진다:
+      #            1 post / 1,240 posts
+      {n}          1 post / 1240 posts     ← 자릿점 소실. 복수형 갈래는 멀쩡
+      {n, number}  1 post / 1,240 posts
+    build·tsc 통과. 오류도 없고 화면도 그럴듯하다 — 오늘 만난 것 중 가장 조용한 깨짐.
+
+================================================================
+17절. 종료 상태
+================================================================
+브랜치 module-H8-i18n-formatting · 커밋 9개 · 워킹트리 깨끗(과제 실험 전부 원복)
+build exit 0 · 24 페이지 · 언어 4벌 · MISSING 0 · tsc 0 · eslint 0
+web-spa 152 files / 1061 passed (착수 2회 + 종료 1회 = 세 번 동일)
+포트 3000/8090 정리 완료
