@@ -26,7 +26,10 @@ export default defineConfig({
   // 무엇을 재고 있는지 알 수 없게 된다.
   webServer: [
     {
-      command: 'node apps/api-stub/server.mjs',
+      // 연습용 서버는 좋아요를 다섯 번에 한 번 일부러 실패시킨다(C-7 이 쓰던 규칙).
+      // 되돌리기를 배울 때는 그게 교보재였지만, 한 줄기가 지나가는지 볼 때는
+      // 판이 다섯 번에 한 번 빨개지는 이유가 된다. E2E 가 도는 세상은 우리가 정한다.
+      command: 'LIKE_FAIL_EVERY=0 node apps/api-stub/server.mjs',
       url: 'http://localhost:8090/api/posts',
       cwd: '../..',
       reuseExistingServer: !process.env.CI,

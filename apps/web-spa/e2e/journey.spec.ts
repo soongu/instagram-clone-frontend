@@ -1,28 +1,27 @@
 // apps/web-spa/e2e/journey.spec.ts
+//
+// 한 줄기만 얇게 깐다. 여기 없는 것들(빈 입력 거절·태그 고르기·오류 화면)은
+// 이미 단위 판과 컴포넌트 판이 지키고 있다. 같은 것을 두 번 지키면
+// 느린 쪽이 먼저 흔들린다.
 import { test, expect } from '@playwright/test';
 
-test('로그인하면 머리말에 내 이름이 뜬다', async ({ page }) => {
+test('로그인하고 좋아요를 누르고 댓글을 단다', async ({ page }) => {
   await page.goto('/');
 
   // 피드가 다 뜬 뒤에 누른다. 안 기다리고 누르면 판이 통과하는데,
   // 통과한 이유가 "맞아서" 가 아니라 "아직 안 그려져서" 다.
-  await expect(page.getByRole('article').first()).toBeVisible();
+  const card = page.getByRole('article').first();
+  await expect(card).toBeVisible();
 
+  // --- 로그인 ---
   await page.getByRole('button', { name: '로그인' }).click();
 
   // 'jaehoon' 은 화면에 셋이다 — 머리말·게시물 작성자·댓글 작성자.
   // 이름만으로는 못 고르니 어느 구역에서 찾을지를 먼저 말한다.
   await expect(page.locator('header').getByText('jaehoon')).toBeVisible();
-});
 
-test('좋아요를 누르면 눌린 상태가 된다', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('article').first()).toBeVisible();
-
-  await page.getByRole('button', { name: '로그인' }).click();
-  await expect(page.locator('header').getByText('jaehoon')).toBeVisible();
-
-  const heart = page.getByRole('button', { name: '좋아요' }).first();
+  // --- 좋아요 ---
+  const heart = card.getByRole('button', { name: '좋아요' });
 
   // 서버가 실제로 받았는지를 먼저 붙잡아둔다.
   //
@@ -34,10 +33,23 @@ test('좋아요를 누르면 눌린 상태가 된다', async ({ page }) => {
     { timeout: 10_000 },
   );
 
+  // 서버의 좋아요는 우리만 쓰는 값이 아니다. 앞선 판도 눌렀고 옆 사람도 누른다.
+  // 그래서 "눌리면 true" 가 아니라 "누르기 전과 달라졌다" 를 본다.
+  const before = await heart.getAttribute('aria-pressed');
+
   await heart.click();
 
   expect((await answered).ok()).toBe(true);
 
   // 기다리라고 우리가 안 적는다. 이 단언이 될 때까지 스스로 다시 본다.
-  await expect(heart).toHaveAttribute('aria-pressed', 'true');
+  await expect(heart).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+
+  // --- 댓글 ---
+  await card.getByRole('textbox').fill('한강 노을 저도 보고 싶네요');
+
+  // 이름을 포함으로 찾으면 '게시물 더 보기' 까지 걸려 둘이 된다.
+  // 범위를 좁힐 수 없을 때는 이름을 정확히 맞춘다.
+  await card.getByRole('button', { name: '게시', exact: true }).click();
+
+  await expect(card.getByText('한강 노을 저도 보고 싶네요')).toBeVisible();
 });
