@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { Noto_Sans_KR } from 'next/font/google';
 import { HeaderNav } from '../components/HeaderNav';
 import { Providers } from '../components/Providers';
@@ -55,6 +55,9 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
   // 이 줄이 있어야 미리 그리는 동안에도 번역을 찾을 수 있다.
   setRequestLocale(locale);
 
+  // 이 언어의 번역문 전체를 서버에서 읽는다. 여기까지는 서버 안의 일이다.
+  const messages = await getMessages();
+
   return (
     <html lang={locale} className={notoSansKr.className}>
       <body className="min-h-screen bg-white text-black antialiased">
@@ -62,8 +65,9 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
         <Suspense fallback={null}>
           <TextScaleStyle />
         </Suspense>
-        {/* 번역문을 아래 조각들에게 흘려보낸다. 브라우저에서 도는 조각도 이걸 통해 읽는다. */}
-        <NextIntlClientProvider>
+        {/* 브라우저로 «넘겨보낼» 칸을 여기서 고른다.
+            안 고르면 이 언어의 번역문이 통째로 넘어간다 — 서버만 쓰는 칸까지 같이. */}
+        <NextIntlClientProvider messages={{ Nav: messages.Nav }}>
           {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
           <Providers>
             <header className="border-b border-black/10">
