@@ -11,7 +11,7 @@
     "followers": "{count, number} followers"
   },
   "Profile": {
-    "stats": "{posts, number} posts · {followers, number} followers",
-    "likes": "{count, number} likes"
+    "stats": "{posts, plural, one {# post} other {# posts}} · {followers, plural, one {# follower} other {# followers}}",
+    "likes": "{count, plural, one {# like} other {# likes}}"
   }
 }

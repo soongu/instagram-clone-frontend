@@ -11,7 +11,7 @@
     "followers": "팔로워 {count, number}명"
   },
   "Profile": {
-    "stats": "게시물 {posts, number} · 팔로워 {followers, number}",
-    "likes": "좋아요 {count, number}"
+    "stats": "게시물 {posts, plural, other {#개}} · 팔로워 {followers, plural, other {#명}}",
+    "likes": "좋아요 {count, plural, other {#}}"
   }
 }

@@ -11,7 +11,7 @@
     "followers": "フォロワー{count, number}人"
   },
   "Profile": {
-    "stats": "投稿 {posts, number} · フォロワー {followers, number}",
-    "likes": "いいね {count, number}"
+    "stats": "投稿 {posts, plural, other {#件}} · フォロワー {followers, plural, other {#人}}",
+    "likes": "いいね {count, plural, other {#}}"
   }
 }
