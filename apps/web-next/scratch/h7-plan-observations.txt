@@ -315,3 +315,102 @@ Step 1 상태에서 i18n/request.ts 만 쿠키를 읽게 바꿨다. 다른 것�
     **주소에 넣으면 이 대가를 안 치른다**(쿠키와 달리 빌드 때 아는 값이라서).
 
 측정 후 워킹트리는 Step 1 커밋 상태로 복귀(git status 깨끗 확인).
+
+================================================================
+16. 집필 — Step 3·4 (언어를 주소로 · 타입이 준 목록) · 커밋 da7d6a1
+================================================================
+두 Step 이 한 커밋인 이유: 폴더를 옮긴 직후엔 빌드가 깨져 있어서
+Step 3 시점만 따로 커밋하면 tsc 가 통과 못 한다(D-6 의 「깨진 빌드 구간을
+한 흐름에 가둔다」 선례).
+
+★ 폴더만 옮기고 빌드했을 때 컴파일러가 준 목록 — **9건 · 3종 · 4파일**
+  TS2344 x4  '"/[username]"' does not satisfy the constraint 'LayoutRoutes'/'AppRoutes'
+             ([locale]/[username]/layout.tsx:8,23 · page.tsx:10,28)
+  TS2339 x3  Property 'username' does not exist on type 'unknown'   ← D-1 재현
+             (layout.tsx:9 · page.tsx:11,29)
+  TS2322 x2  Type '"/" | "/explore"' is not assignable to 'RouteImpl<...>'
+             (components/HeaderNav.tsx:37 · not-found.tsx:11)
+             = "/" 라는 주소가 더는 없다. D-2 가 켠 typedRoutes 가 여기서 제값을 한다.
+
+★★ 그런데 타입이 «못 잡는» 것이 같은 파일 바로 옆에 있었다.
+   HeaderNav 는 usePathname() === item.href 로 현재 위치를 판별하는데,
+   next/navigation 의 usePathname 은 "/ko" 를 돌려주므로 "/" 와 영영 안 맞는다.
+   일부러 되돌려서 재봤다:
+
+   | usePathname 출처        | tsc | eslint | build | aria-current |
+   |-------------------------|:---:|:------:|:-----:|:------------:|
+   | @/i18n/navigation       |  0  |   0    |   0   |   **1건**    |
+   | next/navigation (되돌림) |  0  |   0    |   0   |   **0건**    |
+
+   게이트 셋이 전부 초록인 채로 현재 위치 표시만 사라진다. 링크도 글자도
+   멀쩡해서 아무도 안 알려준다. → 시끄럽게 깨지는 것과 조용히 깨지는 것이
+   한 파일 안에 나란히 있다(C-1 의 「같은 이름이 둘인데 틀려도 안 터진다」 계열).
+
+빌드 결과: exit 0 · **20 페이지** · 언어 3벌(ko/en/ja) 프리렌더
+  /_not-found 만 ○ (완전 정적) · 나머지 전부 ◐
+
+⚠️ not-found 는 [locale] 밖이라 언어를 아는 Link 를 못 쓴다 → 평범한 <a>.
+  그런데 **eslint 가 그걸 막는다**(@next/next/no-html-link-for-pages, 2건).
+  Link 를 쓰려면 /ko 인지 /en 인지를 이 화면에서 정해버려야 하는데
+  이 화면은 언어를 모른다. "/" 로 통째로 이동해야 문지기가 골라줄 수 있다.
+  → 이유를 주석으로 적고 그 줄만 eslint-disable-next-line. 린터가 모르는 사정.
+
+================================================================
+17. 집필 — Step 5 (문지기 합성) · 커밋 a6f9d3b
+================================================================
+고치기 전(로그아웃) — 빌드·타입·린트 전부 초록인 상태에서:
+  /            404          ← 307 이 가리키는 곳이 바로 이 404 다(막다른 길)
+  /ko /en /ja  307 → /?next=…
+  /ko/explore  307 · /ko/signup 307 · /ko/jaehoon 307 · /ko/zzzzz 307
+  api-stub 이 받은 요청: **0건**
+⇒ 앱의 모든 화면이 도달 불가. G-5 의 「빌드 exit 0 인데 JS 청크 0개」와 같은 모양.
+
+고친 뒤:
+  로그아웃                          로그인(jaehoon)
+    /            307 → /ko           /ko          200
+    /ko /en /ja  200                 /ko/jaehoon  200
+    /ko/explore  200                 /en/jaehoon  200
+    /ja/explore  200                 /ja/jaehoon  200
+    /ko/signup   200                 /ko/zzzzz    **404**
+    /ko/jaehoon  307 → /ko?next=%2Fjaehoon   /en/zzzzz **404**
+  api-stub 요청 정상 도착(GET /api/posts …)
+
+앞 회차가 산 것 재측정:
+  G-5 CSP nonce   /ko 외부 1/11 · 인라인 32/33 | /en · /ja 각 1/11 · 31/32
+                  → G-5 채증 비율과 같은 자리
+  D-7 404         /ko/zzzzz · /en/zzzzz 둘 다 404
+  D-8 문지기      로그아웃이면 프로필이 307
+  D-9 <html lang> ko / en / ja 로 갈린다
+
+⚠️ **옛 서버가 포트를 쥐는 사고를 이 회차에서도 한 번 더 밟을 뻔했다.**
+  이번엔 kill 을 먼저 넣고 "3000 비었음" 을 확인한 뒤 띄웠다(계획 단계 12절 재발 방지).
+
+================================================================
+18. 집필 — Step 6 (metadata 도 번역) · 커밋 (Step 6)
+================================================================
+Step 1 이 남긴 빚 3건(<title>·og:title·twitter:title)을 갚았다.
+metadata 는 컴포넌트가 아니라 useTranslations(훅)를 못 쓴다 →
+generateMetadata + getTranslations({locale, namespace}).
+
+  /ko  <title>인스타그램 클론</title>
+  /en  <title>Instagram Clone</title>
+  /ja  <title>インスタグラムクローン</title>
+  /ko/jaehoon  @jaehoon · 인스타그램 클론 | 팔로워 1240명
+  /en/jaehoon  @jaehoon · Instagram Clone | 1240 followers
+  /ja/jaehoon  @jaehoon・インスタグラムクローン | フォロワー1240人
+
+⚠️ 영어가 **1240** 이지 1,240 이 아니다 — ICU 에서 `{count}` 는 값을 그대로 넣고
+  숫자 포맷을 안 거친다. `{count, number}` 여야 자릿점이 붙는다. → **H-8 재료**.
+
+★ 하드코딩 한국어: UI **71 → 61개** (사용자 글 30 은 그대로).
+  H-7 이 옮긴 것은 «구조»(언어가 주소로 갔다)이지 글자 대부분이 아니다.
+  남은 61 개가 H-8 의 일감.
+
+================================================================
+19. H-7 최종 게이트
+================================================================
+web-next  build 0 · tsc 0 · eslint 0 · 라우트 20페이지(언어 3벌)
+web-spa   **152 files / 1061 passed** — 착수 기준선과 동일(한 글자도 안 건드렸다)
+api-stub  무변경
+커밋 6개: bad8275(계획채증) · bf48ced(Step1) · 067c19f(채증 14·15)
+          · da7d6a1(Step3~4) · a6f9d3b(Step5) · (Step6)
