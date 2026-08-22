@@ -30,6 +30,9 @@ export async function generateMetadata({ params }: PageProps<'/[locale]/[usernam
 export default async function ProfilePage({ params }: PageProps<'/[locale]/[username]'>) {
   const { username } = await params;
 
+  // 이 화면의 번역 칸을 연다. 서버에서 도는 조각이라 기다렸다 받는다.
+  const t = await getTranslations('Profile');
+
   // 셋 다 여기서 출발시킨다. 셋은 서로의 결과가 필요 없다.
   const profileRequest = fetchProfile(username);
   const postsRequest = fetchPostsByUsername(username);
@@ -41,7 +44,7 @@ export default async function ProfilePage({ params }: PageProps<'/[locale]/[user
   return (
     <>
       <p className="mb-4 text-sm text-black/60">
-        게시물 {posts.length} · 팔로워 {profile.followerCount}
+        {t('stats', { posts: posts.length, followers: profile.followerCount })}
         <span className="ml-2 text-black/40">
           ({new Date(profile.countedAt).toLocaleTimeString('ko-KR')} 기준)
         </span>
@@ -55,7 +58,7 @@ export default async function ProfilePage({ params }: PageProps<'/[locale]/[user
         {posts.map((post) => (
           <li key={post.id} className="aspect-square rounded bg-black/5 p-3 text-sm">
             <p>{post.content}</p>
-            <p className="mt-1 text-black/60">좋아요 {post.likeCount}</p>
+            <p className="mt-1 text-black/60">{t('likes', { count: post.likeCount })}</p>
           </li>
         ))}
       </ul>

@@ -8,6 +8,10 @@
     "title": "インスタグラムクローン",
     "description": "Next.js App Router で作り直すインスタグラム",
     "profileTitle": "@{username}・インスタグラムクローン",
-    "followers": "フォロワー{count}人"
+    "followers": "フォロワー{count, number}人"
+  },
+  "Profile": {
+    "stats": "投稿 {posts, number} · フォロワー {followers, number}",
+    "likes": "いいね {count, number}"
   }
 }

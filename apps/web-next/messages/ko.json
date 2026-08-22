@@ -8,6 +8,10 @@
     "title": "인스타그램 클론",
     "description": "Next.js App Router 로 다시 짓는 인스타그램",
     "profileTitle": "@{username} · 인스타그램 클론",
-    "followers": "팔로워 {count}명"
+    "followers": "팔로워 {count, number}명"
+  },
+  "Profile": {
+    "stats": "게시물 {posts, number} · 팔로워 {followers, number}",
+    "likes": "좋아요 {count, number}"
   }
 }

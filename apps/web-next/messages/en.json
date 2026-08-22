@@ -8,6 +8,10 @@
     "title": "Instagram Clone",
     "description": "Rebuilding Instagram with the Next.js App Router",
     "profileTitle": "@{username} · Instagram Clone",
-    "followers": "{count} followers"
+    "followers": "{count, number} followers"
+  },
+  "Profile": {
+    "stats": "{posts, number} posts · {followers, number} followers",
+    "likes": "{count, number} likes"
   }
 }
