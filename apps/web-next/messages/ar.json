@@ -1,0 +1,21 @@
+{
+  "Nav": {
+    "brand": "نسخة إنستغرام",
+    "home": "الرئيسية",
+    "explore": "استكشاف"
+  },
+  "Meta": {
+    "title": "نسخة إنستغرام",
+    "description": "إعادة بناء إنستغرام باستخدام Next.js App Router",
+    "profileTitle": "@{username} · نسخة إنستغرام",
+    "followers": "{count, plural, zero {لا متابعين} one {متابع واحد} two {متابعان} few {# متابعين} many {# متابعًا} other {# متابع}}"
+  },
+  "Profile": {
+    "stats": "{posts, plural, zero {لا منشورات} one {منشور واحد} two {منشوران} few {# منشورات} many {# منشورًا} other {# منشور}} · {followers, plural, zero {لا متابعين} one {متابع واحد} two {متابعان} few {# متابعين} many {# متابعًا} other {# متابع}}",
+    "likes": "{count, plural, zero {لا إعجابات} one {إعجاب واحد} two {إعجابان} few {# إعجابات} many {# إعجابًا} other {# إعجاب}}",
+    "countedAt": "(حتى {time})"
+  },
+  "LocaleSwitcher": {
+    "label": "اختر اللغة"
+  }
+}

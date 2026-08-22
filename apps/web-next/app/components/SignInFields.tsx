@@ -14,7 +14,7 @@ export function SignInFields() {
   const next = useSearchParams().get('next');
 
   return (
-    <div className="ml-2 flex items-center gap-2">
+    <div className="ms-2 flex items-center gap-2">
       <form action={formAction} className="flex items-center gap-2">
         {next !== null && <input type="hidden" name="next" value={next} />}
         <input

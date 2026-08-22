@@ -47,7 +47,7 @@ export default async function ProfilePage({ params }: PageProps<'/[locale]/[user
     <>
       <p className="mb-4 text-sm text-black/60">
         {t('stats', { posts: posts.length, followers: profile.followerCount })}
-        <span className="ml-2 text-black/40">
+        <span className="ms-2 text-black/40">
           {t('countedAt', {
             time: format.dateTime(new Date(profile.countedAt), {
               dateStyle: 'long',

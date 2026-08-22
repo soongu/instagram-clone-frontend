@@ -12,7 +12,7 @@ export async function CommentSection({ postId }: { postId: number }) {
       <ul className="space-y-1">
         {comments.map((comment) => (
           <li key={comment.id} className="text-sm">
-            <span className="mr-1 font-semibold">@{comment.username}</span>
+            <span className="me-1 font-semibold">@{comment.username}</span>
             {/* 여전히 HTML 로 넣는다. 달라진 것은 넣기 전에 한 번 거른다는 것뿐이다.
                 이 함수를 빼면 이 줄은 그대로 오늘 오전의 그 줄이 된다. */}
             <span dangerouslySetInnerHTML={{ __html: sanitizeComment(comment.content) }} />

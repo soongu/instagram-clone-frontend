@@ -10,7 +10,7 @@ export async function SignInForm() {
 
   if (session !== null) {
     return (
-      <form action={signOut} className="ml-2 flex items-center gap-2">
+      <form action={signOut} className="ms-2 flex items-center gap-2">
         <span className="text-black/60">@{session.user.username}</span>
         <button type="submit" className="rounded border border-black/15 px-2 py-1">
           나가기

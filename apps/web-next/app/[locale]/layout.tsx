@@ -9,7 +9,7 @@ import { HeaderNav } from '../components/HeaderNav';
 import { Providers } from '../components/Providers';
 import { SignInForm } from '../components/SignInForm';
 import { TextScaleStyle } from '../components/TextScaleStyle';
-import { routing } from '../../i18n/routing';
+import { localeDirections, routing } from '../../i18n/routing';
 import '../globals.css';
 
 // 빌드할 때 폰트 파일을 받아와 우리 서버에서 준다 — 학생 브라우저가 구글을 부르지 않는다.
@@ -59,7 +59,8 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={notoSansKr.className}>
+    // 아랍어는 rtl, 나머지 셋은 ltr. 이 한 칸이 화면 전체의 좌우를 뒤집는다.
+    <html lang={locale} dir={localeDirections[locale]} className={notoSansKr.className}>
       <body className="min-h-screen bg-white text-black antialiased">
         {/* 쿠키를 읽는 조각 하나만 여기서 흘려보낸다. 나머지는 미리 그려진 채로 남는다. */}
         <Suspense fallback={null}>
