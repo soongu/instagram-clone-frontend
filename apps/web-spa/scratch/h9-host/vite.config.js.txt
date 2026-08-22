@@ -1,0 +1,27 @@
+// scratch/h9-host/vite.config.js
+// 「피드 팀」이 소유한 호스트 앱. 좋아요 버튼을 자기가 안 만들고 남의 것을 가져다 쓴다.
+//
+// ⚠️ 돌려볼 때는 확장자에서 .txt 를 떼고, 원격(5301)을 먼저 띄운 뒤
+//      npx vite build && npx vite preview --port 5302 --strictPort
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { federation } from '@module-federation/vite'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    federation({
+      name: 'feed_app',
+      // 주소가 코드에 박힌다. 빌드할 때가 아니라 「실행할 때」 이 주소로 받으러 간다.
+      remotes: {
+        like_app: {
+          type: 'module',
+          name: 'like_app',
+          entry: 'http://localhost:5301/remoteEntry.js',
+        },
+      },
+      shared: { react: { singleton: true }, 'react-dom': { singleton: true } },
+    }),
+  ],
+  build: { target: 'chrome89' },
+})

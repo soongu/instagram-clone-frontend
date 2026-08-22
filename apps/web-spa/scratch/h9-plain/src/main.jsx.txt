@@ -1,0 +1,11 @@
+// scratch/h9-plain/src/main.jsx
+// 원격에서 가져오는 대신 그냥 옆 파일에서 가져온다. 나머지는 h9-host 와 같다.
+import { createRoot } from 'react-dom/client'
+import LikeButton from './LikeButton.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <main>
+    <h1>피드</h1>
+    <LikeButton initialCount={1240} />
+  </main>,
+)

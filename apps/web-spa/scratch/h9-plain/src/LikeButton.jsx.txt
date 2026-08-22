@@ -1,0 +1,15 @@
+// scratch/h9-remote/src/LikeButton.jsx
+// 원격 앱이 밖으로 내보내는 유일한 것.
+// B-2 의 좋아요 토글과 같은 모양이고, 자릿점은 H-8 에서 배운 방식 그대로다.
+import { useState } from 'react'
+
+export default function LikeButton({ initialCount }) {
+  const [liked, setLiked] = useState(false)
+  const count = initialCount + (liked ? 1 : 0)
+
+  return (
+    <button aria-pressed={liked} onClick={() => setLiked((v) => !v)}>
+      {liked ? '♥' : '♡'} 좋아요 {count.toLocaleString('ko-KR')}개
+    </button>
+  )
+}

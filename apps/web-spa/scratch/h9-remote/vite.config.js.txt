@@ -1,0 +1,27 @@
+// scratch/h9-remote/vite.config.js
+// 「좋아요 버튼 팀」이 소유한 원격 앱. 이 앱은 혼자서도 빌드되고 배포된다.
+//
+// ⚠️ 이 폴더는 실습 재현용이라 저장소에서는 .txt 로 박제한다(scratch 관례).
+//    돌려볼 때는 확장자에서 .txt 를 떼고, 같은 폴더에서
+//      npm i vite@8.1.5 @module-federation/vite@1.20.7 \
+//            @vitejs/plugin-react@6.0.4 react@19.2.8 react-dom@19.2.8
+//      npx vite build && npx vite preview --port 5301 --strictPort
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { federation } from '@module-federation/vite'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    federation({
+      name: 'like_app',
+      filename: 'remoteEntry.js',
+      // 밖으로 내보낼 것만 여기 적는다. 안 적은 파일은 남이 못 가져간다.
+      exposes: { './LikeButton': './src/LikeButton.jsx' },
+      // react 를 「나눠 쓴다」고 선언한다.
+      // singleton = 이 페이지 안에 React 는 하나뿐이어야 한다는 뜻.
+      shared: { react: { singleton: true }, 'react-dom': { singleton: true } },
+    }),
+  ],
+  build: { target: 'chrome89' },
+})

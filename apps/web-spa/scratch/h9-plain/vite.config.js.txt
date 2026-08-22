@@ -1,0 +1,9 @@
+// scratch/h9-plain/vite.config.js
+// 세금 대조군 — 똑같은 화면을 페더레이션 «없이» 만든다.
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  build: { target: 'chrome89' },
+})
