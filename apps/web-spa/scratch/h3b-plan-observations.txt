@@ -1,0 +1,271 @@
+H-3b 계획 단계 채증 (2026-08-22)
+=====================================================================
+무대: apps/web-spa · 브랜치 module-H3b-bundle-optimization
+(module-H4-field-vs-lab 61e3e4b 에서 분기)
+
+이 파일은 「계획 단계에서 실행으로 확인한 것」만 담는다.
+Step 구성은 확정 전이다.
+
+
+1. 착수 기준선 (두 번 재서 대조)
+---------------------------------------------------------------------
+npm test (저장소 뿌리, 단독 실행)
+  1회차: 151 files / 1056 passed   17.32s
+  2회차: 151 files / 1056 passed   17.81s
+  → 핸드오프 값과 일치. 기준선 확정.
+
+npm run build (apps/web-spa)
+  index-Biduha_c.js      683.01 kB │ gzip 221.72 kB │ map 3,607.27 kB
+  SignUpPage--jPfDiTg.js 100.42 kB │ gzip  30.41 kB │ map   567.86 kB
+  index-DeAUX3ft.css      44.00 kB │ gzip   8.86 kB
+  woff2 5개 (latin 29.40 kB 포함)
+  → 핸드오프 값과 일치.
+
+빌드가 스스로 내는 경고 (C-8 이후 계속 떠 있는 500 kB 경고):
+  "Some chunks are larger than 500 kB after minification. Consider:
+   - Using dynamic import() to code-split the application
+   - Use build.rolldownOptions.output.codeSplitting to improve chunking
+   - Adjust chunk size limit via build.chunkSizeWarningLimit"
+  ⚠️ 이 경고는 exit 0 이다. 경고는 게이트가 아니다(8절 참조).
+
+포트: 3000/4173/5173/8090/9000/9222/9223 전부 비어 있음에서 시작.
+
+
+2. 시의성 (npm registry + 설치본)
+---------------------------------------------------------------------
+rollup-plugin-visualizer  registry 7.1.1 (2026-08-14)  ← 착수 8일 전
+vite                      registry 8.2.2 / 설치본 8.1.5 (patch 뒤짐)
+rolldown                  설치본 1.1.5
+react / react-dom         19.2.8 = latest (드리프트 0)
+@sentry/react             10.70.0 = latest
+lighthouse                13.4.1 (npx 캐시 · 저장소 미설치)
+
+⚠️ 커리큘럼 H-3b 행이 물어본 것: "rollup-plugin-visualizer 가 Vite 8(Rolldown)에서 도는가"
+   → 답: 돈다. 3절 참조. 게다가 7.1.1 의 peerDependencies 에
+     "rolldown": "1.x || ^1.0.0-beta || ^1.0.0-rc" 가 명시돼 있다(optional).
+     rollup 도 optional 이라 둘 중 아무것도 없어도 설치는 된다.
+
+
+3. rollup-plugin-visualizer 를 실제로 붙여봤다
+---------------------------------------------------------------------
+설치: npm i -D --workspace web-spa rollup-plugin-visualizer@7.1.1
+  → 62 packages 추가 (open · picomatch · source-map · yargs + 그 아래)
+  → 디스크: node_modules 793M / 최상위 593개
+     (D-10 시점 684M·564개 → H-1 Sentry → G-4 dompurify → 지금)
+
+vite.config.ts 의 plugins 맨 끝에 visualizer({...}) 추가 후 빌드:
+  ✅ 빌드 exit 0
+  ✅ treemap HTML 생성 1,295,986 B
+  ★ 배포본 해시가 한 글자도 안 바뀐다
+     index-Biduha_c.js 683.01 kB (붙이기 전과 동일)
+     SignUpPage--jPfDiTg.js 100.42 kB (동일)
+     → 재는 도구를 붙였는데 실려 나가는 것은 0 바이트.
+       H-4 에서 추적을 켜니 +61.48 kB 였던 것과 정반대 성격이다.
+
+테스트 회귀: npm test 151 files / 1056 passed (무변경)
+  → 플러그인이 vitest 실행에 끼어도 판이 안 깨진다(H-1 sentryVitePlugin 선례).
+
+
+4. ⚠️⚠️ treemap 의 숫자를 그대로 인용하면 안 된다 — 함정 3종
+---------------------------------------------------------------------
+(4-a) renderedLength 는 압축 전이다
+  주 청크 모듈 합계  1,547,670 B
+  실제 파일           683,010 B
+  → 2.27배. "react-dom 이 459,831 B" 를 그대로 옮기면
+    전체가 683 kB 인데 한 꾸러미가 459 kB 라는 말이 된다.
+
+(4-b) 모듈별 gzip 을 더하면 안 된다
+  nodeParts 의 gzipLength 합계  494,418 B
+  실제 gzip (221.72+30.41 kB)   252,130 B
+  → 1.96배. 모듈을 따로따로 압축하면 모듈 사이의 중복을 못 지운다.
+
+(4-c) 도구가 말하는 번들러가 우리 번들러가 아니다
+  treemap 데이터의 env.rollup = "4.23.0"
+  실제 rolldown 설치본        = 1.1.5
+  근거: node_modules/rolldown/dist/shared/rolldown-build-CtPvmZgJ.mjs 에
+        rollupVersion: "4.23.0" 이 박혀 있다(rollup 호환 표기).
+  → 학생이 "우리는 rollup 4.23 을 쓴다" 로 읽으면 틀린다.
+
+⇒ treemap 에서 참인 것은 「비율」이고, 「크기」는 빌드 출력에서 가져와야 한다.
+
+
+5. 번들 안이 처음 보였다 (renderedLength 기준 비율)
+---------------------------------------------------------------------
+=== index-*.js (주 청크, 1,547,670 rendered) ===
+    459,831  29.7%  react-dom
+    200,806  13.0%  react-router
+    189,335  12.2%  @sentry/core
+    121,214   7.8%  @base-ui/react
+    105,848   6.8%  ← 우리 코드
+    100,903   6.5%  axios
+     67,806   4.4%  @sentry/browser-utils
+     65,348   4.2%  @sentry/browser
+     65,084   4.2%  @tanstack/query-core
+     55,996   3.6%  tailwind-merge   (모듈 1개인데 이만큼)
+     35,540   2.3%  @stomp/stompjs
+     25,684   1.7%  @base-ui/utils
+     17,053   1.1%  react
+      9,264   0.6%  scheduler
+
+  ★ 우리가 쓴 코드는 주 청크의 6.8% 다.
+  ★ @sentry/* 합계 328,140 B = 21.2%  ← H-4 가 켠 추적
+  ★ react-dom 29.7% 는 바닥이다(못 지운다)
+
+=== SignUpPage-*.js (202,110 rendered) ===
+    121,423  60.1%  zod
+     67,253  33.3%  react-hook-form
+      8,801   4.4%  ← 우리 코드
+      4,633   2.3%  @hookform/resolvers
+    @sentry/* 0 B
+
+  ★ C-7 이 "무거운 게 회원가입에만 있다" 며 쪼갠 판단이
+    숫자로 확인된다 — 이 청크의 93.4% 가 폼/검사 라이브러리다.
+    C-7 은 총량(600→500 kB)만 봤지 안을 못 봤다. 회수·확장 자리.
+
+
+6. ⚠️⚠️⚠️ H-4 가 예고한 「95 KiB」 — 조건에 따라 달라진다
+---------------------------------------------------------------------
+같은 파일(index-Biduha_c.js · 같은 해시)인데:
+
+  api-stub 꺼짐  → unused 109 KiB (111,592 B · 50.9%) · 점수 94 · LCP 2.7s · CLS 0.001
+  api-stub 켜짐  → unused  95 KiB ( 97,047 B · 44.3%) · 점수 79 · LCP 5.0s · CLS 0
+
+  각각 3~4회 재서 전부 동일(재현됨).
+
+  ★ 앱이 고장난 채로 재면 점수가 더 좋게(94) 나오고
+    안 쓰는 코드는 더 많게(109 KiB) 나온다.
+    피드가 안 떠서 피드 코드가 「안 쓴 것」으로 잡히고,
+    동시에 사진이 없어 LCP 가 빨라진다.
+  ★ H-3 의 「CLS 0 두 가지 뜻」과 같은 계열.
+    H-4 의 95 KiB 는 api-stub 켠 조건에서 정확히 재현된다 — 그 조건을 밝혀야 한다.
+
+
+7. 95 KiB 의 정체 — 커버리지를 지도로 되돌렸다
+---------------------------------------------------------------------
+도구: CDP Profiler.startPreciseCoverage(detailed) + node:module 의 SourceMap
+      (의존성 0 · 탐침은 scratchpad 에 있고 저장소 밖)
+조건: 헤드리스 크롬 · 스로틀 없음 · api-stub 켬 · 피드 사진 10/10 로드 확인 후 측정
+
+  전체   681,925 B
+  실행됨 263,805 B (38.7%)
+  안 씀  418,120 B (61.3%)   ← 지도로 되돌린 것 404,141 B / 못 되돌린 것 665 B
+
+  안 쓴 것의 정체:
+    114,327 B  react-dom
+     72,599 B  react-router
+     56,442 B  @sentry/core
+     31,994 B  @base-ui/react
+     26,448 B  axios
+     19,605 B  @tanstack/query-core
+     18,880 B  @sentry/browser-utils
+     15,711 B  @sentry/browser
+     11,162 B  @stomp/stompjs
+     10,147 B  ← 우리 코드 routes/PostDetailPage.tsx
+      6,376 B  @base-ui/utils
+      1,875 B  ← 우리 코드 components/ui/dialog.tsx
+      1,394 B  ← 우리 코드 lib/postEvents.ts
+      1,120 B  ← 우리 코드 lib/h3-vitals.ts
+    @sentry/* 합계 91,872 B
+
+  ★ PostDetailPage.tsx 10,147 B 가 홈 화면에서 한 줄도 안 돈다.
+    C-7 과제 2 의 답이 "쪼개도 3.87 kB 뿐이라 되돌린다" 였는데
+    그 판단과 모순되지 않는다(압축 전/후 차이). 깊이만 더해진다.
+
+⚠️ 이 61.3% 와 Lighthouse 의 44.3% 는 다르다 — 계산식이 아니라 「측정 창」이 다르다.
+   같은 커버리지 데이터에 두 계산식을 다 돌려서 확인했다:
+     Lighthouse 계산식(중첩 무시, count==0 전부):  418,120 B / 61.31%
+     내 계산식(가장 안쪽 구간이 이김):              418,120 B / 61.31%
+   → 완전히 동일. 그러므로 차이는 알고리즘이 아니다.
+     Lighthouse 는 CPU 4x + 느린 네트워크로 훨씬 오래 도는 창에서 재고,
+     그 사이에 더 많은 코드가 돈다(재연결·재요청·flush 등).
+   ⇒ 두 숫자를 같은 것으로 나란히 쓰면 안 된다.
+
+⚠️⚠️ 첫 시도에서 V8 커버리지를 잘못 읽어 「100% 실행됨」이 나왔다.
+   V8 구간은 중첩된다 — 스크립트 전체를 감싸는 바깥 구간은 count>0 이고
+   그 안에 count==0 인 함수가 들어 있다. 바깥만 보면 전부 실행된 것처럼 보인다.
+   → 가장 안쪽 구간이 이기게 고쳐서 해결.
+   판별 근거: 고친 뒤 PostDetailPage.tsx 가 「안 쓴 것」에 잡힌다(홈에선 안 도는 게 맞다).
+
+
+8. ⚠️⚠️ H-2 가 잠근 것의 대가 — Lighthouse 가 원본별 내역을 못 준다
+---------------------------------------------------------------------
+unused-javascript 감사에는 subItems(원본 파일별 내역) 자리가 있다.
+
+  sourcemap: 'hidden'  (H-2 가 정한 현행) → subItems 0 줄
+  sourcemap: true      (실험)             → subItems 5 줄
+      21,150 B  react-dom/cjs/react-dom-client.production.js
+      12,844 B  react-router/dist/production/lib/router/router.js
+       2,925 B  @stomp/stompjs/bundles/stomp.umd.js
+       2,211 B  @base-ui/react/floating-ui-react/components/Floati…
+       1,827 B  react-router/dist/production/lib/dom/lib.js
+
+  ★ 'hidden' 은 지도를 만들되 배포본이 그것을 가리키는 주석을 안 남긴다.
+    Lighthouse 는 그 주석을 따라가서 지도를 찾으므로 아무것도 못 읽는다.
+  ★ 부수 확인: 주석 한 줄이 43 B (683.01 → 683.05 kB).
+    H-2 채증의 -43 B 와 정확히 일치한다.
+  ★ 되돌리는 것이 답이 아니다 — 지도를 배포본 옆에 올리면 소스가 공개된다(H-2).
+    답은 「우리 기계 안에서 우리가 직접 되돌린다」(7절).
+  실험 후 vite.config.ts 는 'hidden' 으로 복원 · git diff 0 · sourceMappingURL 주석 0건.
+
+
+9. React 19 가 Performance 패널에 그리는 자국 — 개발에만 있다
+---------------------------------------------------------------------
+react-dom 19.2.8 소스 실측:
+  cjs/react-dom-client.development.js  performance.measure 17건
+  cjs/react-dom-client.production.js   performance.measure  0건
+  트랙 이름: "Components ⚛" · "Scheduler ⚛"  (⚛)
+  컴포넌트 이름 앞에 zero-width space("​" + name)가 붙는다.
+
+같은 방법으로 두 조건을 재서 대조(둘 다 api-stub 켬 · 피드 렌더 확인 후):
+  개발 서버 :5173  → performance measure 자국 149개
+      18회 PostCard   18회 Card      15회 Mount     14회 PostImage
+      14회 CardContent 13회 PostBody 13회 LikeButton 11회 Update
+       7회 IconButton  6회 Button     2회 Reconnect  2회 Cascading Update
+       2회 FeedSection/Section/Feed/List/PostModal/Dialog/DialogRoot  1회 Heart
+  배포본  :4173  → 0개
+
+  ★ 「볼 게 없어서 0」이 아니라 「보고 0」인지 확인했다 —
+    처음엔 api-stub 이 꺼진 채로 재서 0 이 나왔고(무효),
+    stub 을 켜고 피드가 다 뜬 상태에서 다시 재도 0 이었다.
+  ★ 재는 도구는 dev 에 있고, 줄여야 할 번들은 prod 에 있다.
+    H-4 의 lab vs field 와 같은 구조가 렌더링 쪽에서 재현된다.
+  ★ "Cascading Update" 2회 — 커밋 중에 상태를 또 바꾼 자리를 React 가 직접 이름 붙여준다.
+
+
+10. 번들 예산을 게이트로 — 지금은 게이트가 없다
+---------------------------------------------------------------------
+build.chunkSizeWarningLimit 은 「경고」만 낸다. 실제로 683 kB 로
+500 kB 경고가 떠 있는데 빌드는 exit 0 이다(1절).
+⇒ 진짜 게이트는 직접 만들어야 한다.
+  선례: D-10 과제 2 에서 vite 플러그인의 closeBundle + apply:'build' 로
+        빌드 후 처리를 넣어본 적이 있다(그때는 파일 삭제였다).
+
+
+11. C-7 이 이미 갚은 것 (「처음 배우는 것」으로 쓰면 안 되는 자리)
+---------------------------------------------------------------------
+C7-lecture.md 실측:
+  Step 7 "쪼개고 다시 잽니다"  — lazy + Suspense 로 SignUpPage 분리
+                                 600 KB → 500 KB, 도구가 먼저 dynamic import 를 권했다
+  Step 8 "어디를 경계로 쪼갤까요" — 쪼개는 값과 세 질문
+       (하나. 얼마나 많은 사람이 여나 / 둘. 그 화면만 쓰는 무거운 게 있나 /
+        셋. 잠깐 기다려도 되는 화면인가) + 우리 앱 4화면 판정표
+  과제 2 — PostDetailPage 를 lazy 로 쪼개보고 되돌리기(3.87 kB 뿐)
+  Step 2 "우리가 안 쓴 코드가 이미 들어 있습니다" — 컴파일러 생성물
+  Step 4 — 컴파일러가 건너뛴 파일 = eslint 규칙을 끈 파일
+  C-7 은 <Profiler> API 를 일부러 안 썼다("측정은 DevTools Highlight updates 로")
+
+⇒ 코드 스플리팅·메모이제이션은 회수·확장으로만 다룬다.
+  H-3b 가 새로 주는 것은 「총량이 아니라 안을 본다」와
+  「안 쓰는 것을 이름으로 찾는다」와 「그것을 지키는 게이트」다.
+
+
+12. 측정 함정 (이번에 직접 밟은 것)
+---------------------------------------------------------------------
+- api-stub 을 `node server.mjs | head -40` 로 띄웠더니 head 가 40줄을 받고
+  파이프를 닫으며 서버가 죽었다. 그 뒤 측정이 조용히 「앱이 고장난 조건」이 됐다.
+  → 백그라운드 서버는 파이프로 자르지 말고 파일로 리다이렉트.
+- V8 커버리지 중첩 오독(7절).
+- 「0 개」를 두 번 확인해야 했다(9절) — 볼 게 없어서 0 인지 보고 0 인지.
+- console.log 가 에이전트 환경에서 사라짐: 모든 탐침을
+  env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE 로 실행(H-1 이후 7연속).
+- 이 맥의 크롬: /Applications/Google Chrome 2.app (H-3 에서 확정된 것 재확인).
