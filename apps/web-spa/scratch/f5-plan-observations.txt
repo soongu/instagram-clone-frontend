@@ -148,6 +148,10 @@ page.getByText('jaehoon', { exact: true }) →
 
 ⚠️ 이건 연출이 아니라 실제로 밟은 오류다. 지어낸 반례가 아니다.
 
+→ ⚠️ 이 절의 답은 집필 단계에서 바뀌었다. data-slot 은 앱의 내부 표시라
+   Playwright 가 오류 메시지에서 직접 제안한 locator('header') 로 갔고,
+   idiomatic 한 getByRole('banner') 는 우리 마크업에서 0개다. 12절 참조.
+
 
 ════════════════════════════════════════════════════════════════
 7. ★★★ 척추 — 같은 판이 양쪽에서 통과하는데 한쪽만 실제로 그 일을 했다
@@ -257,3 +261,153 @@ MSW 쪽에서 안 잡힌 요청 (콘솔 경고로만 남는다)
 - vitest --reporter=basic 은 Vitest 4 에서 없는 이름이라 Startup Error.
 - 파이프 뒤 $? 는 파이프 종료 코드 → tsc·eslint 는 단독 실행으로 판정.
 - 스텁 로그 0건을 근거로 쓸 뻔했다 (API_STUB_LOG 미설정 · 위 7절).
+
+
+════════════════════════════════════════════════════════════════
+12. 집필 단계 실측 (코드 박은 뒤)
+════════════════════════════════════════════════════════════════
+
+── codegen 실물 (헤디드 크로미움 · 상호작용 없이 종료) ────────────
+
+  import { test, expect } from '@playwright/test';
+
+  test('test', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+  });
+
+  ⚠️ expect 를 가져오는데 안 쓴다. 학생이 그대로 두면 eslint 가 문다.
+  ⚠️ 녹화는 「누른 것」만 적는다. 「그래서 무엇이 됐나」는 한 줄도 안 적는다.
+     이것이 7절 함정의 뿌리 — 녹화만 한 판은 클릭하고 아무것도 안 본다.
+
+── Step 3 충돌 (실물 파일로 재현) ────────────────────────────
+
+  ❯ e2e/feed.spec.ts (0 test)
+   FAIL  e2e/feed.spec.ts
+  Error: Playwright Test did not expect test() to be called here.
+  - You have two different versions of @playwright/test. …
+  Test Files  1 failed | 152 passed (153)   ← 판 수는 안 준다(1061 그대로)
+
+  고침 = vitest exclude 에 e2e/** + tsconfig include 에 e2e·playwright.config.ts
+  ⚠️ tsconfig 를 안 고치면 E2E 코드가 타입 검사를 통째로 안 받는다(C-3 계열).
+     탐침으로 확인 — e2e 에 `const _p: number = '글자'` → TS2322 로 잡힌다.
+
+── Step 4 strict mode (타이밍 의존이라 더 고약하다) ──────────────
+
+  A. 피드를 안 기다리고 로그인 → ✓ 통과
+  B. 피드가 다 뜬 뒤 로그인   → ✘ strict mode violation: resolved to 3 elements
+
+  ★ 순진한 판은 「틀려서」가 아니라 「통과해서」 위험하다.
+    A 가 통과한 이유는 맞아서가 아니라 아직 안 그려져서다.
+
+  getByText('jaehoon') = 3 · {exact:true} 도 3 (exact 여부와 무관)
+  셋의 정체 = 머리말 sign-in · 게시물 작성자 · 댓글 작성자
+
+  🚨 idiomatic 한 답이 우리 앱에서 안 통한다 — getByRole('banner') = 0
+     Layout.tsx 의 <header> 가 <main> 안에 있다. HTML-AAM 상
+     header 가 main·article·aside·nav·section 의 자손이면 banner 역할을 잃는다.
+     그리고 getByRole 이 0개일 때는 오류가 아니라 그냥 안 맞는다(조용하다).
+     ⇒ Playwright 가 오류 메시지에서 직접 제안한 locator('header') 로 갔다.
+     ⚠️ 이건 실제 접근성 이슈이기도 하다(banner 랜드마크 없음). 다만 고치면
+        Layout 재구조화라 스냅숏 판 여러 개가 물어 F-5 범위 밖 — 안 고쳤다.
+
+  두 번째 사례(댓글) — 범위로는 못 풀고 exact 로 푼다
+    card 안 getByRole('button', {name:'게시'})              = 2  ('게시물 …' 이 함께)
+    card 안 getByRole('button', {name:'게시', exact:true})  = 1
+
+── Step 5 auto-waiting (한 번만 읽으면 실패하는 두 자리) ─────────
+
+  goto 직후 카드 수                = 0
+  click 직후 aria-pressed          = false   ★ 낙관적 업데이트도 다음 줄보다 늦다
+
+── ★★★ Step 7 척추 — 계획 단계 결론을 집필이 정정했다 ──────────
+
+  계획 단계 탐침은 「양쪽 다 통과」였다. 그건 탐침이 좋아요 결과를
+  단언하지 않아서였고, 제대로 단언하니 그림이 달라졌다.
+
+  [단언이 aria-pressed 만 볼 때]
+    진짜 서버  8/8 통과
+    흉내 목록  8번 중 2번 통과   ← flaky
+    ★ 통과한 두 번도 맞아서가 아니라 낙관적 업데이트가 만든 값을
+      되돌아가기 전에 잡은 것이다. 판이 서버를 아예 안 보고 있었다.
+    (시간축 탐침: 클릭 23ms 뒤 이미 false — 낙관 값의 수명이 그만큼 짧다)
+
+  [waitForResponse 로 서버 응답을 먼저 붙잡으면]
+    진짜 서버  6/6 통과
+    흉내 목록  6/6 실패
+    실패 문구: TimeoutError: page.waitForResponse: Timeout 10000ms exceeded
+               while waiting for event "response"
+
+  ⇒ 「눌렀다」와 「서버가 받았다」는 다르다. 흉내 목록엔 like 핸들러가 없어
+     요청이 :8090 으로 새고, 서버가 꺼져 있어 응답이 영영 안 온다.
+
+  흉내 목록이 안 잡는 것 (콘솔 경고로만 남는다)
+    • POST :8090/api/posts/1/like      좋아요
+    • ws://localhost:8090/ws            C-9 STOMP 통로
+    • POST :9000/api/7/envelope/…       H-1 Sentry 봉투
+    • picsum.photos 사진 20건           진짜 인터넷으로 나간다
+
+── Step 8 trace ─────────────────────────────────────────────
+
+  trace: 'retain-on-failure' → 실패한 판만 남는다
+  trace.zip = 1.3 MB / 69 파일 (단계별 DOM·오간 요청·콘솔·화면 jpg·스택)
+  ⚠️ 1.62 는 error-context.md 도 함께 남긴다 — 머리에 "Following Playwright
+     test failed. Explain why…" 가 적혀 있다. 사람이 아니라 도구가 읽으라고
+     쓴 파일이다.
+
+── ★★ Step 9 — E2E 는 남이 쓰던 상태 위에서 돈다 ────────────────
+
+  🚨 판을 한 줄기로 합치자 진짜 서버에서도 flaky 해졌다(4회 중 3회 1 failed).
+     원인은 우리 판이 아니라 스텁이다 — server.mjs:452 `found.liked = !found.liked`
+     는 사용자별이 아니라 공유 토글이다. 앞선 판이 눌러둔 것 위에서 돈다.
+     curl 로 직접 확인: liked 가 False→False→True→False→False 로 널뛴다
+     (ACCESS_TOKEN_USES 3회 만료 + LIKE_FAIL_EVERY 5번에 한 번 500 이 겹친다)
+
+  고침 둘
+   ① 절대값 대신 변화를 단언 — 누르기 전 값을 읽고 그 반대를 기대
+   ② webServer 에서 LIKE_FAIL_EVERY=0 — C-7 이 쓰던 교보재를 E2E 에선 끈다
+      (api-stub 코드는 한 줄도 안 고쳤다. env 손잡이만 돌렸다)
+
+  결과: 진짜 서버 6/6 통과 · 5.6초로 일정 / 흉내 목록 3/3 좋아요에서 실패
+
+  값 (단독 실행 3회씩)
+    단위 판  1,061 판  18,993 / 19,282 / 18,978 ms  → 판 하나에 약 18ms
+    E2E      2 판       6,430 /  6,230 /  6,245 ms  → 판 하나에 약 3,100ms
+    ⇒ 판 하나 값이 약 170배. 그래서 한 줄기만 얇게 깐다.
+    ⚠️ 서버가 이미 떠 있을 때가 오히려 편차가 크다(6.7~11.9초) — 교안은
+       냉시작 수치를 쓴다. 재현 조건: 판이 webServer 로 직접 띄운 경우.
+
+  ★ 사용자가 받는 것은 0 B 안 변했다 — Playwright 는 devDependency 다.
+    번들 683.01 kB / gzip 219,473 B (H-9 기준선 219,472 와 1 B 차) · CSS 44.00 kB
+
+
+════════════════════════════════════════════════════════════════
+13. 게이트 최종 (마지막 커밋 뒤 재측정)
+════════════════════════════════════════════════════════════════
+
+  npm test              152 files / 1061 passed   (착수 기준선과 동일)
+  tsc --noEmit          0        (이제 e2e·playwright.config 까지 본다)
+  eslint                0        (src scratch e2e 설정 4개 · 단독 실행)
+  npm run build         exit 0 · 예산 219,473 / 225,000 B
+  test:e2e              2 passed (5.6s) · 6회 연속 동일
+  test:e2e:mock         1 failed 1 passed · 3회 연속 동일 (의도)
+  web-next              무변경
+  api-stub              무변경 ← F-4 계약 판(라우트 15개)이 그대로 산다
+
+  커밋 8개 · 커밋 순서 = Step 순서
+    95a2ca9 계획 채증 / cbe398f Step2 / 06bfafc Step3 / c2dc2f2 Step4
+    f89562a Step5 / 26fe2b9 Step6 / f3cf0cd Step7 / 1e80097 Step8 / a26de83 Step9
+
+
+════════════════════════════════════════════════════════════════
+14. 측정 함정 (집필 단계)
+════════════════════════════════════════════════════════════════
+
+- zsh 매치 없는 glob 이 명령을 죽임 — 12연속. `||` 가지도 안 돈다.
+- cwd 밀림 2회 (git commit 뒤 뿌리에 남아 ../api-stub 을 못 찾음).
+- macOS 에 timeout 이 없다 → 백그라운드 + sleep + pkill.
+- 파이프 뒤 $? 는 파이프 종료 코드 — tsc·eslint 는 단독 실행으로 판정.
+- `grep -cE "^  ✓"` 로 통과 수를 세다 틀린 값을 얻었다(1이 나와야 할 자리에 2,
+  2가 나와야 할 자리에 1). 요약 줄(`N passed`)로 세는 쪽이 맞다.
+- 스텁 로그 0건을 근거로 쓸 뻔했다(API_STUB_LOG 미설정).
+- 계획 단계 탐침이 결과를 단언 안 해서 「양쪽 다 통과」라는 틀린 결론을 냈다.
+  ★ 탐침도 판처럼 무엇을 보는지 정해야 한다.
