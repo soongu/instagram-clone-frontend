@@ -167,3 +167,46 @@ preview.tsx 에 a11y 설정이 붙었다:
     => axe-core 가 이것을 잡는지 여부는 아직 안 쟀다.
 
 (5) Chromatic 은 계정이 필요하다 — H-1 의 「계정 없는 설계」 선례를 따를지 정한다.
+
+================================================================
+9절. Step 2 실측 — 카탈로그는 우리 스타일을 안 물려받는다
+================================================================
+첫 스토리: src/components/ui/avatar.stories.tsx (Default/Small/Large/NoImage)
+앱이 실제로 쓰는 것은 shadcn ui/avatar 다 (PostHeader.tsx:3).
+src/components/Avatar.tsx(B-3 시절)는 테스트 3개만 참조하고 앱은 안 쓴다.
+
+storybook dev -p 6006 → 200. index.json 에 스토리 4개 등록 확인.
+⚠️ title 을 한글('카탈로그/Avatar')로 주면 스토리 id 가 퍼센트 인코딩된다
+   ('%EC%B9%B4%ED%83%88%EB%A1%9C%EA%B7%B8-avatar--default'). 동작에는 문제 없음.
+
+[통제된 before/after — globals.css import 한 줄]
+같은 스토리, 같은 브라우저, 그 한 줄만 넣고 새로고침:
+
+                        없을 때        있을 때
+  display               inline         flex
+  width / height        auto / auto    32px / 32px
+  border-radius         0px            완전 둥글게
+  <img> 계산 폭         64px           32px      ← 원본 크기 그대로 나오고 있었다
+  Tailwind 규칙 존재    없음           있음
+  인라인 <style> 개수   3              4  (+53,729자)
+
+=> 카탈로그가 컴포넌트를 그리기는 하는데 E-1~E-7 에서 쌓은 토큰·유틸리티가
+   하나도 안 걸려 있었다. 「그려진다」와 「제대로 보인다」는 다른 것.
+   preview.tsx 는 앱의 index.html 을 안 쓰고 자기 화면을 따로 그린다.
+
+[크기 3종 실측 — args 가 실제로 먹는지 확인]
+  Small   data-size="sm"       24px   (size-6)
+  Default data-size="default"  32px   (size-8)
+  Large   data-size="lg"       40px   (size-10)
+  => 소스의 클래스와 정확히 일치.
+
+[NoImage 스토리]
+  <img> 가 DOM 에 아예 없다(imgInDom: false) · fallback "민지" 만 보인다 · 14px.
+  E-6 canon(「들여온 Avatar 는 사진이 오기 전 <img> 를 안 그린다」)의 재현.
+  => 앱에서 이 상태를 보려면 네트워크를 끊어야 하는데 카탈로그에선 한 줄이면 된다.
+     이것이 「스토리 하나 = 문서」의 값.
+
+[번들 영향]
+  index-*.js 683.01 kB / gzip 219,470 B (예산 225,000) · CSS 44.00 kB
+  => 스토리 파일은 앱 엔트리가 import 하지 않아 배포본에 안 실린다
+     (C-4 「데모 파일은 번들에 0 B」 계열).
