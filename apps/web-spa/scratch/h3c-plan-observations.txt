@@ -56,7 +56,7 @@ React Performance Tracks (react.dev/reference/dev-tools/react-performance-tracks
   · 공식 문서: "the profiling instrumentation that powers React Performance
     tracks adds some additional overhead, so it is disabled in production
     builds by default"
-  → 우리 실측(dev 149 / prod 0)과 정확히 일치한다. 우리 빌드 설정 탓이 아니다.
+  → 우리 실측(개발 140~150대 / 배포본 0)과 일치한다. 우리 빌드 설정 탓이 아니다.
   · 배포본에서 재고 싶으면 react-dom/profiling 이라는 별도 빌드가 있다(교안 🙋 감).
 
 Lighthouse unused-javascript (developer.chrome.com + 이슈 14967):
@@ -209,3 +209,117 @@ routes.ts 실측: lazy 는 SignUpPage 하나뿐.
 도구가 둘이고 합치면 40분을 넘는다. 그리고 ②의 결론
 (「되돌리는 게 답이 아니다 — 답은 우리 기계 안에서」)은
 ①이 「우리는 할 수 있다」를 보여준 뒤에만 성립한다.
+
+
+=====================================================================
+집필 단계 — Step 별 코드 검증·측정 (커밋 순서 = Step 순서)
+=====================================================================
+
+
+8. Step 2 — Lighthouse 가 원본별 내역을 못 주는 이유 (양쪽 실측)
+---------------------------------------------------------------------
+lighthouse 13.4.1 · headless · api-stub 켬 · http://localhost:4173/
+--only-audits=unused-javascript
+
+  sourcemap: 'hidden'  (현행)   Est savings of 95 KiB · subItems  0 줄
+  sourcemap: true      (실험)   Est savings of 95 KiB · subItems  5 줄
+      21,150 B  react-dom/cjs/react-dom-client.production.js
+      12,844 B  react-router/dist/production/lib/router/router.js
+       2,925 B  @stomp/stompjs/bundles/stomp.umd.js
+       2,211 B  @base-ui/react/floating-ui-react/components/FloatingFocusManager.mjs
+       1,827 B  react-router/dist/production/lib/dom/lib.js
+  → 다섯 줄 전부 H-3b 채증 8절과 바이트까지 동일.
+
+★ 절감 표시(95 KiB)는 양쪽이 같다. 소스맵을 켜도 「얼마나」는 안 바뀌고
+  「어디서」만 생긴다. 재는 값이 달라지는 게 아니라 읽을 수 있게 되는 것.
+
+★ subItems 다섯 줄의 합 40,957 B 는 95 KiB(97,280 B)의 42% 뿐이다.
+  Lighthouse 는 큰 것 몇 개만 나열한다 — 목록이 전부라고 읽으면 안 된다.
+
+⚠️ Lighthouse 의 214 KiB 는 gzip(전송) 크기이고 우리 도구의 681,925 B 는
+  압축 전 문자 수다. 단위부터 다르다.
+  그리고 안 쓰는 비율도 Lighthouse 44.4%(95/214) vs 우리 61.3% 로 갈린다
+  — H-3b 채증 8절의 「측정 창이 다르다」가 맞다.
+  Lighthouse 는 CPU 4x·느린 네트워크로 훨씬 오래 도는 창에서 재서
+  그 사이에 더 많은 코드가 돈다.
+  ⇒ 두 숫자를 나란히 놓고 비교하면 안 된다. 단위도 창도 다르다.
+
+실험 후 vite.config.ts 는 'hidden' 복원 · 재빌드 · sourceMappingURL 0건 · git diff 0.
+
+
+9. Step 3 — React 자국은 개발에만 있다 (같은 절차로 양쪽)
+---------------------------------------------------------------------
+탐침: scratch/h3c-react-tracks.mjs (의존성 0)
+절차: 헤드리스 · api-stub 켬 · 피드 사진 10/10 확인 · 하트 한 번 클릭 · 1초 뒤 집계
+
+  개발 서버 :5173   자국 154 / 144 / 148 개 (세 번)
+  배포본    :4173   자국   0 /   0 개 (두 번)   ← 둘 다 사진 10/10
+
+★ 「볼 게 없어서 0」이 아니다 — 배포본도 피드가 다 뜬 상태에서 쟀다.
+★ 개수는 실행마다 흔들린다(140~150대). 0 은 안 흔들린다.
+  ⇒ 교안이 인용할 것은 「개발엔 백 몇십 개, 배포본엔 0」이지 특정 숫자가 아니다.
+  (H-3b 채증의 149 도 그 시점 한 번의 값이다)
+
+개발 서버에서 나온 이름(한 번의 예):
+  18 Update · 18 PostCard · 18 Card · 17 Mount · 15 PostImage · 15 CardContent
+  10 PostBody · 10 LikeButton · 6 IconButton · 3 Button · 2 Reconnect
+  2 FeedSection/Section/Feed/List/PostModal/Dialog/DialogRoot
+  1 Update Blocked · 1 Heart · 1 ForwardRef · 1 DialogContent · 1 DialogPortal
+  ⚠️ H-3b 채증에 있던 "Cascading Update" 는 이번 실행들에 안 나왔다.
+     무엇을 눌렀느냐에 따라 나오기도 하고 안 나오기도 한다 — 확정 서술 금지.
+
+공식 문서(react.dev/reference/dev-tools/react-performance-tracks):
+  "the profiling instrumentation that powers React Performance tracks adds
+   some additional overhead, so it is disabled in production builds by default"
+  → 우리 빌드 설정 탓이 아니라 React 가 그렇게 정한 것이다.
+  → 배포본에서 재고 싶으면 react-dom/profiling 이라는 별도 빌드가 있다.
+
+
+10. Step 4 — 예산 장치를 저장소에 넣었다 (가드 양방향)
+---------------------------------------------------------------------
+vite.config.ts 에 bundleBudget(ENTRY_GZIP_BUDGET) · apply:'build' · closeBundle.
+예산 225,000 B (오늘 219,470 에 5,530 여유).
+
+  예산 225,000 → BUILD EXIT 0
+      [예산] index-*.js gzip 219,471 B / 예산 225,000 B
+  예산 200,000 → BUILD EXIT 1   (일부러 깨서 확인 후 복원)
+      Error: 번들 예산 초과 — index-*.js gzip 219,471 B / 예산 200,000 B
+             (19,471 B 넘었습니다)
+      code: 'PLUGIN_ERROR' · plugin: 'bundle-budget' · hook: 'closeBundle'
+
+★ 같은 빌드 출력에 500 kB 경고가 그대로 뜬다. 경고는 뜨고 빌드는 통과하는
+  상태와, 예산이 실제로 세우는 상태가 한 화면에서 대비된다.
+★ apply:'build' 라 판에는 안 낀다 — npm test 152 files / 1061 passed 무변경.
+⚠️ closeBundle 은 파일을 다 쓴 뒤에 돈다. 막아도 dist/ 는 이미 있다.
+  세우는 것은 파일 생성이 아니라 그 뒤로 이어지는 일(배포)이다.
+
+⚠️ gzip 이 219,470 ↔ 219,471 로 1 B 오간다. 커밋을 하면 릴리스 문자열
+  (커밋 SHA)이 바뀌어 내용이 1 B 달라지기 때문이다(H-2 canon).
+
+
+11. Step 5 — DmPage 를 쪼개보고 되돌렸다
+---------------------------------------------------------------------
+C-7 세 질문을 DM 화면에 던지면:
+  하나. 얼마나 많은 사람이 여나   → 소수
+  둘.  그 화면만 쓰는 무거운 것   → 없다 (@stomp/stompjs 는 앱 전체가 쓴다)
+  셋.  잠깐 기다려도 되나         → 괜찮다
+  → 둘째 질문이 「없다」라 이득이 작을 것으로 예상. 실제로 재봤다.
+
+  쪼개기 전   index 683.01 kB · gzip 219,471 B
+  쪼갠 뒤     index 679.63 kB · gzip 218,337 B  +  DmPage 청크 4.11 kB (gzip 2.14 kB)
+  ─────────────────────────────────────────────
+  주 청크에서 빠진 것  raw 3,380 B / gzip 1,134 B (0.5%)
+
+★★ 커버리지가 예측한 DmPage.tsx 3,447 B 와 실제로 빠진 3,380 B 가
+  67 B(2%) 안에서 맞는다. 4절의 고친 귀속이 옳다는 또 하나의 독립 증거이고,
+  「숫자를 믿을 수 있는지 확인하는 법 = 예측하고 실제로 해보기」의 실물이다.
+
+결정: 되돌린다. C-7 과제 2(PostDetailPage 3.87 kB)와 같은 결론.
+  얻는 것 1.1 kB vs 내는 값 = DM 여는 사람에게 왕복 한 번 추가.
+  ⇒ 값어치는 쪼개는 데 있지 않고 「표에 그 줄을 적어두는 데」 있다.
+  되돌린 뒤 재빌드 683.01 kB · gzip 219,470 B · git diff 0.
+
+★ 가장 큰 덩어리는 오히려 C-7 이 이미 막아둔 자리다 —
+  @base-ui/react 32,631 B 가 홈에서 안 도는데, 그것은 모달 기계다.
+  C-7 Step 8 셋째 질문이 "하트를 누르면 열리는 모달 같은 건 그렇지 않습니다"
+  라고 이미 답해뒀다. 커버리지는 그 판단의 값(32 kB)을 숫자로 채워줄 뿐이다.
