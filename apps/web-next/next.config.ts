@@ -1,5 +1,9 @@
 // apps/web-next/next.config.ts
 import type { NextConfig } from "next";
+import createNextIntlPlugin from 'next-intl/plugin';
+
+// i18n/request.ts 를 빌드에 물려준다. 이걸 안 하면 번역을 찾을 곳을 모른다.
+const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
   // 실행에 진짜 필요한 것만 골라 한 덩어리로 내보낸다.
@@ -13,4 +17,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

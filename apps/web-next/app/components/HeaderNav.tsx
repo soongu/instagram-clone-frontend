@@ -3,13 +3,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useTextScale } from './Providers';
 import { UserSearch } from './UserSearch';
 
+// 글자를 여기 적어두지 않는다. 무슨 글자인지는 번역 파일이 정하고
+// 여기는 "어느 칸을 꺼낼지" 이름만 들고 있는다.
 const items = [
-  { href: '/', label: '홈' },
-  { href: '/explore', label: '탐색' },
+  { href: '/', key: 'home' },
+  { href: '/explore', key: 'explore' },
 ] as const;
 
 // 지금 어느 주소에 와 있는지는 브라우저만 안다.
@@ -20,10 +23,12 @@ const items = [
 export function HeaderNav({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
   const { toggle } = useTextScale();
+  // 번역 파일의 "Nav" 칸을 연다. 아래에서는 그 안의 이름만 부르면 된다.
+  const t = useTranslations('Nav');
 
   return (
     <nav className="mx-auto flex max-w-3xl items-center gap-4 p-4 text-sm">
-      <span className="font-bold">인스타그램 클론</span>
+      <span className="font-bold">{t('brand')}</span>
       {items.map((item) => {
         const active = pathname === item.href;
         return (
@@ -33,7 +38,7 @@ export function HeaderNav({ children }: { children?: ReactNode }) {
             aria-current={active ? 'page' : undefined}
             className={active ? 'font-semibold text-black' : 'text-black/50'}
           >
-            {item.label}
+            {t(item.key)}
           </Link>
         );
       })}

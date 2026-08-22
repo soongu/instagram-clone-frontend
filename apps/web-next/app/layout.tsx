@@ -1,6 +1,7 @@
 // apps/web-next/app/layout.tsx
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
 import { Noto_Sans_KR } from 'next/font/google';
 import { HeaderNav } from './components/HeaderNav';
 import { Providers } from './components/Providers';
@@ -33,21 +34,24 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <Suspense fallback={null}>
           <TextScaleStyle />
         </Suspense>
-        {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
-        <Providers>
-          <header className="border-b border-black/10">
-            {/* 머리말은 지금 어느 주소에 와 있는지를 읽는다. 그건 요청이 와야 아는 값이라
-                미리 그릴 수 없는 주소가 있다 — 그 자리를 이 경계가 받아준다. */}
-            <Suspense fallback={<div className="mx-auto h-14 max-w-3xl" />}>
-              {/* 로그인 칸은 쿠키를 읽는 서버 조각이다. 클라이언트 머리말 안에
-                  children 으로 끼워 넣는다 — 경계를 넘어가지 않는다. */}
-              <HeaderNav>
-                <SignInForm />
-              </HeaderNav>
-            </Suspense>
-          </header>
-          {children}
-        </Providers>
+        {/* 번역문을 아래 조각들에게 흘려보낸다. 브라우저에서 도는 조각도 이걸 통해 읽는다. */}
+        <NextIntlClientProvider>
+          {/* 브라우저에서 도는 껍데기다. 안에 든 것은 여기서 만들지 않고 children 으로 받는다. */}
+          <Providers>
+            <header className="border-b border-black/10">
+              {/* 머리말은 지금 어느 주소에 와 있는지를 읽는다. 그건 요청이 와야 아는 값이라
+                  미리 그릴 수 없는 주소가 있다 — 그 자리를 이 경계가 받아준다. */}
+              <Suspense fallback={<div className="mx-auto h-14 max-w-3xl" />}>
+                {/* 로그인 칸은 쿠키를 읽는 서버 조각이다. 클라이언트 머리말 안에
+                    children 으로 끼워 넣는다 — 경계를 넘어가지 않는다. */}
+                <HeaderNav>
+                  <SignInForm />
+                </HeaderNav>
+              </Suspense>
+            </header>
+            {children}
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
