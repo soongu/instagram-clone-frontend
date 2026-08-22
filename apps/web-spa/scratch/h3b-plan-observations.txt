@@ -269,3 +269,63 @@ C7-lecture.md 실측:
 - console.log 가 에이전트 환경에서 사라짐: 모든 탐침을
   env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE 로 실행(H-1 이후 7연속).
 - 이 맥의 크롬: /Applications/Google Chrome 2.app (H-3 에서 확정된 것 재확인).
+
+
+=====================================================================
+13. 집필 단계 — Step 1~5 코드 검증 (커밋 순서 = Step 순서)
+---------------------------------------------------------------------
+Step 1  vite.config.ts + package.json + .gitignore + 가드 판   커밋 9819e6a
+Step 2  scratch/h3b-treemap-read.mjs                          커밋 4b246f4
+Step 3  코드 변경 없음 (Step 2 도구로 주 청크를 읽는다)
+Step 4  코드 변경 없음 (같은 도구로 나눠진 청크를 읽는다)
+Step 5  코드 변경 없음 (Lighthouse 두 조건 대조)
+
+배선 결정: 평소 빌드에는 안 끼우고 ANALYZE=1 일 때만 (npm run build:analyze).
+  근거 — 1,295,986 B 짜리 HTML 을 매 빌드마다 만들 이유가 없다.
+  D-10 과제 2 의 apply:'build' 와 같은 계열의 판단이다.
+
+★ 같은 커밋에서 두 번 빌드해 대조 (Step 1 의 중심 주장)
+    평소 빌드    : index-DyuRQYAk.js · SignUpPage-BtzFAyfm.js · treemap 없음
+    ANALYZE=1    : index-DyuRQYAk.js · SignUpPage-BtzFAyfm.js · treemap 1,295,986 B
+  → 배포본 파일 이름이 완전히 동일. 재는 도구가 결과물을 안 바꿨다.
+  ⚠️ 반드시 「같은 커밋에서」 대조해야 한다 — 커밋만 해도 릴리스 문자열이
+    바뀌어 해시가 달라진다(H-2 canon). 실제로 계획 단계의 index-Biduha_c.js 가
+    채증 커밋 하나 뒤에 index-DyuRQYAk.js 가 됐다. 크기(683.01 kB)는 그대로다.
+
+가드 3종을 전부 일부러 깨서 확인 (전부 잡혔고 복원 뒤 5/5 통과):
+    ANALYZE 조건 제거          → 「평소 빌드에는 안 끼운다」 FAIL
+    sourcemap 을 true 로       → 「H-2 가 정한 지도 설정」 FAIL
+    build:analyze 스크립트 제거 → 「볼 일이 있을 때 부르는 이름」 FAIL
+
+읽기 도구 판은 안 만들었다 — scratch 의 기존 CLI 탐침 5개
+  (c7-compile-out · c8-polling-measure · c8-stomp-probe ·
+   c9-user-queue-probe · h2-unminify) 가 전부 판이 없다. 같은 결.
+
+
+14. Step 5 재측정 — 현재 커밋에서 두 조건 각각 3회
+---------------------------------------------------------------------
+                    점수      unused                       LCP        CLS
+  api-stub 켬(정상) 79·80·80  95 KiB (97,048 B · 44.3%)   4.9~5.1s   0
+  api-stub 끔(고장) 94·94·94  109 KiB (111,593 B · 50.9%)  2.7s       0.001
+
+  ★ 앱이 고장난 채로 재면 점수는 15점 더 좋고(94) 안 쓰는 코드는
+    14 KiB 더 많게(109) 나온다. 둘 다 「진짜 측정값」이다.
+  ★ H-4 가 학생에게 낸 95 KiB 는 정상 조건에서 정확히 재현된다
+    (계획 단계 97,047 B → 지금 97,048 B · 1 B 차이는 릴리스 문자열).
+    ⇒ H-4 교안 수정 불필요. H-3 의 「LCP 5.3초」와는 다른 경우다.
+
+⚠️⚠️ 이 대조를 한 번 잘못 쟀다 — pkill -f "api-stub/server.mjs" 가 안 먹었다.
+   `cd .../api-stub && node server.mjs` 로 띄워서 명령줄이 그냥 `node server.mjs`
+   였기 때문. 죽은 줄 알고 잰 3회가 전부 「켬」 조건이었고 95 KiB 가 나왔다.
+   응답 코드를 확인해서 적발 → 포트로 PID 를 잡아(lsof -t) 죽이고 재측정.
+   ⇒ **끄고 재는 실험은 「꺼졌는지」를 먼저 확인한다.**
+     G-6 의 「계측이 실패하는 방법은 하나가 아니다」 재현.
+
+
+15. 게이트 (Step 2 커밋 시점)
+---------------------------------------------------------------------
+  npm test    152 files / 1061 passed   (착수 151/1056 · +1 파일 +5 판)
+  tsc --noEmit  exit 0
+  eslint .      exit 0
+  npm run build exit 0 · 683.01 kB / gzip 221.72 · CSS 44.00 kB
+  web-next · api-stub 무변경
