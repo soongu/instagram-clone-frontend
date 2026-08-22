@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const CHROME = '/Applications/Google Chrome 2.app/Contents/MacOS/Google Chrome';
-const PAGE_URL = 'http://localhost:4173/';
+const PAGE_URL = process.argv[2] ?? 'http://localhost:4173/';
 const DIST = new URL('../dist/', import.meta.url);
 const PORT = 9222;
 

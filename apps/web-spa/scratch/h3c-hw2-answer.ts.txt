@@ -1,0 +1,47 @@
+// [H-3c 과제 2 예시답안] 여러 파일에 상한을 거는 형태 — 실행 검증 완료
+// tsc 0 · 둘 다 통과 시 BUILD EXIT 0 · 둘 다 넘기면 BUILD EXIT 1 + 2건 한 번에 보고
+
+const BUDGETS = [
+  { label: '첫 화면 자바스크립트', match: /^index-.*\.js$/, maxGzipBytes: 225_000 },
+  { label: '스타일', match: /^index-.*\.css$/, maxGzipBytes: 10_000 },
+];
+
+function bundleBudget(budgets: typeof BUDGETS): Plugin {
+  return {
+    name: 'bundle-budget',
+    apply: 'build',
+    closeBundle() {
+      const dir = fileURLToPath(new URL('./dist/assets', import.meta.url));
+      const files = readdirSync(dir);
+      const over: string[] = [];
+
+      for (const budget of budgets) {
+        const file = files.find((name) => budget.match.test(name));
+        if (!file) throw new Error(`${budget.label} 파일을 못 찾았습니다.`);
+
+        const gzipBytes = gzipSync(readFileSync(join(dir, file))).length;
+        const line = `${budget.label} ${file} gzip ${gzipBytes.toLocaleString()} B / 예산 ${budget.maxGzipBytes.toLocaleString()} B`;
+        if (gzipBytes > budget.maxGzipBytes) {
+          over.push(`  ${line} (${(gzipBytes - budget.maxGzipBytes).toLocaleString()} B 넘었습니다)`);
+        } else {
+          console.log(`[예산] ${line}`);
+        }
+      }
+
+      // 넘은 것이 여럿이면 한 번에 다 알려준다 — 고칠 때 두 번 돌리지 않게.
+      if (over.length > 0) {
+        throw new Error(`번들 예산 초과 ${over.length}건\n${over.join('\n')}`);
+      }
+    },
+  };
+}
+
+/* 실행 결과
+   [통과]  [예산] 첫 화면 자바스크립트 index-*.js gzip 219,471 B / 예산 225,000 B
+           [예산] 스타일 index-*.css gzip 8,844 B / 예산 10,000 B
+           BUILD EXIT 0
+   [초과]  Error: 번들 예산 초과 2건
+             첫 화면 자바스크립트 ... (19,471 B 넘었습니다)
+             스타일 ... (844 B 넘었습니다)
+           BUILD EXIT 1
+*/
