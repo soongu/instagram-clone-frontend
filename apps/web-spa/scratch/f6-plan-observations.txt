@@ -1,0 +1,169 @@
+F-6 (Storybook) 계획 단계 채증
+측정일: 2026-08-22
+무대: apps/web-spa (Vite 8.1.5 + React 19.2.8 + Vitest 4.1.10)
+브랜치: module-F6-storybook (module-F5-playwright 에서 분기)
+
+================================================================
+1절. 착수 기준선 (두 번 재서 대조)
+================================================================
+npm test 1회차: 152 files / 1061 passed (18:46:07, 20.83s)
+npm test 2회차: 152 files / 1061 passed (18:46:54, 18.92s)
+=> 핸드오프 기준선과 일치. 두 번 모두 동일.
+
+포트: 3000 / 5173 / 6006 / 8090 / 9000 전부 비어 있음.
+워킹트리: clean.
+
+================================================================
+2절. 시의성 — 「낡았나」와 「실재하나」 둘 다 (npm registry)
+================================================================
+storybook            latest = 10.5.10   (dist-tags: v9=9.1.20, v8=8.6.18, next=10.6.0-alpha.7)
+@storybook/react-vite        10.5.10
+@storybook/addon-vitest      10.5.10
+@storybook/addon-a11y        10.5.10
+@storybook/addon-docs        10.5.10
+@chromatic-com/storybook     5.3.0
+@vitest/browser              4.1.11 (설치는 4.1.10 — 5절 참조)
+@vitest/browser-playwright   4.1.11 (설치는 4.1.10 — 5절 참조)
+msw-storybook-addon          3.0.0 (2026-07-24 수정 · peer msw>=2 · storybook>=9)
+
+=> 커리큘럼의 「Storybook 10」은 실재한다. H-9 의 MF 3.0 사고(없는 버전을 적었다)와
+   갈리는 자리 — 이번엔 원안이 맞았다. 보정 불필요.
+
+peer 확인:
+  @storybook/react-vite@10.5.10 → vite "^5||^6||^7||^8"  → 우리 8.1.5 범위 안 ✓
+                                   react "^16.8||^17||^18||^19" → 19.2.8 ✓
+  @storybook/addon-vitest@10.5.10 → vitest "^3||^4" ✓
+                                    @vitest/browser "^3||^4"
+                                    @vitest/browser-playwright "^4.0.0"  ← F-5 가 안 깐 것
+
+================================================================
+3절. storybook init 이 에이전트를 감지한다 (--agent / --no-agent)
+================================================================
+`storybook init --help` 에 플래그가 있다:
+  --agent      Force agent mode (non-interactive, logs AI setup instructions)
+  --no-agent   Force disable agent mode even when an AI agent is detected
+
+=> 도구가 실행 주체를 보고 동작을 바꾼다. F-1(커버리지 표 45↔103행)·F-2(watch 기본값)·
+   F-3(console.log 소멸)·H-1~H-4 에 이은 계열. 이번엔 「출력」이 아니라 「설치 절차」다.
+   그래서 모든 실행을 env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE + --no-agent 로 했다.
+
+================================================================
+4절. 🚨 init 이 "완료" 라고 말하고 exit 0 인데 설치가 실패했다
+================================================================
+실행:
+  env -u AI_AGENT -u CLAUDECODE -u CLAUDE_CODE npx storybook@10.5.10 init \
+      --yes --no-dev --no-agent --disable-telemetry --features docs test a11y
+
+출력 요약:
+  ■ Installation of dependencies failed!
+  ...
+  ✅ @chromatic-com/storybook
+  ❌ @storybook/addon-vitest      ← 커리큘럼 헤드라인이 이것 위에 서 있다
+  ❌ @storybook/addon-a11y        ← 커리큘럼 실습 「a11y 자동 검사」가 이것
+  ✅ @storybook/addon-docs
+  ▲ Storybook setup completed, but some non-blocking errors occurred.
+  종료 코드: 0
+
+그런데도 만들어진 것:
+  .storybook/main.ts      (addons 4개가 전부 적혀 있다 — 설치 안 된 것 포함)
+  .storybook/preview.tsx
+  src/stories/{Button,Page,Header}.stories.ts
+  package.json 에 스크립트 2개 + devDeps 10줄
+
+만들어지지 '않은' 것:
+  .storybook/vitest.setup.ts   없음
+  vitest.config.ts             무변경 (= 「스토리 하나 = 테스트」 배선이 통째로 없다)
+  a11y 설정                    없음
+
+=> 「빌드 초록인데 앱이 죽어 있다」 계열의 5번째. G-5(JS 청크 0개)·H-7(앱 전멸)·
+   H-8(MISSING_MESSAGE)·H-9(shared 빼면 화면 전멸)에 이어 이번엔 '설치 도구' 가 그렇다.
+   main.ts 는 설치되지도 않은 애드온 이름을 적어두므로 파일만 보면 성공처럼 보인다.
+
+================================================================
+5절. 🚨🚨 실패 원인을 통제된 변수로 갈랐다
+================================================================
+npm 에러: `Cannot read properties of null (reading 'edgesOut')`
+스택: @npmcli/arborist build-ideal-tree.js #loadPeerSet (npm 11.5.2 / node v23.6.0)
+크래시 직전 해석 대상: @vitest/browser@3.2.7 → webdriverio@^7||^8||^9 → @vitest/ui@3.2.7
+
+가설 검증 (매번 npm install 재실행):
+  (a) 워크스페이스 안에서 install 해서?      → 루트에서 해도 동일 실패. 기각
+  (b) init 이 박은 "latest" 문자열 2개?      → 실제 버전으로 고정해도 동일 실패. 기각
+      (@chromatic-com/storybook: latest, playwright: latest)
+  (c) @storybook/addon-vitest 가 원인?       → 빼도 동일 실패. 기각
+  (d) @vitest/browser + browser-playwright?  → 둘 다 빼면 ✅ 설치 성공
+  (e) @vitest/browser 만 ^4.1.10 로 복귀?    → 실패 재현. ← 범인 확정
+  (f) @vitest/browser 를 정확히 4.1.10 으로? → ✅ 성공
+
+근본 원인:
+  @vitest/browser 는 vitest 를 '정확한 버전' 으로 peer 고정한다.
+      @vitest/browser@4.1.11 → peer vitest "4.1.11"   (캐럿 없음)
+      @vitest/browser@4.1.10 → peer vitest "4.1.10"
+  우리 vitest 는 4.1.10 인데 "^4.1.10" 은 4.1.11 로 해석된다 → peer 충돌 →
+  npm 이 버전을 거슬러 내려가다 3.x 대에 닿고, 그 시절 peer(webdriverio)를 풀다가
+  ERESOLVE 를 내는 대신 널 참조로 죽는다.
+
+해법: @vitest/browser 와 @vitest/browser-playwright 를 설치된 vitest 와 '정확히' 맞춘다.
+      "@vitest/browser": "4.1.10"
+      "@vitest/browser-playwright": "4.1.10"
+
+⚠️ H-4·H-6 canon 이 "vitest 4.1.10 / registry 4.1.11 — patch 뒤짐, 교안이 인용 안 해 무관"
+   이라고 넘겼던 그 한 칸이 여기서 설치를 막는다. 「인용 안 하니 무관」이 언제 무관이
+   아니게 되는지의 실례.
+
+================================================================
+6절. 배선을 손으로 마저 채웠다
+================================================================
+설치가 끝난 뒤 postinstall 을 다시 돌렸다:
+  (main.ts 의 addon-vitest 줄을 임시로 지워 프롬프트를 없앤 뒤)
+  npx storybook add @storybook/addon-vitest --skip-install
+  => "Updating your Vitest config file" + "a11y addon setup successfully" + Done!
+
+vitest.config.ts 가 projects 2개로 재구성됨:
+  [0] 기존 jsdom 프로젝트 — environment/globals/setupFiles/exclude(e2e) '전부 보존'
+      (우리가 쓴 한국어 주석도 그대로 살아남았다)
+  [1] name:'storybook' — storybookTest({configDir}) + browser.provider playwright chromium headless
+
+preview.tsx 에 a11y 설정이 붙었다:
+  a11y: { test: 'todo' }
+  주석 원문: 'todo' - show a11y violations in the test UI only
+             'error' - fail CI on a11y violations
+             'off' - skip a11y checks entirely
+⚠️ 기본값 'todo' 는 '아무것도 실패시키지 않는다'. 커리큘럼의 「a11y 자동 검사」는
+   'error' 로 바꿔야 성립한다. 「침묵은 통과가 아니다」 게이트 캐논의 재현.
+
+================================================================
+7절. 스토리가 기존 테스트 실행에 그대로 합류한다
+================================================================
+배선 후 npm test:  155 files / 1069 passed   (+3 파일 / +8 판)
+늘어난 3개는 init 이 만든 예제 스토리(Button/Page/Header.stories.ts).
+
+=> 별도 명령(npx vitest --project=storybook)을 안 불러도 기존 `npm test` 가 브라우저
+   프로젝트를 함께 돈다. F-5 의 「.spec.ts 가 두 러너에 걸린다」의 속편인데 방향이 반대다 —
+   그때는 '막아야' 했고 이번엔 '저절로 합류' 한다.
+   기준선을 이 회차부터 다시 잡아야 한다.
+
+================================================================
+8절. 아직 안 재본 것 (집필 전 반드시)
+================================================================
+(1) F-5 마무리 예고의 진위:
+    "지난 시간에 만든 목록이 거기서도 한 번 더 쓰입니다" (F5-lecture.md:963)
+    = MSW 핸들러(src/mocks/handlers.ts)가 Storybook 에서도 쓰인다는 약속.
+    그런데 커리큘럼이 지목한 3개(PostCard·Avatar·CommentInput)는 전부 props 로만
+    그려져 네트워크를 안 탄다. 예고가 거짓일 가능성이 크다.
+    => 실행으로 확인하고, 거짓이면 F-5 예고를 고칠지 F-6 에서 무대를 만들지 정한다.
+       (캐논: 「우리 예고도 원본 예제와 똑같이 실행으로 검증한다」)
+
+(2) preview.tsx 가 globals.css 를 import 하지 않는다
+    => 카탈로그가 우리 Tailwind 토큰 없이 그려질 것. E-1~E-7 의 작업이 통째로 안 보인다.
+       실제로 확인하고 Step 으로 세울지 정한다.
+
+(3) CommentInput 은 controlled 필수 props 3개(value/onChange/ref)
+    => 카탈로그에 혼자 못 선다. 스토리에서 상태를 쥐어줘야 한다.
+
+(4) getByRole('banner') = 0 (F-5 미해결)
+    원인은 이번에 확인됨: Layout.tsx 의 <header> 가 <main> 안에 있다.
+    header 는 main/article/section/aside/nav 의 자손이면 banner 역할을 안 갖는다.
+    => axe-core 가 이것을 잡는지 여부는 아직 안 쟀다.
+
+(5) Chromatic 은 계정이 필요하다 — H-1 의 「계정 없는 설계」 선례를 따를지 정한다.
