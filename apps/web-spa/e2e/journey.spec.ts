@@ -24,10 +24,20 @@ test('좋아요를 누르면 눌린 상태가 된다', async ({ page }) => {
 
   const heart = page.getByRole('button', { name: '좋아요' }).first();
 
-  // 기다리라고 우리가 안 적는다. 이 단언이 될 때까지 스스로 다시 본다.
+  // 서버가 실제로 받았는지를 먼저 붙잡아둔다.
   //
-  // 값을 한 번만 읽어서 비교하면(getAttribute 로 꺼내 놓고 expect) 실패한다.
-  // 누른 직후에는 아직 'false' 다 — 낙관적 업데이트도 다음 줄보다는 늦다.
+  // 화면의 aria-pressed 만 보면 안 된다. 낙관적 업데이트가 먼저 바꿔놓기 때문에
+  // 요청이 실패해도 잠깐은 눌린 것처럼 보이고, 그 찰나를 단언이 잡으면 통과한다.
+  // 되돌아가기 전에 잡느냐 마느냐라서 판이 돌 때마다 결과가 달라진다.
+  const answered = page.waitForResponse(
+    (res) => res.url().includes('/like') && res.request().method() === 'POST',
+    { timeout: 10_000 },
+  );
+
   await heart.click();
+
+  expect((await answered).ok()).toBe(true);
+
+  // 기다리라고 우리가 안 적는다. 이 단언이 될 때까지 스스로 다시 본다.
   await expect(heart).toHaveAttribute('aria-pressed', 'true');
 });
