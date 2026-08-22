@@ -12,6 +12,7 @@
   },
   "Profile": {
     "stats": "投稿 {posts, plural, other {#件}} · フォロワー {followers, plural, other {#人}}",
-    "likes": "いいね {count, plural, other {#}}"
+    "likes": "いいね {count, plural, other {#}}",
+    "countedAt": "({time} 時点)"
   }
 }

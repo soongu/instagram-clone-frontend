@@ -12,6 +12,7 @@
   },
   "Profile": {
     "stats": "{posts, plural, one {# post} other {# posts}} · {followers, plural, one {# follower} other {# followers}}",
-    "likes": "{count, plural, one {# like} other {# likes}}"
+    "likes": "{count, plural, one {# like} other {# likes}}",
+    "countedAt": "(as of {time})"
   }
 }

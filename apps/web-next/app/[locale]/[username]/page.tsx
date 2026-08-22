@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { FollowButton } from '@/app/components/FollowButton';
 import { TagFilter } from '@/app/components/TagFilter';
-import { getTranslations } from 'next-intl/server';
+import { getFormatter, getTranslations } from 'next-intl/server';
 import { fetchPostsByUsername, fetchProfile, fetchTopTags } from '@/lib/api';
 
 // 화면을 그리기 전에 Next 가 이 함수를 먼저 부른다. 돌려준 값이 <head> 로 들어간다.
@@ -32,6 +32,8 @@ export default async function ProfilePage({ params }: PageProps<'/[locale]/[user
 
   // 이 화면의 번역 칸을 연다. 서버에서 도는 조각이라 기다렸다 받는다.
   const t = await getTranslations('Profile');
+  // 날짜·시각·숫자를 이 요청의 언어로 찍어주는 도구. 언어 이름을 손으로 안 적는다.
+  const format = await getFormatter();
 
   // 셋 다 여기서 출발시킨다. 셋은 서로의 결과가 필요 없다.
   const profileRequest = fetchProfile(username);
@@ -46,7 +48,12 @@ export default async function ProfilePage({ params }: PageProps<'/[locale]/[user
       <p className="mb-4 text-sm text-black/60">
         {t('stats', { posts: posts.length, followers: profile.followerCount })}
         <span className="ml-2 text-black/40">
-          ({new Date(profile.countedAt).toLocaleTimeString('ko-KR')} 기준)
+          {t('countedAt', {
+            time: format.dateTime(new Date(profile.countedAt), {
+              dateStyle: 'long',
+              timeStyle: 'short',
+            }),
+          })}
         </span>
       </p>
       <FollowButton username={username} />
