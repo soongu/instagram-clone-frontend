@@ -252,7 +252,10 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 들여온 기본값은 0.556 이었는데 --muted 위에 얹으면 대비가 4.34 라 기준(4.5)에 못 미친다.
+     사진이 안 뜬 아바타의 이름 글자가 이 조합이라 사용자가 실제로 보는 화면이다.
+     0.54 로 한 칸 낮추면 4.64 가 된다. 어두운 화면 쪽(0.708)은 5.83 이라 그대로 둔다. */
+  --muted-foreground: oklch(0.54 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   /* 우리 빨강과 들여온 빨강이 따로 놀지 않게 잇는다 (E-6 에서 --card 를 이은 것과 같은 방식) */
