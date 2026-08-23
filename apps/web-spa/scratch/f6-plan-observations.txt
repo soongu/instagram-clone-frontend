@@ -210,3 +210,62 @@ storybook dev -p 6006 → 200. index.json 에 스토리 4개 등록 확인.
   index-*.js 683.01 kB / gzip 219,470 B (예산 225,000) · CSS 44.00 kB
   => 스토리 파일은 앱 엔트리가 import 하지 않아 배포본에 안 실린다
      (C-4 「데모 파일은 번들에 0 B」 계열).
+
+================================================================
+10절. Step 3~4 실측
+================================================================
+[Step 3 — 필수 props 가 있는 컴포넌트는 타입이 먼저 막는다]
+CommentInput 은 value·onChange·ref 셋이 필수다.
+render 만 적고 args 를 비우면:
+  TS2322: Property 'args' is missing in type '{ render: () => Element; }'
+          but required in type '{ args: { value; onChange; ref } }'
+=> 카탈로그도 그 약속을 채우지 않고는 컴포넌트를 못 세운다.
+   meta.args 로 약속을 채우고 실제 값은 StatefulCommentInput 이 쥔다.
+   브라우저에서 직접 입력해 확인 — 빈 칸 → '카탈로그에서 직접 쳐본 글자' 반영됨.
+
+[Step 4 — 여섯 변형 실측(브라우저 계산값)]
+  default      bg oklch(0.205 0 0)              32px
+  outline      bg oklch(1 0 0)                  32px
+  secondary    bg oklch(0.97 0 0)               32px
+  ghost        bg transparent                   32px
+  destructive  bg oklab(0.641 … / 0.1)          32px
+  link         bg transparent                   32px
+⚠️ default 가 우리 브랜드색(#0095f6)이 아니라 shadcn 중립색이다.
+   E-7 이 --ring·--destructive 는 우리 토큰으로 이었지만 --primary 는 안 이었다.
+
+⚠️⚠️ 앱에 Button 이 두 개다 — 카탈로그를 세우니 드러났다.
+   ui/button(cva 변형): ConfirmDialog·SignInButton·PostDetailPage·ExplorePage·DmPage (5)
+   components/Button(B-3, 자기 생김새 없음): PostBody·CommentForm·IconButton·
+     SignUpForm·InputValueDemo·RefVsStateDemo·ProfileImagePicker (7)
+
+================================================================
+11절. Step 5 — 스토리가 판이 된다 + 🚨 재현 안 되는 실패 1건
+================================================================
+vitest.config.ts 를 projects 2개로. 첫 실행:
+  Test Files  2 failed | 153 passed (155)
+  Tests      10 failed | 1063 passed (1073)
+  TypeError: Failed to fetch dynamically imported module:
+    http://localhost:63315/node_modules/.cache/storybook/10.5.10/<해시>/
+    sb-vitest/deps/@storybook_react-dom-shim.js?v=39798587
+
+재현 시도 2회 — 둘 다 실패가 '안' 났다:
+  (a) storybook dev 를 끄고 재실행           → 155 / 1073 통과
+  (b) dev 를 다시 켜고 재실행                → 155 / 1073 통과  ← 가설 기각
+  (c) .cache/storybook(37M) 통째로 지우고 dev 끈 채 → 155 / 1073 통과 ← 가설 기각
+
+=> 처음에 「dev 서버가 캐시를 두고 다툰다」고 결론 낼 뻔했는데 (b) 가 반증했다.
+   차가운 캐시 가설도 (c) 가 반증했다.
+   현재로선 '첫 실행에서 한 번' 나는 경합으로 보이고 조건을 특정하지 못했다.
+   ⇒ 교안은 원인을 단정하지 않는다. 「한 번 이렇게 실패할 수 있고 다시 돌리면
+      통과한다 · 우리가 두 조건으로 재현을 시도했지만 안 됐다」로만 쓴다.
+      (캐논: 재현 안 되는 수치는 인용 못 하지만 「재현이 안 된다」는 쓸 수 있다)
+
+[안정 상태 — 3회 연속 동일]
+  Test Files  155 passed (155)      (152 + 스토리 파일 3)
+  Tests      1073 passed (1073)     (1061 + 스토리 12)
+  스토리 12 = Avatar 4 + CommentInput 2 + Button 6
+  => 이 회차부터 기준선은 155 / 1073.
+
+⚠️ storybook/test 가 내보내는 것이 F-3 에서 배운 그 목록이다 —
+   expect · userEvent · within · screen · getByRole · findByRole · fn …
+   (@storybook/test 라는 패키지는 이제 없다. storybook/test 로 들어온다)
