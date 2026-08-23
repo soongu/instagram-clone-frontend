@@ -61,6 +61,14 @@ export const mockUsers = ['jaehoon', 'minji'];
 // 돌려받은 값만 봐서는 "우리가 무엇을 보냈는지" 를 알 수 없다.
 export const receivedLoginBodies: unknown[] = [];
 
+// 좋아요는 누를 때마다 뒤집힌다. 흉내 서버도 그 사이를 기억해야
+// 두 번 누르면 원래대로 돌아온다. 판마다 새로 시작하려고 비우는 함수도 함께 둔다.
+const likeState = new Map<number, { liked: boolean; likeCount: number }>();
+
+export function resetLikeState() {
+  likeState.clear();
+}
+
 export const handlers = [
   // 보내는 요청. 본문은 request.json() 으로 읽는다.
   http.post(`${MOCK_API_BASE}/auth/login`, async ({ request }) => {
@@ -90,7 +98,28 @@ export const handlers = [
     const tag = new URL(request.url).searchParams.get('tag');
     const shown = tag === null ? allPosts : allPosts.filter((post) => post.hashtagNames.includes(tag));
 
-    return HttpResponse.json(ok(shown));
+    // 좋아요를 누른 뒤 목록을 다시 물어보면 그 사실이 반영돼 있어야 한다.
+    // 안 그러면 눌러서 올라간 숫자가 다시 물어보는 순간 옛 값으로 되돌아간다.
+    return HttpResponse.json(ok(shown.map((post) => ({ ...post, ...likeState.get(post.id) }))));
+  }),
+
+  // 하트를 누르면 오는 요청. 지난 시간 과제로 남겨뒀던 자리다.
+  http.post(`${MOCK_API_BASE}/posts/:postId/like`, ({ params }) => {
+    const id = Number(params.postId);
+    const post = allPosts.find((item) => item.id === id);
+
+    if (post === undefined) {
+      return HttpResponse.json(failure('없는 게시물이에요'), { status: 404 });
+    }
+
+    const current = likeState.get(id) ?? { liked: post.liked, likeCount: post.likeCount };
+    const next = {
+      liked: !current.liked,
+      likeCount: current.likeCount + (current.liked ? -1 : 1),
+    };
+    likeState.set(id, next);
+
+    return HttpResponse.json(ok({ id, ...next }));
   }),
 
   http.get(`${MOCK_API_BASE}/conversations`, () => HttpResponse.json(ok(mockConversations))),
